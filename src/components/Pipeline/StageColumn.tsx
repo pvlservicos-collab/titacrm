@@ -15,6 +15,8 @@ interface StageColumnProps {
   isGoalsEnabled: boolean
   stageStats?: { count: number; totalValue: number }
   displayLimit?: number
+  /** Mobile: abre o seletor de "mover para" em vez de depender de arrastar. */
+  onLeadClick?: (lead: LeadWithOwner) => void
 }
 
 export default function StageColumn({
@@ -25,6 +27,7 @@ export default function StageColumn({
   isGoalsEnabled,
   stageStats,
   displayLimit,
+  onLeadClick,
 }: StageColumnProps) {
   const { setNodeRef } = useDroppable({ id: stage.id })
   const fallbackColor = getStageColor(stage.rank)
@@ -47,7 +50,7 @@ export default function StageColumn({
   return (
     <div
       ref={setNodeRef}
-      className="flex-shrink-0 w-[280px] flex flex-col"
+      className="flex-shrink-0 w-full md:w-[280px] flex flex-col"
     >
       {/* Stage Header */}
       <div className="mb-3 px-2">
@@ -113,6 +116,7 @@ export default function StageColumn({
                 lead={lead}
                 organizationId={organizationId}
                 stageColor={stageColor}
+                onClick={onLeadClick ? () => onLeadClick(lead) : undefined}
               />
             ))
           )}

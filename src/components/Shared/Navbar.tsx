@@ -19,6 +19,8 @@ import {
   CurrencyDollar,
   Sun,
   Moon,
+  List,
+  X,
 } from '@phosphor-icons/react'
 import { useAuth, usePipeline } from '@/hooks'
 import { useTheme } from '@/contexts/ThemeContext'
@@ -51,6 +53,9 @@ export default function Navbar() {
   const { setFilters } = usePipelineFilters()
   const [showPipelineDropdown, setShowPipelineDropdown] = useState(false)
   const [showUserDropdown, setShowUserDropdown] = useState(false) // Added
+  const [showMobileMenu, setShowMobileMenu] = useState(false)
+
+  useEffect(() => { setShowMobileMenu(false) }, [pathname])
 
   const userDropdownRef = useRef<HTMLDivElement>(null) // Added
 
@@ -110,17 +115,27 @@ export default function Navbar() {
   }
 
   return (
-    <nav className="dark-nav bg-white dark:bg-[#161b22] border-b border-gray-200 dark:border-[#30363d] px-6 h-14 flex items-center justify-between sticky top-0 z-50">
+    <>
+    <nav className="dark-nav bg-white dark:bg-[#161b22] border-b border-gray-200 dark:border-[#30363d] px-4 sm:px-6 h-14 flex items-center justify-between sticky top-0 z-50">
       {/* Left: Logo + Nav */}
       <div className="flex items-center gap-8">
+        {/* Mobile menu button */}
+        <button
+          onClick={() => setShowMobileMenu(true)}
+          className="md:hidden w-8 h-8 flex items-center justify-center rounded-lg text-gray-600 dark:text-[#8b949e] hover:bg-gray-100 dark:hover:bg-[#21262d] transition-colors -ml-1"
+          aria-label="Abrir menu"
+        >
+          <List size={22} />
+        </button>
+
         {/* Logo */}
         <Link href="/" className="flex items-center gap-2">
           <img src="/logos/Atlas.svg" alt="Atlas Eye Logo" className="h-6 w-auto object-contain" />
-          <span className="font-display font-bold text-gray-900 dark:text-[#e6edf3]">Atlas Eye</span>
+          <span className="font-display font-bold text-gray-900 dark:text-[#e6edf3] hidden sm:inline">Atlas Eye</span>
         </Link>
 
-        {/* Nav Tabs */}
-        <div className="flex items-center gap-1">
+        {/* Nav Tabs (desktop) */}
+        <div className="hidden md:flex items-center gap-1">
           {NAV_ITEMS.filter(item => isItemVisible(item.label)).map((item) => {
             const isActive = pathname === item.href ||
               (item.href !== '/' && pathname.startsWith(item.href))
@@ -200,9 +215,11 @@ export default function Navbar() {
       </div>
 
       {/* Right: Search + Notifications + User + Button */}
-      <div className="flex items-center gap-4">
-        {/* Search */}
-        <GlobalSearch />
+      <div className="flex items-center gap-2 sm:gap-4">
+        {/* Search (oculto no celular pra caber o resto do cabeçalho) */}
+        <div className="hidden md:block">
+          <GlobalSearch />
+        </div>
 
         {/* Notifications */}
         <NotificationDropdown />
@@ -231,8 +248,8 @@ export default function Navbar() {
                 <span className="text-purple-600 text-xs font-bold">{initials}</span>
               </div>
             )}
-            <span className="text-sm font-medium text-gray-700 dark:text-[#adbac7] truncate max-w-[120px]">{displayName}</span>
-            <CaretDown size={14} className={`text-gray-400 transition-transform ${showUserDropdown ? 'rotate-180' : ''}`} />
+            <span className="hidden sm:inline text-sm font-medium text-gray-700 dark:text-[#adbac7] truncate max-w-[120px]">{displayName}</span>
+            <CaretDown size={14} className={`hidden sm:block text-gray-400 transition-transform ${showUserDropdown ? 'rotate-180' : ''}`} />
           </div>
 
           {/* User Menu Popup */}
@@ -267,5 +284,51 @@ export default function Navbar() {
         </div>
       </div>
     </nav>
+
+    {/* Menu mobile — mesmos NAV_ITEMS da barra desktop, em lista vertical */}
+    {showMobileMenu && (
+      <div className="md:hidden fixed inset-0 z-[60]">
+        <div
+          className="absolute inset-0 bg-black/40"
+          onClick={() => setShowMobileMenu(false)}
+        />
+        <div className="absolute left-0 top-0 bottom-0 w-72 max-w-[85vw] bg-white dark:bg-[#161b22] shadow-xl flex flex-col">
+          <div className="flex items-center justify-between h-14 px-4 border-b border-gray-100 dark:border-[#30363d]">
+            <Link href="/" className="flex items-center gap-2" onClick={() => setShowMobileMenu(false)}>
+              <img src="/logos/Atlas.svg" alt="Atlas Eye Logo" className="h-6 w-auto object-contain" />
+              <span className="font-display font-bold text-gray-900 dark:text-[#e6edf3]">Atlas Eye</span>
+            </Link>
+            <button
+              onClick={() => setShowMobileMenu(false)}
+              className="w-8 h-8 flex items-center justify-center rounded-lg text-gray-500 hover:bg-gray-100 dark:hover:bg-[#21262d] transition-colors"
+              aria-label="Fechar menu"
+            >
+              <X size={20} />
+            </button>
+          </div>
+          <div className="flex-1 overflow-y-auto p-2">
+            {NAV_ITEMS.filter(item => isItemVisible(item.label)).map(item => {
+              const isActive = pathname === item.href || (item.href !== '/' && pathname.startsWith(item.href))
+              const Icon = item.icon
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  onClick={() => setShowMobileMenu(false)}
+                  className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${isActive
+                    ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400'
+                    : 'text-gray-700 dark:text-[#adbac7] hover:bg-gray-100 dark:hover:bg-[#21262d]'
+                    }`}
+                >
+                  <Icon size={18} weight={isActive ? 'fill' : 'regular'} />
+                  {item.label}
+                </Link>
+              )
+            })}
+          </div>
+        </div>
+      </div>
+    )}
+    </>
   )
 }

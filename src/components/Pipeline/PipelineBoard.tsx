@@ -16,13 +16,14 @@ import {
   CollisionDetection,
 } from '@dnd-kit/core'
 import { arrayMove } from '@dnd-kit/sortable'
-import { usePipeline, useAuth } from '@/hooks'
+import { usePipeline, useAuth, useIsMobile } from '@/hooks'
 import { useLeadsContext } from '@/contexts/LeadsContext'
 import { LeadWithOwner } from '@/lib/types'
 import { FilterState } from '@/components/Shared/FilterButton'
 import StageColumn from './StageColumn'
 import LeadCard from './LeadCard'
 import LoadingSpinner from '@/components/Shared/LoadingSpinner'
+import { X } from '@phosphor-icons/react'
 
 interface PipelineBoardProps {
   organizationId: string
@@ -62,12 +63,24 @@ export default function PipelineBoard({ organizationId, filters }: PipelineBoard
   const [activeLead, setActiveLead] = useState<LeadWithOwner | null>(null)
   const [activeLeadOriginalStage, setActiveLeadOriginalStage] = useState<string | null>(null)
 
+  const isMobile = useIsMobile()
+  const [activeMobileStageId, setActiveMobileStageId] = useState<string | null>(null)
+  const [movingLead, setMovingLead] = useState<LeadWithOwner | null>(null)
+
   // Sync URL pipelineId with selected pipeline
   useEffect(() => {
     if (pipelineIdFromUrl && pipelineIdFromUrl !== selectedPipelineId) {
       selectPipeline(pipelineIdFromUrl)
     }
   }, [pipelineIdFromUrl, selectedPipelineId, selectPipeline])
+
+  // Mobile: garante que sempre haja uma etapa selecionada pra mostrar (a primeira, por padrão)
+  useEffect(() => {
+    if (stages.length === 0) return
+    if (!activeMobileStageId || !stages.some(s => s.id === activeMobileStageId)) {
+      setActiveMobileStageId(stages[0].id)
+    }
+  }, [stages, activeMobileStageId])
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -306,6 +319,12 @@ export default function PipelineBoard({ organizationId, filters }: PipelineBoard
     setActiveLeadOriginalStage(null)
   }
 
+  const handleMoveLead = (targetStageId: string) => {
+    if (!movingLead || !movingLead.stage_id) return
+    moveLeadToStage(movingLead.id, targetStageId, movingLead.stage_id)
+    setMovingLead(null)
+  }
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-screen">
@@ -337,6 +356,43 @@ export default function PipelineBoard({ organizationId, filters }: PipelineBoard
                   Configurar Funil
                 </a>
               </div>
+            </div>
+          ) : isMobile ? (
+            <div>
+              {/* Seletor de etapa — abas roláveis horizontalmente */}
+              <div className="flex gap-2 overflow-x-auto pb-3 -mx-1 px-1">
+                {stages.map(stage => {
+                  const count = stageStats[stage.id]?.count ?? leadsByStage[stage.id]?.length ?? 0
+                  const isActive = stage.id === activeMobileStageId
+                  return (
+                    <button
+                      key={stage.id}
+                      onClick={() => setActiveMobileStageId(stage.id)}
+                      className={`flex-shrink-0 px-3.5 py-2 rounded-full text-sm font-medium border transition-colors ${
+                        isActive ? 'bg-gray-900 text-white border-gray-900' : 'bg-white text-gray-600 border-gray-200'
+                      }`}
+                    >
+                      {stage.name} <span className="opacity-70">({count})</span>
+                    </button>
+                  )
+                })}
+              </div>
+
+              {/* Uma etapa por vez — arrastar entre etapas não funciona bem no toque,
+                  então mover um lead é feito clicando no card (abre "mover para"). */}
+              {stages.filter(s => s.id === activeMobileStageId).map(stage => (
+                <StageColumn
+                  key={stage.id}
+                  stage={stage}
+                  leads={leadsByStage[stage.id] || []}
+                  organizationId={organizationId}
+                  totalLeads={pipelineLeads.length}
+                  isGoalsEnabled={isGoalsEnabled}
+                  stageStats={stageStats[stage.id]}
+                  displayLimit={displayLimit}
+                  onLeadClick={setMovingLead}
+                />
+              ))}
             </div>
           ) : (
             <div className="flex gap-4 pb-4 w-max mx-auto">
@@ -372,6 +428,39 @@ export default function PipelineBoard({ organizationId, filters }: PipelineBoard
         </DndContext>
 
       </div>
+
+      {/* Mobile: "mover para" — alternativa ao arrastar entre etapas */}
+      {movingLead && (
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
+          <div className="bg-white rounded-2xl w-full max-w-sm shadow-2xl border border-gray-100">
+            <div className="flex items-center justify-between p-5 border-b border-gray-100">
+              <div>
+                <h2 className="text-base font-bold text-gray-900">Mover lead</h2>
+                <p className="text-xs text-gray-500 mt-0.5 truncate">{movingLead.title}</p>
+              </div>
+              <button onClick={() => setMovingLead(null)} className="text-gray-400 hover:text-gray-600 transition-colors">
+                <X size={20} />
+              </button>
+            </div>
+            <div className="p-2 max-h-[60vh] overflow-y-auto">
+              {stages.map(stage => (
+                <button
+                  key={stage.id}
+                  onClick={() => handleMoveLead(stage.id)}
+                  disabled={stage.id === movingLead.stage_id}
+                  className={`w-full text-left px-4 py-3 rounded-lg text-sm transition-colors ${
+                    stage.id === movingLead.stage_id
+                      ? 'text-gray-400 cursor-default'
+                      : 'text-gray-700 hover:bg-gray-50'
+                  }`}
+                >
+                  {stage.name}{stage.id === movingLead.stage_id ? ' (etapa atual)' : ''}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

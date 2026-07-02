@@ -44,6 +44,8 @@ interface LeadDetailsSidebarProps {
   pipelines?: Pipeline[]
   currentPipelineId?: string
   onPipelineChange?: (pipelineId: string) => void
+  /** Só passado quando renderizado como overlay em tela cheia no mobile — exibe um botão de fechar. */
+  onClose?: () => void
 }
 
 
@@ -58,6 +60,7 @@ export default function LeadDetailsSidebar({
   pipelines,
   currentPipelineId,
   onPipelineChange,
+  onClose,
 }: LeadDetailsSidebarProps) {
   const ownerName = lead.owner?.profiles?.full_name || ''
   const ownerInitials = ownerName
@@ -195,7 +198,15 @@ export default function LeadDetailsSidebar({
 
   return (
     <>
-    <div className="w-72 border-l border-[#2f3b44] flex flex-col flex-shrink-0 overflow-y-auto bg-[#111b21] chat-dark-scroll">
+    <div className="w-full md:w-72 border-l border-[#2f3b44] flex flex-col flex-shrink-0 overflow-y-auto bg-[#111b21] chat-dark-scroll">
+      {onClose && (
+        <div className="flex items-center justify-between px-4 h-14 border-b border-[#2f3b44] flex-shrink-0 md:hidden">
+          <span className="text-sm font-semibold text-[#e9edef]">Detalhes do contato</span>
+          <button onClick={onClose} className="w-8 h-8 flex items-center justify-center rounded-lg text-[#8696a0] hover:text-[#e9edef] hover:bg-[#202c33] transition-colors">
+            <X size={20} />
+          </button>
+        </div>
+      )}
       <div className="p-5 space-y-5">
         {/* Lead Avatar + Name + Tags */}
         <div className="text-center flex flex-col items-center">

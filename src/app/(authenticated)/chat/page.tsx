@@ -2,12 +2,14 @@
 
 import { useState, useCallback, useEffect } from 'react'
 import { useSearchParams } from 'next/navigation'
-import { useAuth, useStageHistory, useLeadPipelineStages, usePipeline } from '@/hooks'
+import { useAuth, useStageHistory, useLeadPipelineStages, usePipeline, useIsMobile } from '@/hooks'
 import { useLeadsContext } from '@/contexts/LeadsContext'
 import { LeadList, ChatWindow, LeadDetailsSidebar } from '@/components/Chat'
 import { LeadWithOwner } from '@/lib/types'
+import { getInitials } from '@/lib/utils'
 import NotAuthorized from '@/components/Shared/NotAuthorized'
 import LoadingSpinner from '@/components/Shared/LoadingSpinner'
+import { CaretLeft, Info } from '@phosphor-icons/react'
 
 export default function ChatPage() {
   const { organizationId, loading, permissions, isMaster, roleName, currentOrganization, user, profileName } = useAuth()
@@ -26,6 +28,14 @@ export default function ChatPage() {
   })
 
   const [selectedLead, setSelectedLead] = useState<LeadWithOwner | null>(null)
+  const isMobile = useIsMobile()
+  const [mobileView, setMobileView] = useState<'list' | 'conversation'>('list')
+  const [showMobileDetails, setShowMobileDetails] = useState(false)
+
+  const handleSelectLead = useCallback((lead: LeadWithOwner) => {
+    setSelectedLead(lead)
+    setMobileView('conversation')
+  }, [])
 
   // Sync `?leadId=` from URL (pushed by GlobalSearch and notification links)
   // into selectedLead. Handles leads that are NOT in the in-memory 1000-row
@@ -197,6 +207,76 @@ export default function ChatPage() {
     return (
       <div className="flex items-center justify-center h-screen">
         <p className="text-gray-500">Nenhuma organização encontrada. Execute o seed.sql no Supabase.</p>
+      </div>
+    )
+  }
+
+  // Mobile: uma tela por vez (lista OU conversa), detalhes do lead viram overlay
+  // em tela cheia em vez de coluna fixa. Desktop abaixo continua como sempre foi.
+  if (isMobile) {
+    return (
+      <div className="h-[calc(100vh-56px)] flex flex-col">
+        {mobileView === 'list' && (
+          <LeadList
+            leads={allLeads}
+            selectedLeadId={displayedLead?.id}
+            onSelectLead={handleSelectLead}
+            onUpdateLead={handleUpdateLead}
+            loading={false}
+          />
+        )}
+
+        {mobileView === 'conversation' && (
+          displayedLead ? (
+            <div className="flex flex-col h-full min-h-0">
+              <div className="flex items-center gap-3 h-14 px-2 border-b border-[#2f3b44] bg-[#202c33] flex-shrink-0">
+                <button onClick={() => setMobileView('list')} className="w-9 h-9 flex items-center justify-center rounded-lg text-[#e9edef]" aria-label="Voltar">
+                  <CaretLeft size={20} />
+                </button>
+                <div className="w-8 h-8 rounded-full bg-[#2a3942] flex items-center justify-center overflow-hidden flex-shrink-0">
+                  {displayedLead.avatar_url ? (
+                    <img src={displayedLead.avatar_url} alt={displayedLead.title} className="w-full h-full object-cover" />
+                  ) : (
+                    <span className="text-xs font-bold text-[#53bdeb]">{getInitials(displayedLead.title)}</span>
+                  )}
+                </div>
+                <span className="flex-1 min-w-0 truncate text-sm font-medium text-[#e9edef]">{displayedLead.title}</span>
+                <button onClick={() => setShowMobileDetails(true)} className="w-9 h-9 flex items-center justify-center rounded-lg text-[#8696a0]" aria-label="Detalhes do contato">
+                  <Info size={20} />
+                </button>
+              </div>
+              <div className="flex-1 min-h-0">
+                <ChatWindow
+                  lead={displayedLead}
+                  organizationId={organizationId}
+                  onMessageSent={handleChatMessageSent}
+                />
+              </div>
+            </div>
+          ) : (
+            <div className="flex items-center justify-center h-full bg-[#0b141a] text-[#8696a0]">
+              Integre alguma fonte de conversas
+            </div>
+          )
+        )}
+
+        {showMobileDetails && displayedLead && (
+          <div className="fixed inset-0 z-50 bg-[#111b21]">
+            <LeadDetailsSidebar
+              lead={displayedLead}
+              stages={leadStages}
+              stageHistory={stageHistory}
+              stageHistoryLoading={historyLoading || stagesLoading}
+              onStageChange={handleStageChange}
+              onTagsChange={handleTagsChange}
+              onUpdateLead={handleUpdateLead}
+              pipelines={pipelines}
+              currentPipelineId={currentPipelineId}
+              onPipelineChange={handlePipelineChange}
+              onClose={() => setShowMobileDetails(false)}
+            />
+          </div>
+        )}
       </div>
     )
   }

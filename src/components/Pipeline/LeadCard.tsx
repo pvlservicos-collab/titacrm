@@ -14,9 +14,10 @@ interface LeadCardProps {
   organizationId: string
   isDragOverlay?: boolean
   stageColor?: string
+  onClick?: () => void
 }
 
-const LeadCard = ({ lead, isDragOverlay, stageColor }: LeadCardProps) => {
+const LeadCard = ({ lead, isDragOverlay, stageColor, onClick }: LeadCardProps) => {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: lead.id,
   })
@@ -41,6 +42,7 @@ const LeadCard = ({ lead, isDragOverlay, stageColor }: LeadCardProps) => {
       ref={setNodeRef}
       {...listeners}
       {...attributes}
+      onClick={onClick}
       style={style}
       className={`
         bg-white border border-gray-200 rounded-lg p-4 transition-all relative overflow-hidden
