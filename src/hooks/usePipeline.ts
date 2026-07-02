@@ -5,6 +5,26 @@ import { Pipeline, PipelineStage } from '@/lib/types'
 
 const EMPTY_ARRAY: PipelineStage[] = []
 
+// Dedup fetches de /api/pipelines quando mais de um componente monta usePipeline()
+// pro mesmo org ao mesmo tempo (ex: Navbar + PipelineBoard em /pipeline) — o segundo
+// reaproveita a mesma promise em vez de disparar outra requisição idêntica.
+const inFlightPipelinesRequests = new Map<string, Promise<any>>()
+
+function fetchPipelinesDeduped(organizationId: string): Promise<any> {
+  const existing = inFlightPipelinesRequests.get(organizationId)
+  if (existing) return existing
+
+  const promise = fetch('/api/pipelines')
+    .then(res => {
+      if (!res.ok) throw new Error('Failed to fetch pipelines')
+      return res.json()
+    })
+    .finally(() => inFlightPipelinesRequests.delete(organizationId))
+
+  inFlightPipelinesRequests.set(organizationId, promise)
+  return promise
+}
+
 export function usePipeline(organizationId: string) {
   const [pipelines, setPipelines] = useState<Pipeline[]>([])
   const [stages, setStages] = useState<Record<string, PipelineStage[]>>({})
@@ -21,9 +41,7 @@ export function usePipeline(organizationId: string) {
     try {
       setLoading(true)
       setError(null)
-      const res = await fetch('/api/pipelines')
-      if (!res.ok) throw new Error('Failed to fetch pipelines')
-      const { data } = await res.json()
+      const { data } = await fetchPipelinesDeduped(organizationId)
       setPipelines(data || [])
       if (data && data.length > 0) {
         setSelectedPipelineId(data[0].id)

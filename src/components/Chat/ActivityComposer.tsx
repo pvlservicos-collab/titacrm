@@ -1,7 +1,8 @@
 'use client'
 
 import { useState, useEffect, useRef, useCallback } from 'react'
-import EmojiPicker, { EmojiClickData, Theme } from 'emoji-picker-react'
+import dynamic from 'next/dynamic'
+import type { EmojiClickData, Theme } from 'emoji-picker-react'
 import {
   PaperPlaneRight,
   Smiley,
@@ -15,6 +16,10 @@ import {
 } from '@phosphor-icons/react'
 import { ReplyContext } from './ChatWindow'
 import { ChatButtonSettings, ChatButtonKey } from '@/hooks/useChatButtonSettings'
+
+// Carregado sob demanda: o pacote traz o dataset inteiro de emojis, só vale a pena
+// baixar quando o usuário realmente abre o seletor, não em toda visita ao chat.
+const EmojiPicker = dynamic(() => import('emoji-picker-react'), { ssr: false })
 
 interface ActivityComposerProps {
   onSend: (content: string) => Promise<void>
@@ -260,7 +265,7 @@ export default function ActivityComposer({
           >
             <EmojiPicker
               onEmojiClick={handleEmojiClick}
-              theme={Theme.DARK}
+              theme={'dark' as Theme}
               width={350}
               height={400}
               searchPlaceHolder="Buscar emoji..."

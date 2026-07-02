@@ -2,14 +2,21 @@
 
 import Navbar from '@/components/Shared/Navbar'
 import { FilterProvider } from '@/contexts/FilterContext'
-import { NotificationProvider } from '@/contexts/NotificationContext'
-import { LeadsProvider } from '@/contexts/LeadsContext'
-import { AuthProvider } from '@/contexts/AuthContext'
 import AuthGuard from '@/components/Auth/AuthGuard'
 
 /**
  * Layout for all authenticated pages (pipeline, chat, settings, etc.)
  * Wraps children with AuthGuard (redirects if not logged in) and Navbar.
+ *
+ * AuthProvider/NotificationProvider já vêm do root layout (src/app/layout.tsx),
+ * que envolve toda a árvore — não remontar aqui evita fetches duplicados de
+ * /api/users/me em toda navegação (o contexto interno era descartado mesmo,
+ * já que useAuth()/useNotifications() resolvem pro provider mais próximo).
+ *
+ * LeadsProvider não fica mais aqui — só Pipeline e Chat usam a lista de leads,
+ * então cada um tem seu próprio layout local (pipeline/layout.tsx, chat/layout.tsx,
+ * chat-evolution/layout.tsx) que o monta. Páginas como Financeiro e Logística
+ * deixam de pagar o custo de /api/leads?returnAll=true em toda navegação.
  */
 export default function AuthenticatedLayout({
     children,
@@ -18,20 +25,14 @@ export default function AuthenticatedLayout({
 }) {
     return (
         <AuthGuard>
-            <AuthProvider>
-                <FilterProvider>
-                    <NotificationProvider>
-                        <LeadsProvider>
-                            <div className="flex flex-col h-screen bg-gray-50">
-                                <Navbar />
-                                <main className="flex-1 overflow-auto scrollbar-hide">
-                                    {children}
-                                </main>
-                            </div>
-                        </LeadsProvider>
-                    </NotificationProvider>
-                </FilterProvider>
-            </AuthProvider>
+            <FilterProvider>
+                <div className="flex flex-col h-screen bg-gray-50">
+                    <Navbar />
+                    <main className="flex-1 overflow-auto scrollbar-hide">
+                        {children}
+                    </main>
+                </div>
+            </FilterProvider>
         </AuthGuard>
     )
 }
