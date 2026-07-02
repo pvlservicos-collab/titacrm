@@ -7,6 +7,7 @@ import {
   pgTable, pgEnum, uuid, text, boolean, integer, numeric,
   timestamp, jsonb, index, uniqueIndex, foreignKey, primaryKey,
 } from 'drizzle-orm/pg-core'
+import { sql } from 'drizzle-orm'
 
 // ── Enums ────────────────────────────────────────────────────────────────────
 export const memberStatusEnum = pgEnum('member_status', ['active', 'invited', 'disabled'])
@@ -393,6 +394,8 @@ export const orders = pgTable('orders', {
   customerState: text('customer_state'),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow(),
+  deliveredAt: timestamp('delivered_at', { withTimezone: true }),
+  deletedAt: timestamp('deleted_at', { withTimezone: true }),
 })
 
 // ── Itens do Pedido ───────────────────────────────────────────────────────────
@@ -406,3 +409,33 @@ export const orderItems = pgTable('order_items', {
   unitPrice: numeric('unit_price', { precision: 15, scale: 2 }).notNull().default('0'),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
 })
+
+// ── Despesas / Contas a Pagar ──────────────────────────────────────────────────
+export const expenses = pgTable('expenses', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  organizationId: uuid('organization_id').notNull().references(() => organizations.id),
+  description: text('description').notNull(),
+  category: text('category').notNull().default('outros'),
+  amount: numeric('amount', { precision: 15, scale: 2 }).notNull(),
+  dueDate: timestamp('due_date', { withTimezone: true }).notNull(),
+  status: text('status').notNull().default('pending'),
+  paidAt: timestamp('paid_at', { withTimezone: true }),
+  payee: text('payee'),
+  notes: text('notes'),
+  isRecurring: boolean('is_recurring').notNull().default(false),
+  recurrenceInterval: text('recurrence_interval'),
+  recurrenceDay: integer('recurrence_day'),
+  recurrenceEndDate: timestamp('recurrence_end_date', { withTimezone: true }),
+  parentExpenseId: uuid('parent_expense_id'),
+  createdByMemberId: uuid('created_by_member_id'),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow(),
+  deletedAt: timestamp('deleted_at', { withTimezone: true }),
+}, (t) => ({
+  parentExpenseFk: foreignKey({ columns: [t.parentExpenseId], foreignColumns: [t.id] }).onDelete('set null'),
+  orgDueDateIdx: index('expenses_org_due_date_idx').on(t.organizationId, t.dueDate),
+  orgStatusIdx: index('expenses_org_status_idx').on(t.organizationId, t.status),
+  parentDueDateUnique: uniqueIndex('expenses_parent_due_date_unique')
+    .on(t.parentExpenseId, t.dueDate)
+    .where(sql`${t.parentExpenseId} is not null and ${t.deletedAt} is null`),
+}))

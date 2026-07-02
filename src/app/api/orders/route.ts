@@ -1,10 +1,10 @@
 import { NextRequest } from 'next/server'
 import { authenticateRequest, apiError } from '@/lib/api-auth'
 import { db } from '@/lib/db'
-import { orders, orderItems, leads } from '@/lib/schema'
-import { eq, and, desc, gte, lte, sql } from 'drizzle-orm'
+import { orders, orderItems, leads, products } from '@/lib/schema'
+import { eq, and, desc, gte, lte, sql, inArray, isNull } from 'drizzle-orm'
 
-function toSnake(o: any, items: any[] = []) {
+function toSnake(o: any, items: any[] = [], productNameById: Map<string, string> = new Map()) {
   return {
     id: o.id,
     organization_id: o.organizationId,
@@ -27,11 +27,14 @@ function toSnake(o: any, items: any[] = []) {
     customer_state: o.customerState,
     created_at: o.createdAt,
     updated_at: o.updatedAt,
+    delivered_at: o.deliveredAt,
     items: items.map(i => ({
       id: i.id,
       order_id: i.orderId,
       product_id: i.productId,
-      product_name: i.productName,
+      // Prefere o nome atual do produto (via product_id); cai pro nome congelado no pedido
+      // quando o item não tem produto vinculado (digitado à mão) ou o produto não existe mais.
+      product_name: (i.productId && productNameById.get(i.productId)) || i.productName,
       quantity: i.quantity,
       unit_price: i.unitPrice,
       created_at: i.createdAt,
@@ -50,7 +53,7 @@ export async function GET(req: NextRequest) {
     const limit = Math.min(Number(params.get('limit') || 100), 500)
     const offset = Number(params.get('offset') || 0)
 
-    const conditions: any[] = [eq(orders.organizationId, auth.organizationId)]
+    const conditions: any[] = [eq(orders.organizationId, auth.organizationId), isNull(orders.deletedAt)]
     if (paymentStatus) conditions.push(eq(orders.paymentStatus, paymentStatus))
     if (deliveryStatus) conditions.push(eq(orders.deliveryStatus, deliveryStatus))
     if (from) conditions.push(gte(orders.createdAt, new Date(from)))
@@ -78,7 +81,17 @@ export async function GET(req: NextRequest) {
       return acc
     }, {})
 
-    const data = rows.map(o => toSnake(o, itemsByOrder[o.id] || []))
+    const productIds = [...new Set(allItems.map(i => i.productId).filter(Boolean))] as string[]
+    let productNameById = new Map<string, string>()
+    if (productIds.length > 0) {
+      const productRows = await db
+        .select({ id: products.id, name: products.name })
+        .from(products)
+        .where(inArray(products.id, productIds))
+      productNameById = new Map(productRows.map(p => [p.id, p.name]))
+    }
+
+    const data = rows.map(o => toSnake(o, itemsByOrder[o.id] || [], productNameById))
 
     return Response.json({ data })
   } catch (err: any) {
@@ -100,6 +113,12 @@ export async function POST(req: NextRequest) {
       0
     )
 
+    const deliveryStatus = body.delivery_status || 'pending'
+    const orderDate = body.order_date ? new Date(body.order_date) : undefined
+    if (orderDate && isNaN(orderDate.getTime())) {
+      return apiError(400, 'Data do pedido inválida.')
+    }
+
     const [order] = await db
       .insert(orders)
       .values({
@@ -107,7 +126,7 @@ export async function POST(req: NextRequest) {
         leadId: body.lead_id || null,
         paymentMethod: body.payment_method || 'pix',
         paymentStatus: body.payment_status || 'pending',
-        deliveryStatus: body.delivery_status || 'pending',
+        deliveryStatus,
         totalValue: body.total_value ?? totalValue,
         notes: body.notes || null,
         customerName: body.customer_name || null,
@@ -121,6 +140,8 @@ export async function POST(req: NextRequest) {
         customerNeighborhood: body.customer_neighborhood || null,
         customerCity: body.customer_city || null,
         customerState: body.customer_state || null,
+        ...(orderDate ? { createdAt: orderDate } : {}),
+        deliveredAt: deliveryStatus === 'delivered' ? new Date() : null,
       })
       .returning()
 
