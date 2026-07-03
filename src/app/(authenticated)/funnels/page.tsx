@@ -3,6 +3,8 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { FlowArrow, Plus, ArrowClockwise, ArrowSquareOut } from '@phosphor-icons/react'
+import { useAuth } from '@/hooks'
+import NotAuthorized from '@/components/Shared/NotAuthorized'
 
 interface FunnelSummary {
   id: string
@@ -29,6 +31,8 @@ const TRIGGER_LABELS: Record<string, string> = {
 
 export default function FunnelsPage() {
   const router = useRouter()
+  const { loading: authLoading, permissions, isMaster, roleName } = useAuth()
+  const isAdmin = isMaster || roleName?.toLowerCase() === 'administrador' || roleName?.toLowerCase() === 'owner'
   const [funnels, setFunnels] = useState<FunnelSummary[]>([])
   const [loading, setLoading] = useState(true)
   const [creating, setCreating] = useState(false)
@@ -84,6 +88,10 @@ export default function FunnelsPage() {
     } finally {
       setCreating(false)
     }
+  }
+
+  if (!authLoading && !isAdmin && permissions && !permissions.settings?.view_funnels) {
+    return <NotAuthorized />
   }
 
   return (

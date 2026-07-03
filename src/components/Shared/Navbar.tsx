@@ -104,11 +104,11 @@ export default function Navbar() {
       case 'Leads': return !!permissions.settings?.view_leads
       case 'Pipeline': return !!permissions.settings?.view_pipeline
       case 'Chat': return !!permissions.settings?.view_chat
-      case 'Logística': return !!permissions.settings?.view_settings
-      case 'Financeiro': return !!permissions.settings?.view_settings
-      case 'Funil de Mensagens': return !!permissions.settings?.view_settings
-      case 'Logs': return !!permissions.settings?.view_settings
-      case 'Métricas': return !!permissions.settings?.view_settings
+      case 'Logística': return !!permissions.settings?.view_logistica
+      case 'Financeiro': return !!permissions.settings?.view_financeiro
+      case 'Funil de Mensagens': return !!permissions.settings?.view_funnels
+      case 'Logs': return !!permissions.settings?.view_logs
+      case 'Métricas': return !!permissions.settings?.view_metrics
       case 'Configurações': return !!permissions.settings?.view_settings
       default: return false
     }

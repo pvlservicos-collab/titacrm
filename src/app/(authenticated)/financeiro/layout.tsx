@@ -2,6 +2,8 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
+import { useAuth } from '@/hooks'
+import NotAuthorized from '@/components/Shared/NotAuthorized'
 
 const TABS = [
   { label: 'Visão geral', href: '/financeiro' },
@@ -10,6 +12,12 @@ const TABS = [
 
 export default function FinanceiroLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
+  const { loading, permissions, isMaster, roleName } = useAuth()
+  const isAdmin = isMaster || roleName?.toLowerCase() === 'administrador' || roleName?.toLowerCase() === 'owner'
+
+  if (!loading && !isAdmin && permissions && !permissions.settings?.view_financeiro) {
+    return <NotAuthorized />
+  }
 
   return (
     <div className="min-h-screen bg-gray-50">

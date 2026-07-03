@@ -2,6 +2,8 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { Truck, Package, CurrencyDollar, Clock, MagnifyingGlass, Plus, Trash, WhatsappLogo } from '@phosphor-icons/react'
+import { useAuth } from '@/hooks'
+import NotAuthorized from '@/components/Shared/NotAuthorized'
 import NovoPedidoModal from './NovoPedidoModal'
 import OrderDetailModal from './OrderDetailModal'
 import { buildDeliveryWhatsAppLink } from './whatsapp'
@@ -68,6 +70,8 @@ function formatDateTime(iso: string) {
 }
 
 export default function LogisticaPage() {
+  const { loading: authLoading, permissions, isMaster, roleName } = useAuth()
+  const isAdmin = isMaster || roleName?.toLowerCase() === 'administrador' || roleName?.toLowerCase() === 'owner'
   const [orders, setOrders] = useState<Order[]>([])
   const [loading, setLoading] = useState(true)
   const [paymentFilter, setPaymentFilter] = useState<string>('')
@@ -137,6 +141,10 @@ export default function LogisticaPage() {
   // Summary cards
   const pendingDeliveries = orders.filter(o => o.delivery_status === 'pending').length
   const totalRevenue = orders.filter(o => o.payment_status === 'paid').reduce((s, o) => s + Number(o.total_value), 0)
+
+  if (!authLoading && !isAdmin && permissions && !permissions.settings?.view_logistica) {
+    return <NotAuthorized />
+  }
 
   return (
     <div className="min-h-screen bg-gray-50 p-4 sm:p-6">

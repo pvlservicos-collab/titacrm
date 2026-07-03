@@ -3,6 +3,8 @@
 import { useEffect, useState } from 'react'
 import { CheckCircle, XCircle, ArrowClockwise, ListBullets } from '@phosphor-icons/react'
 import { formatDate, formatTime } from '@/lib/utils'
+import { useAuth } from '@/hooks'
+import NotAuthorized from '@/components/Shared/NotAuthorized'
 
 interface LogEntry {
   id: string
@@ -17,6 +19,8 @@ interface LogEntry {
 }
 
 export default function LogsPage() {
+  const { loading: authLoading, permissions, isMaster, roleName } = useAuth()
+  const isAdmin = isMaster || roleName?.toLowerCase() === 'administrador' || roleName?.toLowerCase() === 'owner'
   const [logs, setLogs] = useState<LogEntry[]>([])
   const [loading, setLoading] = useState(true)
 
@@ -36,6 +40,10 @@ export default function LogsPage() {
   useEffect(() => {
     fetchLogs()
   }, [])
+
+  if (!authLoading && !isAdmin && permissions && !permissions.settings?.view_logs) {
+    return <NotAuthorized />
+  }
 
   return (
     <div className="h-full bg-white flex flex-col">

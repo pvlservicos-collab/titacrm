@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from 'react'
 import { ChartBar, ArrowClockwise, ChatCircleText, CheckCircle, XCircle } from '@phosphor-icons/react'
+import { useAuth } from '@/hooks'
+import NotAuthorized from '@/components/Shared/NotAuthorized'
 
 interface MessageStage {
   block_id: string
@@ -27,6 +29,8 @@ interface FigurinhaMetrics {
 }
 
 export default function MetricsPage() {
+  const { loading: authLoading, permissions, isMaster, roleName } = useAuth()
+  const isAdmin = isMaster || roleName?.toLowerCase() === 'administrador' || roleName?.toLowerCase() === 'owner'
   const [metrics, setMetrics] = useState<FigurinhaMetrics | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -52,6 +56,10 @@ export default function MetricsPage() {
   useEffect(() => {
     fetchMetrics()
   }, [])
+
+  if (!authLoading && !isAdmin && permissions && !permissions.settings?.view_metrics) {
+    return <NotAuthorized />
+  }
 
   return (
     <div className="h-full bg-white flex flex-col">
