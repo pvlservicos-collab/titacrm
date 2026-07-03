@@ -24,6 +24,7 @@ interface PermissionsSchema {
     view_funnels: boolean
     view_logs: boolean
     view_metrics: boolean
+    manage_quick_replies: boolean
   }
 }
 
@@ -42,6 +43,7 @@ const defaultPermissions: PermissionsSchema = {
     view_funnels: true,
     view_logs: true,
     view_metrics: true,
+    manage_quick_replies: false,
   },
 }
 
@@ -212,6 +214,7 @@ export default function RolePermissionsPanel({ organizationId, selectedRoleId }:
             <PermissionRow title="Visualizar Logs" description="Permite o acesso ao histórico de eventos do sistema." module="settings" action="view_logs" permissions={permissions} isAdmin={isAdmin} handleToggle={handleToggle} />
             <PermissionRow title="Visualizar Métricas" description="Permite o acesso aos relatórios e métricas." module="settings" action="view_metrics" permissions={permissions} isAdmin={isAdmin} handleToggle={handleToggle} />
             <PermissionRow title="Visualizar Configurações" description="Permite o acesso à esta tela de Configurações." module="settings" action="view_settings" permissions={permissions} isAdmin={isAdmin} handleToggle={handleToggle} />
+            <PermissionRow title="Gerenciar Respostas Rápidas" description="Criar, editar e excluir a biblioteca de respostas rápidas compartilhada da equipe." module="settings" action="manage_quick_replies" permissions={permissions} isAdmin={isAdmin} handleToggle={handleToggle} />
           </div>
         </div>
 

@@ -82,6 +82,29 @@ export default function ChatWindow({ lead, organizationId, onMessageSent, isDark
     }
   }
 
+  const handleSendQuickReplyMedia = async (qr: {
+    content: string
+    mediaUrl: string
+    mediaType: string
+    mediaFilename?: string | null
+    mediaMimetype?: string | null
+  }) => {
+    setSendError(null)
+    try {
+      if (onMessageSent) onMessageSent(qr.content || `[${qr.mediaType}]`)
+      await sendMediaMessage(
+        qr.mediaUrl,
+        qr.mediaType as 'image' | 'video' | 'audio' | 'document' | 'sticker',
+        qr.content,
+        qr.mediaFilename || undefined,
+        qr.mediaMimetype || undefined
+      )
+    } catch (error) {
+      console.error('Failed to send quick reply media:', error)
+      setSendError('Falha ao enviar mídia. Verifique sua conexão e tente novamente.')
+    }
+  }
+
   const handleReply = (activity: LeadActivityWithActor) => {
     const messageId = activity.metadata?.message_id || activity.id
     const text = activity.content || ''
@@ -125,6 +148,9 @@ export default function ChatWindow({ lead, organizationId, onMessageSent, isDark
       <ActivityComposer
         onSend={handleSendActivity}
         onSendMedia={handleSendMedia}
+        onSendQuickReplyMedia={handleSendQuickReplyMedia}
+        organizationId={organizationId}
+        lead={{ title: lead.title, phone: lead.phone }}
         replyContext={replyContext}
         onCancelReply={() => setReplyContext(null)}
         chatButtonSettings={chatButtonSettings}

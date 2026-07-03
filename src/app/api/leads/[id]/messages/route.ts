@@ -3,7 +3,7 @@ import { authenticateRequest, apiError, validateRequired, validateSource } from 
 import { db } from '@/lib/db'
 import { publishEvent, channels, events } from '@/lib/realtime'
 import {
-  leads, leadActivities, pipelineStages, organizationMembers, profiles,
+  leads, leadActivities, pipelineStages, organizationMembers, profiles, notifications,
 } from '@/lib/schema'
 import { eq, and, isNull, desc, asc, ilike, sql } from 'drizzle-orm'
 import { sendWhatsAppMessage, sendWhatsAppMedia } from '@/lib/whatsapp'
@@ -175,6 +175,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
           if (integ?.type) integrationTyp = integ.type
         }
       }
+      metadata.channel = integrationTyp
 
       try {
         if (integrationTyp === 'whatsapp_evolution') {
@@ -193,6 +194,20 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       } catch (err: any) {
         metadata.send_status = 'failed'
         metadata.send_error = err.message || 'Erro ao enviar mensagem.'
+
+        // Notificação persistente (sino) — best-effort, não deve derrubar a resposta
+        // se o próprio insert de notificação falhar.
+        if (auth.memberId) {
+          const channelLabel = integrationTyp === 'whatsapp_evolution' ? 'Nº 2 (Evolution)' : 'API Oficial'
+          db.insert(notifications).values({
+            organizationId: auth.organizationId,
+            recipientMemberId: auth.memberId,
+            type: 'error',
+            title: 'Falha ao enviar mensagem',
+            body: `Não foi possível enviar a mensagem para ${lead?.title || phone} via ${channelLabel}: ${metadata.send_error}`,
+            metadata: { linkUrl: `/chat?leadId=${actualLeadId}`, leadId: actualLeadId },
+          }).catch(notifErr => console.error('[messages] Falha ao gravar notificação de erro:', notifErr))
+        }
       }
     } else if (direction === 'outbound' && body.type === 'whatsapp' && body.skip_send) {
       metadata.send_status = 'sent'
@@ -241,7 +256,13 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     await publishEvent(channels.leadActivities(actualLeadId), events.ACTIVITY_CREATED, { id: activity.id })
     await publishEvent(channels.orgLeads(auth.organizationId), events.LEAD_UPDATED, { id: actualLeadId })
 
-    return Response.json(activity, { status: 201 })
+    return Response.json({
+      ...activity,
+      send_status: metadata.send_status,
+      send_error: metadata.send_error,
+      channel: metadata.channel,
+      lead_name: lead?.title,
+    }, { status: 201 })
   } catch (err: any) {
     return apiError(err.status || 500, err.message || 'Erro interno.')
   }

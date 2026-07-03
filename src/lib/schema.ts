@@ -410,6 +410,35 @@ export const orderItems = pgTable('order_items', {
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
 })
 
+// ── Respostas Rápidas ─────────────────────────────────────────────────────────
+export const quickReplyScopeEnum = pgEnum('quick_reply_scope', ['shared', 'personal'])
+
+export const quickReplies = pgTable('quick_replies', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  organizationId: uuid('organization_id').notNull().references(() => organizations.id),
+  scope: quickReplyScopeEnum('scope').notNull().default('personal'),
+  createdByMemberId: uuid('created_by_member_id'),
+  shortcut: text('shortcut').notNull(),
+  category: text('category'),
+  content: text('content').notNull().default(''),
+  mediaUrl: text('media_url'),
+  mediaType: text('media_type'),
+  mediaMimetype: text('media_mimetype'),
+  mediaFilename: text('media_filename'),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow(),
+  deletedAt: timestamp('deleted_at', { withTimezone: true }),
+}, (t) => ({
+  orgScopeIdx: index('quick_replies_org_scope_idx').on(t.organizationId, t.scope),
+  orgMemberIdx: index('quick_replies_org_member_idx').on(t.organizationId, t.createdByMemberId),
+  sharedShortcutUnique: uniqueIndex('quick_replies_shared_shortcut_unique')
+    .on(t.organizationId, sql`lower(${t.shortcut})`)
+    .where(sql`${t.scope} = 'shared' and ${t.deletedAt} is null`),
+  personalShortcutUnique: uniqueIndex('quick_replies_personal_shortcut_unique')
+    .on(t.organizationId, t.createdByMemberId, sql`lower(${t.shortcut})`)
+    .where(sql`${t.scope} = 'personal' and ${t.deletedAt} is null`),
+}))
+
 // ── Despesas / Contas a Pagar ──────────────────────────────────────────────────
 export const expenses = pgTable('expenses', {
   id: uuid('id').defaultRandom().primaryKey(),

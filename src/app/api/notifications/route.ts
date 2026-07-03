@@ -8,7 +8,7 @@ export async function GET(req: NextRequest) {
   try {
     const auth = await authenticateRequest(req)
     if (!auth.memberId) return apiError(403, 'Necessário sessão de usuário.')
-    const data = await db.select().from(notifications)
+    const rows = await db.select().from(notifications)
       .where(and(
         eq(notifications.organizationId, auth.organizationId),
         eq(notifications.recipientMemberId, auth.memberId),
@@ -16,6 +16,19 @@ export async function GET(req: NextRequest) {
       ))
       .orderBy(desc(notifications.createdAt))
       .limit(50)
+
+    const data = rows.map(n => ({
+      id: n.id,
+      organization_id: n.organizationId,
+      recipient_member_id: n.recipientMemberId,
+      type: n.type,
+      title: n.title,
+      content: n.body,
+      link_url: (n.metadata as any)?.linkUrl || null,
+      is_read: n.isRead,
+      created_at: n.createdAt,
+    }))
+
     return Response.json({ data })
   } catch (err: any) { return apiError(err.status || 500, err.message || 'Erro interno.') }
 }

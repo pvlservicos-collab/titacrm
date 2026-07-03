@@ -11,6 +11,7 @@ import {
     ShareNetwork,
     Bell,
     Package,
+    Lightning,
 } from '@phosphor-icons/react'
 
 const SETTINGS_SECTIONS = [
@@ -19,6 +20,7 @@ const SETTINGS_SECTIONS = [
     { label: 'Configurações do Pipeline', href: '/settings/pipelines', icon: TreeStructure },
     { label: 'Campos Customizados', href: '/settings/custom-fields', icon: PencilSimpleLine },
     { label: 'Tags', href: '/settings/tags', icon: Tag },
+    { label: 'Respostas Rápidas', href: '/settings/quick-replies', icon: Lightning },
     { label: 'Produtos', href: '/settings/products', icon: Package },
     { label: 'Integrações', href: '/settings/integrations', icon: ShareNetwork },
     { label: 'Notificações', href: '/settings/notifications', icon: Bell },

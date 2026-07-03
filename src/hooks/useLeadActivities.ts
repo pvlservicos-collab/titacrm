@@ -8,9 +8,16 @@ import { useState, useEffect, useCallback } from 'react'
 import { useSession } from 'next-auth/react'
 import { LeadActivityWithActor } from '@/lib/types'
 import { usePusherChannel } from './usePusher'
+import { useNotification } from '@/contexts/NotificationContext'
+
+const CHANNEL_LABELS: Record<string, string> = {
+  whatsapp_evolution: 'Nº 2 (Evolution)',
+  whatsapp_cloud_official: 'API Oficial',
+}
 
 export function useLeadActivities(organizationId: string, leadId: string) {
   const { data: session } = useSession()
+  const { addNotification } = useNotification()
   const [activities, setActivities] = useState<LeadActivityWithActor[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -101,6 +108,16 @@ export function useLeadActivities(organizationId: string, leadId: string) {
         throw new Error(err.error || 'Falha ao enviar mensagem')
       }
 
+      const data = await res.json()
+      if (data.send_status === 'failed') {
+        const channelLabel = CHANNEL_LABELS[data.channel] || data.channel || 'WhatsApp'
+        addNotification({
+          type: 'error',
+          title: 'Falha ao enviar mensagem',
+          message: `Não foi possível enviar para ${data.lead_name || 'o contato'} via ${channelLabel}: ${data.send_error || 'erro desconhecido'}`,
+        })
+      }
+
       // Remove optimistic, realtime vai trazer o real
       setActivities((prev) => prev.filter((a) => a.id !== tempId))
     } catch (err) {
@@ -170,6 +187,16 @@ export function useLeadActivities(organizationId: string, leadId: string) {
       if (!res.ok) {
         const err = await res.json()
         throw new Error(err.error || 'Falha ao enviar mídia')
+      }
+
+      const data = await res.json()
+      if (data.send_status === 'failed') {
+        const channelLabel = CHANNEL_LABELS[data.channel] || data.channel || 'WhatsApp'
+        addNotification({
+          type: 'error',
+          title: 'Falha ao enviar mídia',
+          message: `Não foi possível enviar para ${data.lead_name || 'o contato'} via ${channelLabel}: ${data.send_error || 'erro desconhecido'}`,
+        })
       }
 
       setActivities((prev) => prev.filter((a) => a.id !== tempId))

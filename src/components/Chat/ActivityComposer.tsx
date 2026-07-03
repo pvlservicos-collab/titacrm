@@ -1,12 +1,14 @@
 'use client'
 
-import { useState, useEffect, useRef, useCallback } from 'react'
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import dynamic from 'next/dynamic'
 import type { EmojiClickData, Theme } from 'emoji-picker-react'
 import {
   PaperPlaneRight,
   Smiley,
   Paperclip,
+  Microphone,
+  Lightning,
   Pause,
   Sparkle,
   X,
@@ -16,27 +18,52 @@ import {
 } from '@phosphor-icons/react'
 import { ReplyContext } from './ChatWindow'
 import { ChatButtonSettings, ChatButtonKey } from '@/hooks/useChatButtonSettings'
+import { useAuth, useQuickReplies, useAudioRecorder } from '@/hooks'
+import { QuickReply } from '@/hooks/useQuickReplies'
+import { interpolateQuickReply } from '@/lib/quickReplyVariables'
+import QuickReplyPicker, { filterAndGroupQuickReplies } from './QuickReplyPicker'
 
 // Carregado sob demanda: o pacote traz o dataset inteiro de emojis, só vale a pena
 // baixar quando o usuário realmente abre o seletor, não em toda visita ao chat.
 const EmojiPicker = dynamic(() => import('emoji-picker-react'), { ssr: false })
 
+interface QuickReplyMediaPayload {
+  content: string
+  mediaUrl: string
+  mediaType: string
+  mediaFilename?: string | null
+  mediaMimetype?: string | null
+}
+
 interface ActivityComposerProps {
   onSend: (content: string) => Promise<void>
   onSendMedia?: (file: File) => Promise<void>
+  onSendQuickReplyMedia?: (payload: QuickReplyMediaPayload) => Promise<void>
   replyContext?: ReplyContext | null
   onCancelReply?: () => void
   chatButtonSettings?: ChatButtonSettings
   fireWebhook?: (key: ChatButtonKey) => Promise<boolean>
+  organizationId?: string | null
+  lead?: { title?: string | null; phone?: string | null }
+}
+
+function formatDuration(ms: number): string {
+  const totalSeconds = Math.floor(ms / 1000)
+  const minutes = Math.floor(totalSeconds / 60)
+  const seconds = totalSeconds % 60
+  return `${minutes}:${seconds.toString().padStart(2, '0')}`
 }
 
 export default function ActivityComposer({
   onSend,
   onSendMedia,
+  onSendQuickReplyMedia,
   replyContext,
   onCancelReply,
   chatButtonSettings,
   fireWebhook,
+  organizationId,
+  lead,
 }: ActivityComposerProps) {
   const [content, setContent] = useState('')
   const [sending, setSending] = useState(false)
@@ -51,6 +78,49 @@ export default function ActivityComposer({
   const emojiPickerRef = useRef<HTMLDivElement>(null)
   const emojiButtonRef = useRef<HTMLButtonElement>(null)
 
+  // ── Respostas rápidas ────────────────────────────────────────────────────
+  const { profileName: agentName } = useAuth()
+  const { shared: sharedQuickReplies, personal: personalQuickReplies } = useQuickReplies(organizationId)
+  const [showQuickReplyPicker, setShowQuickReplyPicker] = useState(false)
+  const [manualSearchQuery, setManualSearchQuery] = useState('')
+  const [quickReplyHighlight, setQuickReplyHighlight] = useState(0)
+  const [sendingQuickReplyMedia, setSendingQuickReplyMedia] = useState(false)
+  const quickReplyButtonRef = useRef<HTMLButtonElement>(null)
+  const quickReplyPickerRef = useRef<HTMLDivElement>(null)
+
+  // A biblioteca só abre "no modo /" quando o campo inteiro é "/" + palavra — assim uma
+  // mensagem que só por acaso começa com "/" não é sequestrada pelo menu.
+  const slashMatch = content.match(/^\/([\w-]*)$/)
+  const [slashDismissed, setSlashDismissed] = useState(false)
+  const quickReplyPickerOpen = (!!slashMatch && !slashDismissed) || showQuickReplyPicker
+  const quickReplyFilter = slashMatch ? slashMatch[1] : manualSearchQuery
+
+  useEffect(() => {
+    if (content === '/') setSlashDismissed(false)
+  }, [content])
+
+  const closeQuickReplyPicker = useCallback(() => {
+    setSlashDismissed(true)
+    setShowQuickReplyPicker(false)
+  }, [])
+
+  useEffect(() => {
+    setQuickReplyHighlight(0)
+  }, [quickReplyFilter, quickReplyPickerOpen])
+
+  useEffect(() => {
+    if (quickReplyPickerOpen) setShowEmojiPicker(false)
+  }, [quickReplyPickerOpen])
+
+  const { flat: quickReplyFlatList } = useMemo(
+    () => filterAndGroupQuickReplies(sharedQuickReplies, personalQuickReplies, quickReplyFilter),
+    [sharedQuickReplies, personalQuickReplies, quickReplyFilter]
+  )
+
+  // ── Gravação de áudio ────────────────────────────────────────────────────
+  const recorder = useAudioRecorder()
+  const [recordingError, setRecordingError] = useState<string | null>(null)
+
   // Focus input when reply context changes
   useEffect(() => {
     if (replyContext) {
@@ -58,22 +128,30 @@ export default function ActivityComposer({
     }
   }, [replyContext])
 
-  // Close emoji picker on outside click
+  // Close emoji/quick-reply pickers on outside click (mas nunca ao clicar dentro do textarea,
+  // senão digitar "/algo" fecharia o próprio menu que acabou de abrir)
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as Node
       if (
         showEmojiPicker &&
-        emojiPickerRef.current &&
-        !emojiPickerRef.current.contains(event.target as Node) &&
-        emojiButtonRef.current &&
-        !emojiButtonRef.current.contains(event.target as Node)
+        emojiPickerRef.current && !emojiPickerRef.current.contains(target) &&
+        emojiButtonRef.current && !emojiButtonRef.current.contains(target)
       ) {
         setShowEmojiPicker(false)
+      }
+      if (
+        quickReplyPickerOpen &&
+        quickReplyPickerRef.current && !quickReplyPickerRef.current.contains(target) &&
+        quickReplyButtonRef.current && !quickReplyButtonRef.current.contains(target) &&
+        inputRef.current && !inputRef.current.contains(target)
+      ) {
+        closeQuickReplyPicker()
       }
     }
     document.addEventListener('mousedown', handleClickOutside)
     return () => document.removeEventListener('mousedown', handleClickOutside)
-  }, [showEmojiPicker])
+  }, [showEmojiPicker, quickReplyPickerOpen, closeQuickReplyPicker])
 
   const handleEmojiClick = useCallback((emojiData: EmojiClickData) => {
     setContent((prev) => prev + emojiData.emoji)
@@ -126,6 +204,62 @@ export default function ActivityComposer({
     }
   }
 
+  const handleMicClick = async () => {
+    if (recorder.isRecording) {
+      const blob = await recorder.stop()
+      if (!onSendMedia) return
+      const file = new File([blob], `audio-${Date.now()}.webm`, { type: blob.type || 'audio/webm' })
+      try {
+        setUploadingMedia(true)
+        await onSendMedia(file)
+      } finally {
+        setUploadingMedia(false)
+      }
+      return
+    }
+
+    try {
+      setRecordingError(null)
+      await recorder.start()
+    } catch (err) {
+      console.error('Failed to start recording:', err)
+      setRecordingError('Não foi possível acessar o microfone.')
+    }
+  }
+
+  const handleSelectQuickReply = async (qr: QuickReply) => {
+    if (sendingQuickReplyMedia) return
+    const wasSlash = !!slashMatch
+    closeQuickReplyPicker()
+
+    const interpolated = interpolateQuickReply(qr.content, {
+      name: lead?.title,
+      phone: lead?.phone,
+      agentName,
+    })
+
+    if (qr.mediaUrl && qr.mediaType) {
+      if (wasSlash) setContent('')
+      if (!onSendQuickReplyMedia) return
+      try {
+        setSendingQuickReplyMedia(true)
+        await onSendQuickReplyMedia({
+          content: interpolated,
+          mediaUrl: qr.mediaUrl,
+          mediaType: qr.mediaType,
+          mediaFilename: qr.mediaFilename,
+          mediaMimetype: qr.mediaMimetype,
+        })
+      } finally {
+        setSendingQuickReplyMedia(false)
+      }
+      return
+    }
+
+    setContent(interpolated)
+    requestAnimationFrame(() => inputRef.current?.focus())
+  }
+
   const handleChatButtonClick = async (key: ChatButtonKey) => {
     if (!fireWebhook) return
     setWebhookStatus({ key, status: 'sending' })
@@ -150,6 +284,42 @@ export default function ActivityComposer({
     if (status === 'success') return <span className="text-[10px] ml-1">✓</span>
     if (status === 'error') return <span className="text-[10px] ml-1">✗</span>
     return null
+  }
+
+  const handleComposerKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement | HTMLInputElement>) => {
+    if (quickReplyPickerOpen && quickReplyFlatList.length > 0) {
+      if (e.key === 'ArrowDown') {
+        e.preventDefault()
+        setQuickReplyHighlight((i) => Math.min(i + 1, quickReplyFlatList.length - 1))
+        return
+      }
+      if (e.key === 'ArrowUp') {
+        e.preventDefault()
+        setQuickReplyHighlight((i) => Math.max(i - 1, 0))
+        return
+      }
+      if (e.key === 'Enter' || e.key === 'Tab') {
+        e.preventDefault()
+        handleSelectQuickReply(quickReplyFlatList[quickReplyHighlight])
+        return
+      }
+    }
+    if (e.key === 'Escape' && quickReplyPickerOpen) {
+      e.preventDefault()
+      closeQuickReplyPicker()
+      return
+    }
+
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault()
+      handleSend()
+    }
+    if (e.key === 'Escape' && replyContext) {
+      onCancelReply?.()
+    }
+    if (e.key === 'Escape' && showEmojiPicker) {
+      setShowEmojiPicker(false)
+    }
   }
 
   return (
@@ -222,88 +392,163 @@ export default function ActivityComposer({
         </div>
       )}
 
+      {recordingError && (
+        <div className="px-3 py-2 bg-red-500/10 border border-red-500/30 rounded-xl text-xs text-red-300">
+          {recordingError}
+        </div>
+      )}
+
       {/* Input Area */}
       <div className="relative flex items-end gap-2 bg-[#202c33] border border-[#2f3b44] rounded-xl px-4 py-2.5 shadow-sm focus-within:ring-2 focus-within:ring-[#2a3942] focus-within:border-[#53bdeb]/50 transition-all">
-        <div className="flex items-center gap-0 pb-0.5">
-          <input
-            ref={fileInputRef}
-            type="file"
-            className="hidden"
-            onChange={handleFileChange}
-          />
-          <button
-            type="button"
-            onClick={() => fileInputRef.current?.click()}
-            disabled={uploadingMedia || !onSendMedia}
-            className="text-[#8696a0] hover:text-[#aebac1] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            title="Enviar mídia"
-          >
-            {uploadingMedia ? (
-              <span className="animate-spin text-sm inline-block">⏳</span>
-            ) : (
-              <Paperclip size={20} />
+        {recorder.isRecording ? (
+          <>
+            <div className="flex items-center gap-3 flex-1 py-1">
+              <span className="w-2.5 h-2.5 rounded-full bg-red-500 animate-pulse flex-shrink-0" />
+              <span className="text-sm text-[#e9edef] tabular-nums">{formatDuration(recorder.durationMs)}</span>
+              <span className="text-xs text-[#8696a0]">Gravando áudio...</span>
+            </div>
+            <button
+              type="button"
+              onClick={() => recorder.cancel()}
+              className="p-1 text-[#8696a0] hover:text-red-400 transition-colors flex-shrink-0"
+              title="Cancelar gravação"
+            >
+              <X size={18} weight="bold" />
+            </button>
+            <button
+              type="button"
+              onClick={handleMicClick}
+              disabled={uploadingMedia}
+              className="w-8 h-8 rounded-full flex items-center justify-center text-white transition-colors hover:opacity-90 disabled:opacity-50 flex-shrink-0 mb-0.5"
+              style={{ backgroundColor: '#00B8D9' }}
+              title="Enviar áudio"
+            >
+              {uploadingMedia ? <span className="animate-spin text-sm inline-block">⏳</span> : <PaperPlaneRight size={16} weight="fill" />}
+            </button>
+          </>
+        ) : (
+          <>
+            <div className="flex items-center gap-0 pb-0.5">
+              <input
+                ref={fileInputRef}
+                type="file"
+                className="hidden"
+                onChange={handleFileChange}
+              />
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={uploadingMedia || !onSendMedia}
+                className="text-[#8696a0] hover:text-[#aebac1] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                title="Enviar mídia"
+              >
+                {uploadingMedia ? (
+                  <span className="animate-spin text-sm inline-block">⏳</span>
+                ) : (
+                  <Paperclip size={20} />
+                )}
+              </button>
+              <button
+                type="button"
+                onClick={handleMicClick}
+                disabled={uploadingMedia || !onSendMedia}
+                className="text-[#8696a0] hover:text-[#aebac1] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                title="Gravar áudio"
+              >
+                <Microphone size={20} />
+              </button>
+              <button
+                ref={quickReplyButtonRef}
+                type="button"
+                onClick={() => {
+                  setShowEmojiPicker(false)
+                  setManualSearchQuery('')
+                  setShowQuickReplyPicker((prev) => !prev)
+                }}
+                className={`transition-colors ${quickReplyPickerOpen ? 'text-[#00B8D9]' : 'text-[#8696a0] hover:text-[#aebac1]'}`}
+                title="Respostas rápidas"
+              >
+                <Lightning size={20} />
+              </button>
+              <button
+                ref={emojiButtonRef}
+                onClick={() => setShowEmojiPicker((prev) => !prev)}
+                className={`transition-colors ${showEmojiPicker
+                  ? 'text-[#53bdeb]'
+                  : 'text-[#8696a0] hover:text-[#aebac1]'
+                  }`}
+              >
+                <Smiley size={20} />
+              </button>
+            </div>
+
+            {/* Emoji Picker Popover */}
+            {showEmojiPicker && (
+              <div
+                ref={emojiPickerRef}
+                className="absolute bottom-full left-0 mb-2 z-50"
+                style={{ filter: 'drop-shadow(0 4px 12px rgba(0,0,0,0.15))' }}
+              >
+                <EmojiPicker
+                  onEmojiClick={handleEmojiClick}
+                  theme={'dark' as Theme}
+                  width={350}
+                  height={400}
+                  searchPlaceHolder="Buscar emoji..."
+                  previewConfig={{ showPreview: false }}
+                  lazyLoadEmojis
+                />
+              </div>
             )}
-          </button>
-          <button
-            ref={emojiButtonRef}
-            onClick={() => setShowEmojiPicker((prev) => !prev)}
-            className={`transition-colors ${showEmojiPicker
-              ? 'text-[#53bdeb]'
-              : 'text-[#8696a0] hover:text-[#aebac1]'
-              }`}
-          >
-            <Smiley size={20} />
-          </button>
-        </div>
 
-        {/* Emoji Picker Popover */}
-        {showEmojiPicker && (
-          <div
-            ref={emojiPickerRef}
-            className="absolute bottom-full left-0 mb-2 z-50"
-            style={{ filter: 'drop-shadow(0 4px 12px rgba(0,0,0,0.15))' }}
-          >
-            <EmojiPicker
-              onEmojiClick={handleEmojiClick}
-              theme={'dark' as Theme}
-              width={350}
-              height={400}
-              searchPlaceHolder="Buscar emoji..."
-              previewConfig={{ showPreview: false }}
-              lazyLoadEmojis
+            {/* Quick Reply Picker Popover */}
+            {quickReplyPickerOpen && (
+              <div
+                ref={quickReplyPickerRef}
+                className="absolute bottom-full left-0 mb-2 z-50"
+                style={{ filter: 'drop-shadow(0 4px 12px rgba(0,0,0,0.15))' }}
+              >
+                {!slashMatch && (
+                  <input
+                    autoFocus
+                    value={manualSearchQuery}
+                    onChange={(e) => setManualSearchQuery(e.target.value)}
+                    onKeyDown={handleComposerKeyDown}
+                    placeholder="Buscar resposta rápida..."
+                    className="w-[340px] mb-1.5 px-3 py-2 text-sm rounded-lg bg-[#2a3942] border border-[#2f3b44] text-[#e9edef] placeholder-[#8696a0] focus:outline-none focus:border-[#53bdeb]/50"
+                  />
+                )}
+                <QuickReplyPicker
+                  shared={sharedQuickReplies}
+                  personal={personalQuickReplies}
+                  filter={quickReplyFilter}
+                  highlightedIndex={quickReplyHighlight}
+                  onHighlightIndex={setQuickReplyHighlight}
+                  onSelect={handleSelectQuickReply}
+                />
+              </div>
+            )}
+
+            <textarea
+              ref={inputRef}
+              value={content}
+              onChange={(e) => setContent(e.target.value)}
+              onKeyDown={handleComposerKeyDown}
+              placeholder={replyContext ? 'Digite sua resposta...' : "Digite sua mensagem ou digite '/' para respostas rápidas..."}
+              className="flex-1 text-sm focus:outline-none text-[#e9edef] placeholder-[#8696a0] bg-transparent resize-none overflow-y-auto leading-[1.5] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+              rows={1}
+              style={{ maxHeight: '160px' }}
             />
-          </div>
+            <button
+              onClick={handleSend}
+              disabled={!content.trim()}
+              className="w-8 h-8 rounded-full flex items-center justify-center text-white transition-colors hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed flex-shrink-0 mb-0.5"
+              style={{ backgroundColor: '#00B8D9' }}
+            >
+              <PaperPlaneRight size={16} weight="fill" />
+            </button>
+          </>
         )}
-
-        <textarea
-          ref={inputRef}
-          value={content}
-          onChange={(e) => setContent(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter' && !e.shiftKey) {
-              e.preventDefault()
-              handleSend()
-            }
-            if (e.key === 'Escape' && replyContext) {
-              onCancelReply?.()
-            }
-            if (e.key === 'Escape' && showEmojiPicker) {
-              setShowEmojiPicker(false)
-            }
-          }}
-          placeholder={replyContext ? 'Digite sua resposta...' : "Digite sua mensagem ou digite '/' para comandos..."}
-          className="flex-1 text-sm focus:outline-none text-[#e9edef] placeholder-[#8696a0] bg-transparent resize-none overflow-y-auto leading-[1.5] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
-          rows={1}
-          style={{ maxHeight: '160px' }}
-        />
-        <button
-          onClick={handleSend}
-          disabled={!content.trim()}
-          className="w-8 h-8 rounded-full flex items-center justify-center text-white transition-colors hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed flex-shrink-0 mb-0.5"
-          style={{ backgroundColor: '#00B8D9' }}
-        >
-          <PaperPlaneRight size={16} weight="fill" />
-        </button>
       </div>
 
       {/* Hint */}
