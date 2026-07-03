@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { leads, leadActivities, integrations, pipelineStages } from '@/lib/schema'
-import { eq, and, isNull, asc } from 'drizzle-orm'
+import { eq, and, isNull, asc, ilike } from 'drizzle-orm'
 import { publishEvent, channels, events } from '@/lib/realtime'
 
 function extractMessage(data: any): { text: string; mediaUrl?: string; mediaType?: string } | null {
@@ -32,12 +32,19 @@ export async function POST(req: NextRequest) {
 
     const data = body.data
     const key = data?.key
-    if (!key || key.fromMe) return NextResponse.json({ ok: true, skipped: 'fromMe' })
+    if (!key) return NextResponse.json({ ok: true, skipped: 'no key' })
 
-    // Extract phone from remoteJid (format: "5511999999999@s.whatsapp.net" or "@g.us" for groups)
+    // fromMe = true também ocorre quando a mensagem é enviada direto pelo WhatsApp
+    // (fora do CRM). Nesse caso registramos como atividade outbound em vez de ignorar.
+    const isFromMe = !!key.fromMe
+
+    // Extract phone from remoteJid (format: "5511999999999@s.whatsapp.net" or "@g.us" for groups).
+    // Contatos endereçados no novo modo "lid" ("<id>@lid") não carregam o telefone em remoteJid;
+    // o número real vem em remoteJidAlt ("5511999999999@s.whatsapp.net").
     const remoteJid: string = key.remoteJid || ''
     const isGroup = remoteJid.endsWith('@g.us')
-    const phone = remoteJid.split('@')[0]
+    const phoneJid = (!isGroup && key.addressingMode === 'lid' && key.remoteJidAlt) ? key.remoteJidAlt : remoteJid
+    const phone = phoneJid.split('@')[0]
     if (!phone) return NextResponse.json({ ok: true, skipped: 'no phone' })
 
     const extracted = extractMessage(data)
@@ -88,7 +95,8 @@ export async function POST(req: NextRequest) {
         .insert(leads)
         .values({
           organizationId: orgId,
-          title: senderName || phone,
+          // Em fromMe, pushName é o nome do próprio dono do WhatsApp, não do contato.
+          title: isFromMe ? phone : (senderName || phone),
           phone,
           isGroup,
           integrationId: integration?.id || null,
@@ -122,10 +130,10 @@ export async function POST(req: NextRequest) {
 
     const metadata: Record<string, any> = {
       source: 'evolution',
-      direction: 'inbound',
-      sender_name: senderName,
+      direction: isFromMe ? 'outbound' : 'inbound',
       evolution_message_id: messageId,
     }
+    if (!isFromMe) metadata.sender_name = senderName
     if (extracted.mediaUrl) metadata.media_url = extracted.mediaUrl
     if (extracted.mediaType) metadata.media_type = extracted.mediaType
 
@@ -141,18 +149,32 @@ export async function POST(req: NextRequest) {
       .returning({ id: leadActivities.id })
 
     // Update lead
-    await db
-      .update(leads)
-      .set({
-        lastMessageContent: extracted.text,
-        lastMessageSenderType: 'lead',
-        lastActivityAt: new Date(),
-        lastActivityType: 'whatsapp',
-        isUnread: true,
-        integrationId: integration?.id || null,
-        title: lead.title === lead.phone ? senderName : lead.title,
-      })
-      .where(eq(leads.id, lead.id))
+    const leadUpdates: Record<string, any> = {
+      lastMessageContent: extracted.text,
+      lastMessageSenderType: isFromMe ? 'human' : 'lead',
+      lastActivityAt: new Date(),
+      lastActivityType: 'whatsapp',
+      isUnread: !isFromMe,
+      integrationId: integration?.id || null,
+    }
+    if (!isFromMe) {
+      leadUpdates.title = lead.title === lead.phone ? senderName : lead.title
+    } else {
+      const [stage] = await db
+        .select({ id: pipelineStages.id })
+        .from(pipelineStages)
+        .where(
+          and(
+            eq(pipelineStages.organizationId, orgId),
+            isNull(pipelineStages.deletedAt),
+            ilike(pipelineStages.name, 'Em atendimento')
+          )
+        )
+        .limit(1)
+      if (stage) leadUpdates.stageId = stage.id
+    }
+
+    await db.update(leads).set(leadUpdates).where(eq(leads.id, lead.id))
 
     await publishEvent(channels.leadActivities(lead.id), events.ACTIVITY_CREATED, { id: activity.id })
     await publishEvent(channels.orgLeads(orgId), events.LEAD_UPDATED, { id: lead.id })
