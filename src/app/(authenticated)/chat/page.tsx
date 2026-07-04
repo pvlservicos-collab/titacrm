@@ -4,7 +4,7 @@ import { useState, useCallback, useEffect } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { useAuth, useStageHistory, useLeadPipelineStages, usePipeline, useIsMobile } from '@/hooks'
 import { useLeadsContext } from '@/contexts/LeadsContext'
-import { LeadList, ChatWindow, LeadDetailsSidebar } from '@/components/Chat'
+import { LeadList, ChatWindow, LeadDetailsSidebar, LeadOrderStatusBadges } from '@/components/Chat'
 import { LeadWithOwner } from '@/lib/types'
 import { getInitials } from '@/lib/utils'
 import NotAuthorized from '@/components/Shared/NotAuthorized'
@@ -241,6 +241,7 @@ export default function ChatPage() {
                   )}
                 </div>
                 <span className="flex-1 min-w-0 truncate text-sm font-medium text-[#e9edef]">{displayedLead.title}</span>
+                <LeadOrderStatusBadges leadId={displayedLead.id} />
                 <button onClick={() => setShowMobileDetails(true)} className="w-9 h-9 flex items-center justify-center rounded-lg text-[#8696a0]" aria-label="Detalhes do contato">
                   <Info size={20} />
                 </button>
