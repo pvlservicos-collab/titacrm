@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { X, Plus, Minus, MapPin, Check, Calendar } from '@phosphor-icons/react'
+import { PAYMENT_METHOD_META, PAYMENT_STATUS_META, DELIVERY_STATUS_META } from '@/lib/orderStatus'
 
 interface Product {
   id: string
@@ -22,24 +23,12 @@ interface NovoPedidoModalProps {
   onSuccess?: () => void
 }
 
-const PAYMENT_METHODS = [
-  { value: 'pix', label: 'PIX' },
-  { value: 'credit_card', label: 'Cartão de Crédito' },
-  { value: 'boleto', label: 'Boleto' },
-  { value: 'dinheiro', label: 'Dinheiro' },
-]
+const PAYMENT_METHODS = Object.entries(PAYMENT_METHOD_META).map(([value, meta]) => ({ value, label: meta.label }))
 
-const PAYMENT_STATUS = [
-  { value: 'pending', label: 'Pendente' },
-  { value: 'paid', label: 'Pago' },
-]
+// Só pendente/pago fazem sentido no momento da criação — "reembolsado" só existe depois, via edição
+const PAYMENT_STATUS = (['pending', 'paid'] as const).map(value => ({ value, label: PAYMENT_STATUS_META[value].label }))
 
-const DELIVERY_STATUS = [
-  { value: 'pending', label: 'Pendente' },
-  { value: 'shipped', label: 'Enviado' },
-  { value: 'delivered', label: 'Entregue' },
-  { value: 'cancelled', label: 'Cancelado' },
-]
+const DELIVERY_STATUS = Object.entries(DELIVERY_STATUS_META).map(([value, meta]) => ({ value, label: meta.label }))
 
 function maskCpf(v: string) {
   return v.replace(/\D/g, '').slice(0, 11)

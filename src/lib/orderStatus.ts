@@ -16,6 +16,8 @@ export const PAYMENT_STATUS_META: Record<string, { label: string; tone: StatusTo
 
 export const DELIVERY_STATUS_META: Record<string, { label: string; tone: StatusTone }> = {
   pending: { label: 'Pendente', tone: 'warning' },
+  picking: { label: 'Em separação', tone: 'warning' },
+  picked: { label: 'Separado', tone: 'info' },
   shipped: { label: 'Enviado', tone: 'info' },
   delivered: { label: 'Entregue', tone: 'success' },
   cancelled: { label: 'Cancelado', tone: 'danger' },

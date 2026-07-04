@@ -1,7 +1,7 @@
 import { NextRequest } from 'next/server'
 import { authenticateRequest, apiError } from '@/lib/api-auth'
 import { db } from '@/lib/db'
-import { orders, orderItems, products } from '@/lib/schema'
+import { orders, orderItems, products, orderStatusHistory } from '@/lib/schema'
 import { eq, and, inArray, isNull } from 'drizzle-orm'
 import { publishEvent, channels, events } from '@/lib/realtime'
 import { syncLeadLastOrderAttributes } from '@/lib/db-helpers'
@@ -74,6 +74,14 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     const { id } = await params
     const body = await req.json()
 
+    const [existing] = await db
+      .select({ paymentStatus: orders.paymentStatus, deliveryStatus: orders.deliveryStatus })
+      .from(orders)
+      .where(and(eq(orders.id, id), eq(orders.organizationId, auth.organizationId), isNull(orders.deletedAt)))
+      .limit(1)
+
+    if (!existing) return apiError(404, 'Pedido não encontrado.')
+
     const updates: Record<string, any> = { updatedAt: new Date() }
     if (body.payment_status !== undefined) updates.paymentStatus = body.payment_status
     if (body.delivery_status !== undefined) {
@@ -92,6 +100,22 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       .returning()
 
     if (!order) return apiError(404, 'Pedido não encontrado.')
+
+    // Rastreamento de status — só grava evento quando o valor realmente muda
+    const historyRows: (typeof orderStatusHistory.$inferInsert)[] = []
+    if (body.payment_status !== undefined && body.payment_status !== existing.paymentStatus) {
+      historyRows.push({
+        organizationId: auth.organizationId, orderId: order.id, field: 'payment_status',
+        fromStatus: existing.paymentStatus, toStatus: order.paymentStatus, changedByMemberId: auth.memberId || null,
+      })
+    }
+    if (body.delivery_status !== undefined && body.delivery_status !== existing.deliveryStatus) {
+      historyRows.push({
+        organizationId: auth.organizationId, orderId: order.id, field: 'delivery_status',
+        fromStatus: existing.deliveryStatus, toStatus: order.deliveryStatus, changedByMemberId: auth.memberId || null,
+      })
+    }
+    if (historyRows.length > 0) await db.insert(orderStatusHistory).values(historyRows)
 
     // Mantém a etiqueta "Pago/Pendente" da lista de conversas em dia e avisa
     // quem estiver com o Chat aberto (lista + perfil do cliente) em tempo real.

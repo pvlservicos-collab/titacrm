@@ -1,7 +1,7 @@
 import { NextRequest } from 'next/server'
 import { authenticateRequest, apiError } from '@/lib/api-auth'
 import { db } from '@/lib/db'
-import { orders, orderItems, leads, products } from '@/lib/schema'
+import { orders, orderItems, leads, products, orderStatusHistory } from '@/lib/schema'
 import { eq, and, desc, gte, lte, inArray, isNull } from 'drizzle-orm'
 import { publishEvent, channels, events } from '@/lib/realtime'
 import { syncLeadLastOrderAttributes } from '@/lib/db-helpers'
@@ -159,6 +159,26 @@ export async function POST(req: NextRequest) {
     }))
 
     const insertedItems = await db.insert(orderItems).values(itemValues).returning()
+
+    // Marca o início do rastreamento de status (pagamento e entrega) deste pedido
+    await db.insert(orderStatusHistory).values([
+      {
+        organizationId: auth.organizationId,
+        orderId: order.id,
+        field: 'payment_status',
+        fromStatus: null,
+        toStatus: order.paymentStatus,
+        changedByMemberId: auth.memberId || null,
+      },
+      {
+        organizationId: auth.organizationId,
+        orderId: order.id,
+        field: 'delivery_status',
+        fromStatus: null,
+        toStatus: order.deliveryStatus,
+        changedByMemberId: auth.memberId || null,
+      },
+    ])
 
     // Salva último status do pedido no lead para exibir tags na lista, e avisa
     // quem estiver com o Chat aberto (lista de conversas + perfil do cliente)

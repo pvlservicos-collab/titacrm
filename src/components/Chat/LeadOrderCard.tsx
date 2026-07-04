@@ -84,26 +84,32 @@ export default function LeadOrderCard({ lead, refreshKey }: LeadOrderCardProps) 
         <p className="text-sm font-bold text-[#53bdeb] flex-shrink-0">{formatCurrency(latest.total_value)}</p>
       </div>
 
-      <div className="flex items-center gap-2 flex-wrap">
-        <select
-          value={latest.payment_status}
-          disabled={savingPayment}
-          onChange={e => handlePaymentChange(e.target.value)}
-          className="text-[11px] font-bold px-2 py-1 rounded-full border-0 focus:outline-none cursor-pointer"
-          style={TONE_STYLES[PAYMENT_STATUS_META[latest.payment_status]?.tone || 'warning']}
-        >
-          {Object.entries(PAYMENT_STATUS_META).map(([val, meta]) => (
-            <option key={val} value={val} className="bg-[#233138] text-[#d1d7db]">{meta.label}</option>
-          ))}
-        </select>
+      <div className="flex items-start gap-4 flex-wrap">
+        <div className="space-y-1">
+          <p className="text-[9px] font-bold uppercase tracking-wider text-[#667781]">Pagamento</p>
+          <select
+            value={latest.payment_status}
+            disabled={savingPayment}
+            onChange={e => handlePaymentChange(e.target.value)}
+            className="text-[11px] font-bold px-2 py-1 rounded-full border-0 focus:outline-none cursor-pointer"
+            style={TONE_STYLES[PAYMENT_STATUS_META[latest.payment_status]?.tone || 'warning']}
+          >
+            {Object.entries(PAYMENT_STATUS_META).map(([val, meta]) => (
+              <option key={val} value={val} className="bg-[#233138] text-[#d1d7db]">{meta.label}</option>
+            ))}
+          </select>
+        </div>
         {/* Entrega: somente leitura no Chat — quem gerencia o motoboy é a Logística */}
-        <span
-          title="Status de entrega — só pode ser alterado na Logística"
-          className="text-[11px] font-bold px-2 py-1 rounded-full"
-          style={TONE_STYLES[DELIVERY_STATUS_META[latest.delivery_status]?.tone || 'warning']}
-        >
-          {DELIVERY_STATUS_META[latest.delivery_status]?.label || latest.delivery_status}
-        </span>
+        <div className="space-y-1">
+          <p className="text-[9px] font-bold uppercase tracking-wider text-[#667781]">Entrega</p>
+          <span
+            title="Status de entrega — só pode ser alterado na Logística"
+            className="inline-block text-[11px] font-bold px-2 py-1 rounded-full"
+            style={TONE_STYLES[DELIVERY_STATUS_META[latest.delivery_status]?.tone || 'warning']}
+          >
+            {DELIVERY_STATUS_META[latest.delivery_status]?.label || latest.delivery_status}
+          </span>
+        </div>
       </div>
 
       {orders.length > 1 && (

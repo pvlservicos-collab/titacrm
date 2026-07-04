@@ -439,6 +439,20 @@ export const quickReplies = pgTable('quick_replies', {
     .where(sql`${t.scope} = 'personal' and ${t.deletedAt} is null`),
 }))
 
+// ── Histórico de Status do Pedido ──────────────────────────────────────────────
+export const orderStatusHistory = pgTable('order_status_history', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  organizationId: uuid('organization_id').notNull().references(() => organizations.id),
+  orderId: uuid('order_id').notNull().references(() => orders.id, { onDelete: 'cascade' }),
+  field: text('field').notNull(),
+  fromStatus: text('from_status'),
+  toStatus: text('to_status').notNull(),
+  changedByMemberId: uuid('changed_by_member_id'),
+  changedAt: timestamp('changed_at', { withTimezone: true }).defaultNow(),
+}, (t) => ({
+  orderIdx: index('order_status_history_order_idx').on(t.orderId, t.changedAt),
+}))
+
 // ── Despesas / Contas a Pagar ──────────────────────────────────────────────────
 export const expenses = pgTable('expenses', {
   id: uuid('id').defaultRandom().primaryKey(),

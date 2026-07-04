@@ -1,9 +1,9 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { X, MapPin, WhatsappLogo, IdentificationCard, EnvelopeSimple, Phone } from '@phosphor-icons/react'
 import { buildDeliveryWhatsAppLink } from './whatsapp'
-import { PAYMENT_STATUS_META, DELIVERY_STATUS_META, PAYMENT_METHOD_META, StatusTone } from '@/lib/orderStatus'
+import { PAYMENT_STATUS_META, DELIVERY_STATUS_META, PAYMENT_METHOD_META, TONE_STYLES, StatusTone } from '@/lib/orderStatus'
 
 const TONE_CLASSES: Record<StatusTone, string> = {
   warning: 'text-yellow-400 bg-yellow-400/10 border-yellow-400/30',
@@ -64,6 +64,25 @@ function formatAddress(o: OrderDetail): string | null {
   return parts.length > 0 ? parts.join(' — ') : null
 }
 
+interface StatusHistoryEvent {
+  id: string
+  field: 'payment_status' | 'delivery_status'
+  from_status: string | null
+  to_status: string
+  changed_at: string
+  actor_name: string | null
+}
+
+function statusLabel(field: StatusHistoryEvent['field'], value: string): string {
+  const meta = field === 'payment_status' ? PAYMENT_STATUS_META[value] : DELIVERY_STATUS_META[value]
+  return meta?.label || value
+}
+
+function statusTone(field: StatusHistoryEvent['field'], value: string): StatusTone {
+  const meta = field === 'payment_status' ? PAYMENT_STATUS_META[value] : DELIVERY_STATUS_META[value]
+  return meta?.tone || 'warning'
+}
+
 interface OrderDetailModalProps {
   order: OrderDetail
   onClose: () => void
@@ -73,8 +92,25 @@ interface OrderDetailModalProps {
 export default function OrderDetailModal({ order: initialOrder, onClose, onUpdate }: OrderDetailModalProps) {
   const [order, setOrder] = useState(initialOrder)
   const [saving, setSaving] = useState(false)
+  const [history, setHistory] = useState<StatusHistoryEvent[]>([])
+  const [historyLoading, setHistoryLoading] = useState(true)
   const address = formatAddress(order)
   const whatsappLink = buildDeliveryWhatsAppLink(order)
+
+  const fetchHistory = useCallback(async () => {
+    setHistoryLoading(true)
+    try {
+      const res = await fetch(`/api/orders/${order.id}/history`)
+      if (res.ok) {
+        const { data } = await res.json()
+        setHistory(data || [])
+      }
+    } finally {
+      setHistoryLoading(false)
+    }
+  }, [order.id])
+
+  useEffect(() => { fetchHistory() }, [fetchHistory])
 
   const handleStatusChange = async (field: 'payment_status' | 'delivery_status', value: string) => {
     setSaving(true)
@@ -89,6 +125,7 @@ export default function OrderDetailModal({ order: initialOrder, onClose, onUpdat
         const updates = { [field]: value, ...(field === 'delivery_status' ? { delivered_at: data.delivered_at } : {}) }
         setOrder(prev => ({ ...prev, ...updates }))
         onUpdate?.(order.id, updates)
+        fetchHistory()
       }
     } finally {
       setSaving(false)
@@ -186,6 +223,35 @@ export default function OrderDetailModal({ order: initialOrder, onClose, onUpdat
                 <p className="text-[10px] text-gray-400 mt-1">Entregue em {formatDateTime(order.delivered_at)}</p>
               )}
             </div>
+          </div>
+
+          {/* Histórico de status — data/hora de cada mudança, tipo rastreamento */}
+          <div className="space-y-2">
+            <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400">Histórico</p>
+            {historyLoading ? (
+              <p className="text-xs text-gray-400">Carregando...</p>
+            ) : history.length === 0 ? (
+              <p className="text-xs text-gray-400">Nenhum evento registrado.</p>
+            ) : (
+              <div className="space-y-2.5">
+                {history.map(event => (
+                  <div key={event.id} className="flex items-start gap-2.5">
+                    <span
+                      className="w-2 h-2 rounded-full flex-shrink-0 mt-1"
+                      style={{ backgroundColor: TONE_STYLES[statusTone(event.field, event.to_status)].color }}
+                    />
+                    <div className="min-w-0">
+                      <p className="text-xs text-gray-700">
+                        {event.field === 'payment_status' ? 'Pagamento' : 'Entrega'}: <span className="font-semibold">{statusLabel(event.field, event.to_status)}</span>
+                      </p>
+                      <p className="text-[10px] text-gray-400">
+                        {formatDateTime(event.changed_at)}{event.actor_name ? ` · ${event.actor_name}` : ' · Sistema'}
+                      </p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </div>
 
