@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { Plus, CaretDown, CaretUp } from '@phosphor-icons/react'
 import { useLeadHistory, HistoryEvent } from '@/hooks/useLeadHistory'
+import { TONE_STYLES } from '@/lib/orderStatus'
 
 interface LeadHistoryTimelineProps {
     organizationId: string
@@ -17,6 +18,7 @@ function dotColor(type: HistoryEvent['type']): string {
         case 'stage_move': return '#10B981'  // green
         case 'value_change': return '#3B82F6'  // blue
         case 'lead_created': return '#6B7280'  // gray
+        case 'order': return '#14B8A6'  // teal
         default: return '#9CA3AF'
     }
 }
@@ -28,6 +30,10 @@ function badgeStyle(label: string | undefined): { bg: string; fg: string } {
     if (lower === 'automação') return { bg: 'rgba(217,119,6,0.15)', fg: '#fbbf24' }
     if (lower === 'atendente') return { bg: 'rgba(83,189,235,0.15)', fg: '#53bdeb' }
     if (lower === 'nota') return { bg: 'rgba(129,140,248,0.15)', fg: '#a5b4fc' }
+    // Rótulos de status de pagamento (evento tipo "order") — mesma cor por tom do resto do app
+    if (lower === 'pago') return { bg: TONE_STYLES.success.backgroundColor, fg: TONE_STYLES.success.color }
+    if (lower === 'pendente') return { bg: TONE_STYLES.warning.backgroundColor, fg: TONE_STYLES.warning.color }
+    if (lower === 'reembolsado') return { bg: TONE_STYLES.danger.backgroundColor, fg: TONE_STYLES.danger.color }
     return { bg: 'rgba(16,185,129,0.15)', fg: '#34d399' }  // default green
 }
 

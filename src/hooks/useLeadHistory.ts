@@ -1,10 +1,11 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
+import { PAYMENT_STATUS_META } from '@/lib/orderStatus'
 
 export interface HistoryEvent {
   id: string
-  type: 'conversation' | 'automation' | 'stage_move' | 'value_change' | 'lead_created'
+  type: 'conversation' | 'automation' | 'stage_move' | 'value_change' | 'lead_created' | 'order'
   timestamp: string
   actorName: string | null
   actorAvatar: string | null
@@ -23,7 +24,7 @@ export function useLeadHistory(organizationId: string, leadId: string) {
       setLoading(true)
       const res = await fetch(`/api/leads/${leadId}/history`)
       if (!res.ok) { setEvents([]); return }
-      const { data: activities, stageHistory, lead } = await res.json()
+      const { data: activities, stageHistory, orders, lead } = await res.json()
 
       const unified: HistoryEvent[] = []
 
@@ -69,6 +70,24 @@ export function useLeadHistory(organizationId: string, leadId: string) {
           actorAvatar: null,
           description,
           secondaryLabel: 'Mudança de Etapa',
+        })
+      }
+
+      for (const o of (orders || [])) {
+        const itemsSummary = (o.items || [])
+          .map((i: { productName: string; quantity: number }) => (i.quantity > 1 ? `${i.quantity}x ${i.productName}` : i.productName))
+          .join(', ') || 'Pedido sem itens'
+        const total = Number(o.totalValue).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
+        const paymentLabel = PAYMENT_STATUS_META[o.paymentStatus]?.label || o.paymentStatus
+
+        unified.push({
+          id: `order-${o.id}`,
+          type: 'order',
+          timestamp: o.createdAt,
+          actorName: null,
+          actorAvatar: null,
+          description: `Compra registrada — ${itemsSummary} — ${total}`,
+          secondaryLabel: paymentLabel,
         })
       }
 

@@ -1,8 +1,8 @@
 import { NextRequest } from 'next/server'
 import { authenticateRequest, apiError, validateRequired, validateSource } from '@/lib/api-auth'
 import { db } from '@/lib/db'
-import { leads, leadActivities, leadStageHistory, pipelineStages } from '@/lib/schema'
-import { eq, and, isNull, asc, desc } from 'drizzle-orm'
+import { leads, leadActivities, leadStageHistory, pipelineStages, orders, orderItems } from '@/lib/schema'
+import { eq, and, isNull, asc, desc, inArray } from 'drizzle-orm'
 
 type Params = { params: Promise<{ id: string }> }
 
@@ -53,9 +53,44 @@ export async function GET(req: NextRequest, { params }: Params) {
       .where(eq(leadStageHistory.leadId, lead.id))
       .orderBy(desc(leadStageHistory.movedAt))
 
+    // Histórico de compras — para o vendedor ver o que o cliente já comprou
+    const leadOrders = await db
+      .select({
+        id: orders.id,
+        paymentStatus: orders.paymentStatus,
+        totalValue: orders.totalValue,
+        createdAt: orders.createdAt,
+      })
+      .from(orders)
+      .where(and(eq(orders.leadId, lead.id), isNull(orders.deletedAt)))
+      .orderBy(desc(orders.createdAt))
+
+    const orderIds = leadOrders.map(o => o.id)
+    const items = orderIds.length > 0
+      ? await db
+          .select({ orderId: orderItems.orderId, productName: orderItems.productName, quantity: orderItems.quantity })
+          .from(orderItems)
+          .where(inArray(orderItems.orderId, orderIds))
+      : []
+
+    const itemsByOrder = items.reduce((acc: Record<string, typeof items>, item) => {
+      if (!acc[item.orderId]) acc[item.orderId] = []
+      acc[item.orderId].push(item)
+      return acc
+    }, {})
+
+    const ordersWithItems = leadOrders.map(o => ({
+      id: o.id,
+      paymentStatus: o.paymentStatus,
+      totalValue: o.totalValue,
+      createdAt: o.createdAt,
+      items: (itemsByOrder[o.id] || []).map(i => ({ productName: i.productName, quantity: i.quantity })),
+    }))
+
     return Response.json({
       data: activities,
       stageHistory,
+      orders: ordersWithItems,
       lead: { createdAt: lead.createdAt, title: lead.title, value: lead.value },
     })
   } catch (err: any) {

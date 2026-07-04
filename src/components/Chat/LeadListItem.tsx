@@ -5,14 +5,7 @@ import { LeadWithOwner, SearchHit } from '@/lib/types'
 import { Robot, PushPin } from '@phosphor-icons/react'
 import { getInitials, formatPhone, renderSnippet } from '@/lib/utils'
 import IntegrationBadge from '@/components/Shared/IntegrationBadge'
-import { PAYMENT_STATUS_META, StatusTone } from '@/lib/orderStatus'
-
-const TONE_STYLES: Record<StatusTone, React.CSSProperties> = {
-    warning: { backgroundColor: 'rgba(234,179,8,0.15)', color: '#facc15' },
-    success: { backgroundColor: 'rgba(34,197,94,0.15)', color: '#4ade80' },
-    danger: { backgroundColor: 'rgba(239,68,68,0.15)', color: '#f87171' },
-    info: { backgroundColor: 'rgba(59,130,246,0.15)', color: '#60a5fa' },
-}
+import { PAYMENT_STATUS_META, TONE_STYLES } from '@/lib/orderStatus'
 
 interface LeadListItemProps {
     lead: LeadWithOwner

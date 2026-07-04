@@ -3,14 +3,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { ArrowSquareOut } from '@phosphor-icons/react'
 import { LeadWithOwner } from '@/lib/types'
-import { PAYMENT_STATUS_META, DELIVERY_STATUS_META, StatusTone } from '@/lib/orderStatus'
-
-const TONE_STYLES: Record<StatusTone, React.CSSProperties> = {
-  warning: { backgroundColor: 'rgba(234,179,8,0.15)', color: '#facc15' },
-  success: { backgroundColor: 'rgba(34,197,94,0.15)', color: '#4ade80' },
-  danger: { backgroundColor: 'rgba(239,68,68,0.15)', color: '#f87171' },
-  info: { backgroundColor: 'rgba(59,130,246,0.15)', color: '#60a5fa' },
-}
+import { PAYMENT_STATUS_META, DELIVERY_STATUS_META, TONE_STYLES } from '@/lib/orderStatus'
 
 interface OrderSummary {
   id: string
@@ -38,7 +31,7 @@ interface LeadOrderCardProps {
 export default function LeadOrderCard({ lead, refreshKey }: LeadOrderCardProps) {
   const [orders, setOrders] = useState<OrderSummary[]>([])
   const [loading, setLoading] = useState(true)
-  const [savingField, setSavingField] = useState<'payment_status' | 'delivery_status' | null>(null)
+  const [savingPayment, setSavingPayment] = useState(false)
 
   const fetchOrders = useCallback(async () => {
     setLoading(true)
@@ -61,19 +54,21 @@ export default function LeadOrderCard({ lead, refreshKey }: LeadOrderCardProps) 
   const mainItem = latest.items[0]?.product_name || '—'
   const extraItems = latest.items.length > 1 ? `+${latest.items.length - 1}` : ''
 
-  const handleStatusChange = async (field: 'payment_status' | 'delivery_status', value: string) => {
-    setSavingField(field)
+  // Só pagamento é editável por aqui — a entrega é responsabilidade da Logística
+  // (quem gerencia o motoboy), pra evitar que o vendedor mude por engano no Chat.
+  const handlePaymentChange = async (value: string) => {
+    setSavingPayment(true)
     try {
       const res = await fetch(`/api/orders/${latest.id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ [field]: value }),
+        body: JSON.stringify({ payment_status: value }),
       })
       if (res.ok) {
-        setOrders(prev => prev.map((o, i) => (i === 0 ? { ...o, [field]: value } : o)))
+        setOrders(prev => prev.map((o, i) => (i === 0 ? { ...o, payment_status: value } : o)))
       }
     } finally {
-      setSavingField(null)
+      setSavingPayment(false)
     }
   }
 
@@ -92,8 +87,8 @@ export default function LeadOrderCard({ lead, refreshKey }: LeadOrderCardProps) 
       <div className="flex items-center gap-2 flex-wrap">
         <select
           value={latest.payment_status}
-          disabled={savingField === 'payment_status'}
-          onChange={e => handleStatusChange('payment_status', e.target.value)}
+          disabled={savingPayment}
+          onChange={e => handlePaymentChange(e.target.value)}
           className="text-[11px] font-bold px-2 py-1 rounded-full border-0 focus:outline-none cursor-pointer"
           style={TONE_STYLES[PAYMENT_STATUS_META[latest.payment_status]?.tone || 'warning']}
         >
@@ -101,17 +96,14 @@ export default function LeadOrderCard({ lead, refreshKey }: LeadOrderCardProps) 
             <option key={val} value={val} className="bg-[#233138] text-[#d1d7db]">{meta.label}</option>
           ))}
         </select>
-        <select
-          value={latest.delivery_status}
-          disabled={savingField === 'delivery_status'}
-          onChange={e => handleStatusChange('delivery_status', e.target.value)}
-          className="text-[11px] font-bold px-2 py-1 rounded-full border-0 focus:outline-none cursor-pointer"
+        {/* Entrega: somente leitura no Chat — quem gerencia o motoboy é a Logística */}
+        <span
+          title="Status de entrega — só pode ser alterado na Logística"
+          className="text-[11px] font-bold px-2 py-1 rounded-full"
           style={TONE_STYLES[DELIVERY_STATUS_META[latest.delivery_status]?.tone || 'warning']}
         >
-          {Object.entries(DELIVERY_STATUS_META).map(([val, meta]) => (
-            <option key={val} value={val} className="bg-[#233138] text-[#d1d7db]">{meta.label}</option>
-          ))}
-        </select>
+          {DELIVERY_STATUS_META[latest.delivery_status]?.label || latest.delivery_status}
+        </span>
       </div>
 
       {orders.length > 1 && (
