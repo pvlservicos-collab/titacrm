@@ -133,6 +133,7 @@ export async function POST(req: NextRequest) {
       direction: isFromMe ? 'outbound' : 'inbound',
       evolution_message_id: messageId,
     }
+    if (isGroup) metadata.is_group = true
     if (!isFromMe) metadata.sender_name = senderName
     if (extracted.mediaUrl) metadata.media_url = extracted.mediaUrl
     if (extracted.mediaType) metadata.media_type = extracted.mediaType

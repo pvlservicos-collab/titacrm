@@ -37,17 +37,19 @@ export function LeadsProvider({ children }: { children: ReactNode }) {
       setError(null)
       const viewOwnOnly = permissions?.leads?.view_own_only
       const memberId = currentOrganization?.id
-      const params = new URLSearchParams({ returnAll: 'true', exclude_groups: 'true' })
+      // Grupos entram na lista (o Chat precisa deles); quem não quer ver grupo
+      // (Pipeline) já filtra por conta própria em PipelineBoard.tsx.
+      const params = new URLSearchParams({ returnAll: 'true' })
       if (viewOwnOnly && memberId) params.set('owner', memberId)
       const res = await fetch(`/api/leads?${params}`)
       if (!res.ok) throw new Error('Failed to fetch leads')
       const { data } = await res.json()
       setLeads(data || [])
 
-      // Compute stage stats
+      // Compute stage stats — grupo não conta pra estatística do Pipeline
       const stats: Record<string, StageStats> = {}
       for (const lead of (data || [])) {
-        if (!lead.stage_id) continue
+        if (!lead.stage_id || lead.is_group) continue
         if (!stats[lead.stage_id]) stats[lead.stage_id] = { count: 0, totalValue: 0 }
         stats[lead.stage_id].count++
         stats[lead.stage_id].totalValue += lead.value || 0

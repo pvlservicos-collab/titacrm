@@ -99,7 +99,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     let decodedPhone = ''
 
     let leadQuery = db
-      .select({ id: leads.id, title: leads.title, phone: leads.phone })
+      .select({ id: leads.id, title: leads.title, phone: leads.phone, isGroup: leads.isGroup })
       .from(leads)
       .where(
         and(
@@ -178,10 +178,16 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       metadata.channel = integrationTyp
 
       try {
+        // A API Oficial do WhatsApp (Meta Cloud API) não suporta grupos — evita uma
+        // chamada fadada ao fracasso e devolve um erro claro em vez de algo confuso.
+        if (lead?.isGroup && integrationTyp !== 'whatsapp_evolution') {
+          throw new Error('Grupos só podem ser respondidos pela Evolution API — a API Oficial do WhatsApp não suporta grupos.')
+        }
+
         if (integrationTyp === 'whatsapp_evolution') {
           const result = body.media_url
-            ? await sendEvolutionMedia(auth.organizationId, phone, body.media_type, body.media_url, body.content, body.media_filename)
-            : await sendEvolutionMessage(auth.organizationId, phone, body.content)
+            ? await sendEvolutionMedia(auth.organizationId, phone, body.media_type, body.media_url, body.content, body.media_filename, lead?.isGroup ?? false)
+            : await sendEvolutionMessage(auth.organizationId, phone, body.content, lead?.isGroup ?? false)
           metadata.send_status = 'sent'
           metadata.evolution_message_id = result?.key?.id
         } else {
