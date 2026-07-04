@@ -1,12 +1,14 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
+import { useSearchParams } from 'next/navigation'
 import { Truck, Package, CurrencyDollar, Clock, MagnifyingGlass, Plus, Trash, WhatsappLogo } from '@phosphor-icons/react'
 import { useAuth } from '@/hooks'
 import NotAuthorized from '@/components/Shared/NotAuthorized'
 import NovoPedidoModal from './NovoPedidoModal'
 import OrderDetailModal from './OrderDetailModal'
 import { buildDeliveryWhatsAppLink } from './whatsapp'
+import { PAYMENT_STATUS_META, DELIVERY_STATUS_META, StatusTone } from '@/lib/orderStatus'
 
 interface OrderItem {
   id: string
@@ -37,18 +39,20 @@ interface Order {
   items: OrderItem[]
 }
 
-const PAYMENT_STATUS_LABELS: Record<string, { label: string; color: string }> = {
-  pending: { label: 'Pendente', color: 'text-yellow-400 bg-yellow-400/10 border-yellow-400/30' },
-  paid: { label: 'Pago', color: 'text-green-400 bg-green-400/10 border-green-400/30' },
-  refunded: { label: 'Reembolsado', color: 'text-red-400 bg-red-400/10 border-red-400/30' },
+const TONE_CLASSES: Record<StatusTone, string> = {
+  warning: 'text-yellow-400 bg-yellow-400/10 border-yellow-400/30',
+  success: 'text-green-400 bg-green-400/10 border-green-400/30',
+  danger: 'text-red-400 bg-red-400/10 border-red-400/30',
+  info: 'text-blue-400 bg-blue-400/10 border-blue-400/30',
 }
 
-const DELIVERY_STATUS_LABELS: Record<string, { label: string; color: string }> = {
-  pending: { label: 'Pendente', color: 'text-yellow-400 bg-yellow-400/10 border-yellow-400/30' },
-  shipped: { label: 'Enviado', color: 'text-blue-400 bg-blue-400/10 border-blue-400/30' },
-  delivered: { label: 'Entregue', color: 'text-green-400 bg-green-400/10 border-green-400/30' },
-  cancelled: { label: 'Cancelado', color: 'text-red-400 bg-red-400/10 border-red-400/30' },
-}
+const PAYMENT_STATUS_LABELS: Record<string, { label: string; color: string }> = Object.fromEntries(
+  Object.entries(PAYMENT_STATUS_META).map(([value, meta]) => [value, { label: meta.label, color: TONE_CLASSES[meta.tone] }])
+)
+
+const DELIVERY_STATUS_LABELS: Record<string, { label: string; color: string }> = Object.fromEntries(
+  Object.entries(DELIVERY_STATUS_META).map(([value, meta]) => [value, { label: meta.label, color: TONE_CLASSES[meta.tone] }])
+)
 
 const PAYMENT_METHOD_LABELS: Record<string, string> = {
   pix: 'PIX',
@@ -72,11 +76,13 @@ function formatDateTime(iso: string) {
 export default function LogisticaPage() {
   const { loading: authLoading, permissions, isMaster, roleName } = useAuth()
   const isAdmin = isMaster || roleName?.toLowerCase() === 'administrador' || roleName?.toLowerCase() === 'owner'
+  const searchParams = useSearchParams()
   const [orders, setOrders] = useState<Order[]>([])
   const [loading, setLoading] = useState(true)
   const [paymentFilter, setPaymentFilter] = useState<string>('')
   const [deliveryFilter, setDeliveryFilter] = useState<string>('')
-  const [search, setSearch] = useState('')
+  // Permite abrir a Logística já filtrada (ex: link "Ver todos os pedidos" no perfil do Chat)
+  const [search, setSearch] = useState(() => searchParams.get('search') || '')
   const [updatingOrder, setUpdatingOrder] = useState<string | null>(null)
   const [deletingOrder, setDeletingOrder] = useState<string | null>(null)
   const [showNewOrder, setShowNewOrder] = useState(false)
@@ -111,6 +117,22 @@ export default function LogisticaPage() {
       if (res.ok) {
         const { data } = await res.json()
         setOrders(prev => prev.map(o => o.id === orderId ? { ...o, delivery_status: newStatus, delivered_at: data.delivered_at } : o))
+      }
+    } finally {
+      setUpdatingOrder(null)
+    }
+  }
+
+  const handlePaymentChange = async (orderId: string, newStatus: string) => {
+    setUpdatingOrder(orderId)
+    try {
+      const res = await fetch(`/api/orders/${orderId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ payment_status: newStatus }),
+      })
+      if (res.ok) {
+        setOrders(prev => prev.map(o => o.id === orderId ? { ...o, payment_status: newStatus } : o))
       }
     } finally {
       setUpdatingOrder(null)
@@ -272,9 +294,16 @@ export default function LogisticaPage() {
                   </div>
 
                   <div className="flex items-center gap-2 mt-3 flex-wrap">
-                    <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-medium border ${payStatus.color}`}>
-                      {payStatus.label}
-                    </span>
+                    <select
+                      value={order.payment_status}
+                      disabled={updatingOrder === order.id}
+                      onChange={e => handlePaymentChange(order.id, e.target.value)}
+                      className={`text-xs font-medium px-2 py-1 rounded-full border bg-transparent focus:outline-none cursor-pointer ${payStatus.color}`}
+                    >
+                      {Object.entries(PAYMENT_STATUS_LABELS).map(([val, { label }]) => (
+                        <option key={val} value={val} className="bg-white text-gray-700">{label}</option>
+                      ))}
+                    </select>
                     <select
                       value={order.delivery_status}
                       disabled={updatingOrder === order.id}
@@ -352,9 +381,16 @@ export default function LogisticaPage() {
                         <p className="text-xs text-gray-400">{PAYMENT_METHOD_LABELS[order.payment_method] || order.payment_method}</p>
                       </td>
                       <td className="px-5 py-4">
-                        <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-medium border ${payStatus.color}`}>
-                          {payStatus.label}
-                        </span>
+                        <select
+                          value={order.payment_status}
+                          disabled={updatingOrder === order.id}
+                          onChange={e => handlePaymentChange(order.id, e.target.value)}
+                          className={`text-xs font-medium px-2 py-1 rounded-full border bg-transparent focus:outline-none cursor-pointer ${payStatus.color}`}
+                        >
+                          {Object.entries(PAYMENT_STATUS_LABELS).map(([val, { label }]) => (
+                            <option key={val} value={val} className="bg-white text-gray-700">{label}</option>
+                          ))}
+                        </select>
                       </td>
                       <td className="px-5 py-4">
                         <select
@@ -415,7 +451,11 @@ export default function LogisticaPage() {
       )}
 
       {selectedOrder && (
-        <OrderDetailModal order={selectedOrder} onClose={() => setSelectedOrder(null)} />
+        <OrderDetailModal
+          order={selectedOrder}
+          onClose={() => setSelectedOrder(null)}
+          onUpdate={(orderId, updates) => setOrders(prev => prev.map(o => o.id === orderId ? { ...o, ...updates } : o))}
+        />
       )}
     </div>
   )

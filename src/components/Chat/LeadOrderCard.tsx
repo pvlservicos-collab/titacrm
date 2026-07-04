@@ -1,0 +1,130 @@
+'use client'
+
+import { useState, useEffect, useCallback } from 'react'
+import { ArrowSquareOut } from '@phosphor-icons/react'
+import { LeadWithOwner } from '@/lib/types'
+import { PAYMENT_STATUS_META, DELIVERY_STATUS_META, StatusTone } from '@/lib/orderStatus'
+
+const TONE_STYLES: Record<StatusTone, React.CSSProperties> = {
+  warning: { backgroundColor: 'rgba(234,179,8,0.15)', color: '#facc15' },
+  success: { backgroundColor: 'rgba(34,197,94,0.15)', color: '#4ade80' },
+  danger: { backgroundColor: 'rgba(239,68,68,0.15)', color: '#f87171' },
+  info: { backgroundColor: 'rgba(59,130,246,0.15)', color: '#60a5fa' },
+}
+
+interface OrderSummary {
+  id: string
+  payment_status: string
+  delivery_status: string
+  total_value: string
+  created_at: string
+  items: { id: string; product_name: string; quantity: number }[]
+}
+
+function formatCurrency(value: string | number) {
+  return Number(value).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
+}
+
+function formatDate(iso: string) {
+  return new Date(iso).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' })
+}
+
+interface LeadOrderCardProps {
+  lead: LeadWithOwner
+  /** Incrementar para forçar recarregar (ex: depois de registrar uma venda nova). */
+  refreshKey?: number
+}
+
+export default function LeadOrderCard({ lead, refreshKey }: LeadOrderCardProps) {
+  const [orders, setOrders] = useState<OrderSummary[]>([])
+  const [loading, setLoading] = useState(true)
+  const [savingField, setSavingField] = useState<'payment_status' | 'delivery_status' | null>(null)
+
+  const fetchOrders = useCallback(async () => {
+    setLoading(true)
+    try {
+      const res = await fetch(`/api/orders?lead_id=${lead.id}&limit=5`)
+      if (res.ok) {
+        const { data } = await res.json()
+        setOrders(data || [])
+      }
+    } finally {
+      setLoading(false)
+    }
+  }, [lead.id])
+
+  useEffect(() => { fetchOrders() }, [fetchOrders, refreshKey])
+
+  if (loading || orders.length === 0) return null
+
+  const latest = orders[0]
+  const mainItem = latest.items[0]?.product_name || '—'
+  const extraItems = latest.items.length > 1 ? `+${latest.items.length - 1}` : ''
+
+  const handleStatusChange = async (field: 'payment_status' | 'delivery_status', value: string) => {
+    setSavingField(field)
+    try {
+      const res = await fetch(`/api/orders/${latest.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ [field]: value }),
+      })
+      if (res.ok) {
+        setOrders(prev => prev.map((o, i) => (i === 0 ? { ...o, [field]: value } : o)))
+      }
+    } finally {
+      setSavingField(null)
+    }
+  }
+
+  return (
+    <div className="rounded-xl border border-[#2f3b44] bg-[#182229] p-3 space-y-2.5">
+      <div className="flex items-center justify-between">
+        <p className="text-[10px] font-bold uppercase tracking-wider text-[#8696a0]">Pedido</p>
+        <p className="text-[10px] text-[#667781]">{formatDate(latest.created_at)}</p>
+      </div>
+
+      <div className="flex items-center justify-between gap-2">
+        <p className="text-sm text-[#d1d7db] truncate">{mainItem}{extraItems ? ` ${extraItems}` : ''}</p>
+        <p className="text-sm font-bold text-[#53bdeb] flex-shrink-0">{formatCurrency(latest.total_value)}</p>
+      </div>
+
+      <div className="flex items-center gap-2 flex-wrap">
+        <select
+          value={latest.payment_status}
+          disabled={savingField === 'payment_status'}
+          onChange={e => handleStatusChange('payment_status', e.target.value)}
+          className="text-[11px] font-bold px-2 py-1 rounded-full border-0 focus:outline-none cursor-pointer"
+          style={TONE_STYLES[PAYMENT_STATUS_META[latest.payment_status]?.tone || 'warning']}
+        >
+          {Object.entries(PAYMENT_STATUS_META).map(([val, meta]) => (
+            <option key={val} value={val} className="bg-[#233138] text-[#d1d7db]">{meta.label}</option>
+          ))}
+        </select>
+        <select
+          value={latest.delivery_status}
+          disabled={savingField === 'delivery_status'}
+          onChange={e => handleStatusChange('delivery_status', e.target.value)}
+          className="text-[11px] font-bold px-2 py-1 rounded-full border-0 focus:outline-none cursor-pointer"
+          style={TONE_STYLES[DELIVERY_STATUS_META[latest.delivery_status]?.tone || 'warning']}
+        >
+          {Object.entries(DELIVERY_STATUS_META).map(([val, meta]) => (
+            <option key={val} value={val} className="bg-[#233138] text-[#d1d7db]">{meta.label}</option>
+          ))}
+        </select>
+      </div>
+
+      {orders.length > 1 && (
+        <a
+          href={`/logistica?search=${encodeURIComponent(lead.phone || '')}`}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="flex items-center gap-1 text-[11px] font-medium text-[#53bdeb] hover:underline pt-0.5"
+        >
+          Ver todos os pedidos ({orders.length})
+          <ArrowSquareOut size={11} weight="bold" />
+        </a>
+      )}
+    </div>
+  )
+}

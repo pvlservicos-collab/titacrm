@@ -2,7 +2,9 @@ import { NextRequest } from 'next/server'
 import { authenticateRequest, apiError } from '@/lib/api-auth'
 import { db } from '@/lib/db'
 import { orders, orderItems, leads, products } from '@/lib/schema'
-import { eq, and, desc, gte, lte, sql, inArray, isNull } from 'drizzle-orm'
+import { eq, and, desc, gte, lte, inArray, isNull } from 'drizzle-orm'
+import { publishEvent, channels, events } from '@/lib/realtime'
+import { syncLeadLastOrderAttributes } from '@/lib/db-helpers'
 
 function toSnake(o: any, items: any[] = [], productNameById: Map<string, string> = new Map()) {
   return {
@@ -48,6 +50,7 @@ export async function GET(req: NextRequest) {
     const params = req.nextUrl.searchParams
     const paymentStatus = params.get('payment_status')
     const deliveryStatus = params.get('delivery_status')
+    const leadId = params.get('lead_id')
     const from = params.get('from')
     const to = params.get('to')
     const limit = Math.min(Number(params.get('limit') || 100), 500)
@@ -56,6 +59,7 @@ export async function GET(req: NextRequest) {
     const conditions: any[] = [eq(orders.organizationId, auth.organizationId), isNull(orders.deletedAt)]
     if (paymentStatus) conditions.push(eq(orders.paymentStatus, paymentStatus))
     if (deliveryStatus) conditions.push(eq(orders.deliveryStatus, deliveryStatus))
+    if (leadId) conditions.push(eq(orders.leadId, leadId))
     if (from) conditions.push(gte(orders.createdAt, new Date(from)))
     if (to) conditions.push(lte(orders.createdAt, new Date(to)))
 
@@ -156,20 +160,11 @@ export async function POST(req: NextRequest) {
 
     const insertedItems = await db.insert(orderItems).values(itemValues).returning()
 
-    // Salva último status do pedido no lead para exibir tags na lista
+    // Salva último status do pedido no lead para exibir tags na lista, e avisa
+    // quem estiver com o Chat aberto (lista de conversas + perfil do cliente)
     if (body.lead_id) {
-      await db.execute(sql`
-        UPDATE leads
-        SET custom_attributes = jsonb_set(
-          jsonb_set(
-            COALESCE(custom_attributes, '{}'),
-            '{last_order_payment_status}', ${JSON.stringify(order.paymentStatus)}::jsonb
-          ),
-          '{last_order_payment_method}', ${JSON.stringify(order.paymentMethod)}::jsonb
-        ),
-        updated_at = NOW()
-        WHERE id = ${body.lead_id} AND organization_id = ${auth.organizationId}
-      `)
+      await syncLeadLastOrderAttributes(auth.organizationId, body.lead_id, order.paymentStatus, order.paymentMethod)
+      await publishEvent(channels.orgLeads(auth.organizationId), events.LEAD_UPDATED, { id: body.lead_id })
     }
 
     return Response.json({ data: toSnake(order, insertedItems) }, { status: 201 })

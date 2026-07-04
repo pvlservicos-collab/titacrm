@@ -14,6 +14,34 @@ import {
   customFieldDefinitions, customFieldCategories, notifications,
 } from './schema'
 
+// ── Pedidos ───────────────────────────────────────────────────────────────────
+
+/**
+ * Espelha o último status/forma de pagamento do pedido no lead, usado pela
+ * etiqueta "Pago/Pendente" da lista de conversas do Chat (LeadListItem).
+ * Precisa ser chamado tanto na criação quanto em qualquer atualização do
+ * payment_status de um pedido, senão a etiqueta da lista fica desatualizada.
+ */
+export async function syncLeadLastOrderAttributes(
+  organizationId: string,
+  leadId: string,
+  paymentStatus: string,
+  paymentMethod: string
+) {
+  await db.execute(sql`
+    UPDATE leads
+    SET custom_attributes = jsonb_set(
+      jsonb_set(
+        COALESCE(custom_attributes, '{}'),
+        '{last_order_payment_status}', ${JSON.stringify(paymentStatus)}::jsonb
+      ),
+      '{last_order_payment_method}', ${JSON.stringify(paymentMethod)}::jsonb
+    ),
+    updated_at = NOW()
+    WHERE id = ${leadId} AND organization_id = ${organizationId}
+  `)
+}
+
 // ── Leads ─────────────────────────────────────────────────────────────────────
 
 export async function getLeadsWithOwner(organizationId: string, stageId?: string) {

@@ -3,6 +3,8 @@ import { authenticateRequest, apiError } from '@/lib/api-auth'
 import { db } from '@/lib/db'
 import { orders, orderItems, products } from '@/lib/schema'
 import { eq, and, inArray, isNull } from 'drizzle-orm'
+import { publishEvent, channels, events } from '@/lib/realtime'
+import { syncLeadLastOrderAttributes } from '@/lib/db-helpers'
 
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
@@ -90,6 +92,16 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       .returning()
 
     if (!order) return apiError(404, 'Pedido não encontrado.')
+
+    // Mantém a etiqueta "Pago/Pendente" da lista de conversas em dia e avisa
+    // quem estiver com o Chat aberto (lista + perfil do cliente) em tempo real.
+    if (order.leadId && body.payment_status !== undefined) {
+      await syncLeadLastOrderAttributes(auth.organizationId, order.leadId, order.paymentStatus, order.paymentMethod)
+    }
+    if (order.leadId) {
+      await publishEvent(channels.orgLeads(auth.organizationId), events.LEAD_UPDATED, { id: order.leadId })
+    }
+
     return Response.json({ data: {
       id: order.id,
       payment_method: order.paymentMethod,

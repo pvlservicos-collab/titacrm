@@ -1,7 +1,16 @@
 'use client'
 
+import { useState } from 'react'
 import { X, MapPin, WhatsappLogo, IdentificationCard, EnvelopeSimple, Phone } from '@phosphor-icons/react'
 import { buildDeliveryWhatsAppLink } from './whatsapp'
+import { PAYMENT_STATUS_META, DELIVERY_STATUS_META, PAYMENT_METHOD_META, StatusTone } from '@/lib/orderStatus'
+
+const TONE_CLASSES: Record<StatusTone, string> = {
+  warning: 'text-yellow-400 bg-yellow-400/10 border-yellow-400/30',
+  success: 'text-green-400 bg-green-400/10 border-green-400/30',
+  danger: 'text-red-400 bg-red-400/10 border-red-400/30',
+  info: 'text-blue-400 bg-blue-400/10 border-blue-400/30',
+}
 
 interface OrderDetailItem {
   id: string
@@ -32,25 +41,9 @@ interface OrderDetail {
   items: OrderDetailItem[]
 }
 
-const PAYMENT_METHOD_LABELS: Record<string, string> = {
-  pix: 'PIX',
-  credit_card: 'Cartão de Crédito',
-  boleto: 'Boleto Bancário',
-  dinheiro: 'Dinheiro',
-}
-
-const PAYMENT_STATUS_LABELS: Record<string, string> = {
-  pending: 'Pendente',
-  paid: 'Pago',
-  refunded: 'Reembolsado',
-}
-
-const DELIVERY_STATUS_LABELS: Record<string, string> = {
-  pending: 'Pendente',
-  shipped: 'Enviado',
-  delivered: 'Entregue',
-  cancelled: 'Cancelado',
-}
+const PAYMENT_METHOD_LABELS: Record<string, string> = Object.fromEntries(
+  Object.entries(PAYMENT_METHOD_META).map(([value, meta]) => [value, meta.label])
+)
 
 function formatCurrency(value: string | number) {
   return Number(value).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
@@ -71,9 +64,36 @@ function formatAddress(o: OrderDetail): string | null {
   return parts.length > 0 ? parts.join(' — ') : null
 }
 
-export default function OrderDetailModal({ order, onClose }: { order: OrderDetail; onClose: () => void }) {
+interface OrderDetailModalProps {
+  order: OrderDetail
+  onClose: () => void
+  onUpdate?: (orderId: string, updates: Partial<Pick<OrderDetail, 'payment_status' | 'delivery_status' | 'delivered_at'>>) => void
+}
+
+export default function OrderDetailModal({ order: initialOrder, onClose, onUpdate }: OrderDetailModalProps) {
+  const [order, setOrder] = useState(initialOrder)
+  const [saving, setSaving] = useState(false)
   const address = formatAddress(order)
   const whatsappLink = buildDeliveryWhatsAppLink(order)
+
+  const handleStatusChange = async (field: 'payment_status' | 'delivery_status', value: string) => {
+    setSaving(true)
+    try {
+      const res = await fetch(`/api/orders/${order.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ [field]: value }),
+      })
+      if (res.ok) {
+        const { data } = await res.json()
+        const updates = { [field]: value, ...(field === 'delivery_status' ? { delivered_at: data.delivered_at } : {}) }
+        setOrder(prev => ({ ...prev, ...updates }))
+        onUpdate?.(order.id, updates)
+      }
+    } finally {
+      setSaving(false)
+    }
+  }
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
@@ -136,15 +156,35 @@ export default function OrderDetailModal({ order, onClose }: { order: OrderDetai
           {/* Status */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
             <div>
-              <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400 mb-1">Pagamento</p>
-              <p className="text-gray-700">{PAYMENT_METHOD_LABELS[order.payment_method] || order.payment_method} · {PAYMENT_STATUS_LABELS[order.payment_status] || order.payment_status}</p>
+              <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400 mb-1">
+                Pagamento <span className="normal-case font-normal">({PAYMENT_METHOD_LABELS[order.payment_method] || order.payment_method})</span>
+              </p>
+              <select
+                value={order.payment_status}
+                disabled={saving}
+                onChange={e => handleStatusChange('payment_status', e.target.value)}
+                className={`text-xs font-medium px-2 py-1 rounded-full border bg-transparent focus:outline-none cursor-pointer ${TONE_CLASSES[PAYMENT_STATUS_META[order.payment_status]?.tone || 'warning']}`}
+              >
+                {Object.entries(PAYMENT_STATUS_META).map(([val, meta]) => (
+                  <option key={val} value={val} className="bg-white text-gray-700">{meta.label}</option>
+                ))}
+              </select>
             </div>
             <div>
               <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400 mb-1">Entrega</p>
-              <p className="text-gray-700">
-                {DELIVERY_STATUS_LABELS[order.delivery_status] || order.delivery_status}
-                {order.delivered_at && ` em ${formatDateTime(order.delivered_at)}`}
-              </p>
+              <select
+                value={order.delivery_status}
+                disabled={saving}
+                onChange={e => handleStatusChange('delivery_status', e.target.value)}
+                className={`text-xs font-medium px-2 py-1 rounded-full border bg-transparent focus:outline-none cursor-pointer ${TONE_CLASSES[DELIVERY_STATUS_META[order.delivery_status]?.tone || 'warning']}`}
+              >
+                {Object.entries(DELIVERY_STATUS_META).map(([val, meta]) => (
+                  <option key={val} value={val} className="bg-white text-gray-700">{meta.label}</option>
+                ))}
+              </select>
+              {order.delivered_at && (
+                <p className="text-[10px] text-gray-400 mt-1">Entregue em {formatDateTime(order.delivered_at)}</p>
+              )}
             </div>
           </div>
         </div>

@@ -32,6 +32,7 @@ import IntegrationBadge from '@/components/Shared/IntegrationBadge'
 import CustomFieldSelect from '@/components/Shared/CustomFieldSelect'
 import CustomFieldMultiSelect from '@/components/Shared/CustomFieldMultiSelect'
 import OrderModal from './OrderModal'
+import LeadOrderCard from './LeadOrderCard'
 
 interface LeadDetailsSidebarProps {
   lead: LeadWithOwner
@@ -82,6 +83,7 @@ export default function LeadDetailsSidebar({
   const editNameInputRef = useRef<HTMLInputElement>(null)
 
   const [showOrderModal, setShowOrderModal] = useState(false)
+  const [orderRefreshKey, setOrderRefreshKey] = useState(0)
   const [webhookStatus, setWebhookStatus] = useState<{
     key: ChatButtonKey
     status: 'sending' | 'success' | 'error'
@@ -359,6 +361,9 @@ export default function LeadDetailsSidebar({
             </div>
           </div>
         </div>
+
+        {/* Pedido do cliente — status de pagamento/entrega visíveis e editáveis */}
+        <LeadOrderCard lead={lead} refreshKey={orderRefreshKey} />
 
         {/* Marcar Venda */}
         <button
@@ -641,6 +646,7 @@ export default function LeadDetailsSidebar({
         lead={lead}
         organizationId={lead.organization_id}
         onClose={() => setShowOrderModal(false)}
+        onSuccess={() => setOrderRefreshKey(k => k + 1)}
       />
     )}
     </>
