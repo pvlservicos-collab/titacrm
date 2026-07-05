@@ -197,7 +197,7 @@ export default function ChatPage() {
 
   if (loading || leadsLoading || (!isAdmin && !permissions)) {
     return (
-      <div className="flex items-center justify-center h-screen">
+      <div className="flex items-center justify-center h-full">
         <LoadingSpinner text="Carregando..." size="lg" />
       </div>
     )
@@ -205,7 +205,7 @@ export default function ChatPage() {
 
   if (!organizationId) {
     return (
-      <div className="flex items-center justify-center h-screen">
+      <div className="flex items-center justify-center h-full">
         <p className="text-gray-500">Nenhuma organização encontrada. Execute o seed.sql no Supabase.</p>
       </div>
     )
@@ -215,7 +215,7 @@ export default function ChatPage() {
   // em tela cheia em vez de coluna fixa. Desktop abaixo continua como sempre foi.
   if (isMobile) {
     return (
-      <div className="h-[calc(100vh-56px)] flex flex-col">
+      <div className="h-full flex flex-col">
         {mobileView === 'list' && (
           <LeadList
             leads={allLeads}
@@ -283,7 +283,7 @@ export default function ChatPage() {
   }
 
   return (
-    <div className="flex h-[calc(100vh-56px)] gap-0">
+    <div className="flex h-full gap-0">
       {/* Left — Lead List */}
       <div className="w-[340px] border-r border-[#2f3b44] flex-shrink-0">
         <LeadList

@@ -3,6 +3,7 @@
 import Navbar from '@/components/Shared/Navbar'
 import { FilterProvider } from '@/contexts/FilterContext'
 import AuthGuard from '@/components/Auth/AuthGuard'
+import InstallAppBanner from '@/components/Shared/InstallAppBanner'
 
 /**
  * Layout for all authenticated pages (pipeline, chat, settings, etc.)
@@ -26,12 +27,14 @@ export default function AuthenticatedLayout({
     return (
         <AuthGuard>
             <FilterProvider>
-                <div className="flex flex-col h-screen bg-gray-50">
+                <div className="flex flex-col h-[100dvh] bg-gray-50">
                     <Navbar />
-                    <main className="flex-1 overflow-auto scrollbar-hide">
+                    {/* Espaço embaixo pra não ficar atrás da barra de navegação inferior fixa (celular) */}
+                    <main className="flex-1 overflow-auto scrollbar-hide pb-[calc(4rem+env(safe-area-inset-bottom))] md:pb-0">
                         {children}
                     </main>
                 </div>
+                <InstallAppBanner />
             </FilterProvider>
         </AuthGuard>
     )

@@ -40,6 +40,10 @@ const NAV_ITEMS = [
   { label: 'Configurações', href: '/settings/organization', icon: Gear },
 ]
 
+// Destinos mais usados — ficam sempre à mão na barra inferior do celular,
+// ao alcance do polegar, sem precisar abrir o menu hambúrguer.
+const MOBILE_TAB_LABELS = ['Chat', 'Pipeline', 'Logística', 'Financeiro', 'Configurações']
+
 export default function Navbar() {
   const pathname = usePathname()
   const router = useRouter()
@@ -116,13 +120,13 @@ export default function Navbar() {
 
   return (
     <>
-    <nav className="dark-nav bg-white dark:bg-[#161b22] border-b border-gray-200 dark:border-[#30363d] px-4 sm:px-6 h-14 flex items-center justify-between sticky top-0 z-50">
+    <nav className="app-safe-top dark-nav bg-white dark:bg-[#161b22] border-b border-gray-200 dark:border-[#30363d] px-4 sm:px-6 h-14 flex items-center justify-between sticky top-0 z-50">
       {/* Left: Logo + Nav */}
       <div className="flex items-center gap-8">
-        {/* Mobile menu button */}
+        {/* Mobile menu button — área de toque 44px (recomendado), ícone do mesmo tamanho de antes */}
         <button
           onClick={() => setShowMobileMenu(true)}
-          className="md:hidden w-8 h-8 flex items-center justify-center rounded-lg text-gray-600 dark:text-[#8b949e] hover:bg-gray-100 dark:hover:bg-[#21262d] transition-colors -ml-1"
+          className="app-tap-target md:hidden w-11 h-11 flex items-center justify-center rounded-lg text-gray-600 dark:text-[#8b949e] hover:bg-gray-100 dark:hover:bg-[#21262d] transition-colors -ml-1.5"
           aria-label="Abrir menu"
         >
           <List size={22} />
@@ -228,7 +232,7 @@ export default function Navbar() {
         <button
           onClick={toggleTheme}
           title={isDark ? 'Modo claro' : 'Modo escuro'}
-          className="w-8 h-8 flex items-center justify-center rounded-lg text-gray-500 dark:text-[#8b949e] hover:bg-gray-100 dark:hover:bg-[#21262d] transition-colors"
+          className="app-tap-target w-11 h-11 flex items-center justify-center rounded-lg text-gray-500 dark:text-[#8b949e] hover:bg-gray-100 dark:hover:bg-[#21262d] transition-colors"
         >
           {isDark ? <Sun size={18} weight="fill" className="text-yellow-400" /> : <Moon size={18} />}
         </button>
@@ -329,6 +333,28 @@ export default function Navbar() {
         </div>
       </div>
     )}
+
+    {/* Barra de navegação inferior (celular) — destinos mais usados sempre à mão,
+        sem precisar abrir o menu. Padrão de app nativo (Instagram, WhatsApp etc). */}
+    <div className="app-safe-bottom md:hidden fixed bottom-0 left-0 right-0 z-50 bg-white dark:bg-[#161b22] dark-nav border-t border-gray-200 dark:border-[#30363d]">
+      <div className="h-16 flex items-stretch">
+        {NAV_ITEMS.filter(item => MOBILE_TAB_LABELS.includes(item.label) && isItemVisible(item.label)).map(item => {
+          const isActive = pathname === item.href || (item.href !== '/' && pathname.startsWith(item.href))
+          const Icon = item.icon
+          return (
+            <Link
+              key={item.href}
+              href={item.href}
+              className={`app-tap-target flex-1 flex flex-col items-center justify-center gap-0.5 transition-colors ${isActive ? 'text-blue-600 dark:text-blue-400' : 'text-gray-500 dark:text-[#8b949e]'
+                }`}
+            >
+              <Icon size={22} weight={isActive ? 'fill' : 'regular'} />
+              <span className="text-[10px] font-medium leading-none">{item.label === 'Configurações' ? 'Ajustes' : item.label}</span>
+            </Link>
+          )
+        })}
+      </div>
+    </div>
     </>
   )
 }

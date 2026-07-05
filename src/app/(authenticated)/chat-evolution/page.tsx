@@ -151,7 +151,7 @@ export default function ChatEvolutionPage() {
 
   if (loading || leadsLoading || evolutionIntegrationId === undefined || (!isAdmin && !permissions)) {
     return (
-      <div className="flex items-center justify-center h-screen" style={{ backgroundColor: '#070e13' }}>
+      <div className="flex items-center justify-center h-full" style={{ backgroundColor: '#070e13' }}>
         <LoadingSpinner text="Carregando Número 2..." size="lg" />
       </div>
     )
@@ -159,14 +159,14 @@ export default function ChatEvolutionPage() {
 
   if (!organizationId) {
     return (
-      <div className="flex items-center justify-center h-screen" style={{ backgroundColor: '#070e13' }}>
+      <div className="flex items-center justify-center h-full" style={{ backgroundColor: '#070e13' }}>
         <p className="text-gray-500">Nenhuma organização encontrada.</p>
       </div>
     )
   }
 
   return (
-    <div className="flex h-[calc(100vh-56px)] gap-0">
+    <div className="flex h-full gap-0">
       <div className="w-[340px] border-r border-[#2f3b44] flex-shrink-0">
         <LeadList
           leads={allLeads}

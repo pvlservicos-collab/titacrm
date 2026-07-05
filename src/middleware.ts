@@ -4,7 +4,16 @@ import type { NextRequest } from 'next/server'
 export function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl
 
-  const publicPaths = ['/login', '/api/auth', '/api/webhooks', '/api/funnels/tick']
+  const publicPaths = [
+    '/login', '/api/auth', '/api/webhooks', '/api/funnels/tick',
+    // Manifest/service worker/ícones do PWA: o navegador busca isso sem sessão
+    // (checagem de instalabilidade), então não pode cair no redirect de login.
+    '/manifest.webmanifest', '/sw.js', '/icons/',
+    // Assets estáticos de public/ servidos na raiz (logos, fontes, imagens de fundo) —
+    // o matcher abaixo só livra _next/static e afins, então sem isso qualquer imagem
+    // usada numa tela sem sessão (ex: login) cairia no redirect também.
+    '/logos/', '/fonts/', '/chat-bg.svg',
+  ]
   const isPublic = publicPaths.some((p) => pathname.startsWith(p))
 
   if (isPublic) return NextResponse.next()
