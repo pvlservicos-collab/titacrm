@@ -184,15 +184,20 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
           throw new Error('Grupos só podem ser respondidos pela Evolution API — a API Oficial do WhatsApp não suporta grupos.')
         }
 
+        // Legenda real de mídia (só existe se alguém escreveu de verdade) — nunca usar
+        // "body.content" aqui, porque pode ser só um rótulo interno da timeline do CRM
+        // (ex: "📷 Imagem") que nunca deveria virar legenda de verdade no WhatsApp.
+        const mediaCaption = typeof body.caption === 'string' ? body.caption : ''
+
         if (integrationTyp === 'whatsapp_evolution') {
           const result = body.media_url
-            ? await sendEvolutionMedia(auth.organizationId, phone, body.media_type, body.media_url, body.content, body.media_filename, lead?.isGroup ?? false)
+            ? await sendEvolutionMedia(auth.organizationId, phone, body.media_type, body.media_url, mediaCaption, body.media_filename, lead?.isGroup ?? false)
             : await sendEvolutionMessage(auth.organizationId, phone, body.content, lead?.isGroup ?? false)
           metadata.send_status = 'sent'
           metadata.evolution_message_id = result?.key?.id
         } else {
           const result = body.media_url
-            ? await sendWhatsAppMedia(auth.organizationId, phone, body.media_type, body.media_url, body.content, body.media_filename)
+            ? await sendWhatsAppMedia(auth.organizationId, phone, body.media_type, body.media_url, mediaCaption, body.media_filename)
             : await sendWhatsAppMessage(auth.organizationId, phone, body.content)
           metadata.whatsapp_message_id = result?.messages?.[0]?.id
           metadata.send_status = 'sent'

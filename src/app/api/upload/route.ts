@@ -4,9 +4,29 @@
  * Usa Vercel Blob para armazenar arquivos
  */
 import { NextRequest } from 'next/server'
+import sharp from 'sharp'
 import { auth } from '@/lib/auth'
 import { uploadFile } from '@/lib/blob'
 import { apiError } from '@/lib/api-auth'
+
+// Corrige o "grava deitado, mostra em pé" clássico de foto de celular: a câmera
+// grava a tag EXIF de orientação em vez de rotacionar os pixels, e o navegador
+// aplica essa tag ao exibir — mas serviços que baixam a imagem depois (Evolution
+// API, WhatsApp) podem não respeitar essa tag. Rotacionar os pixels de verdade
+// aqui garante que a imagem apareça correta em qualquer lugar, sempre.
+const ROTATABLE_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp']
+
+async function normalizeImageOrientation(file: File): Promise<File> {
+  if (!ROTATABLE_IMAGE_TYPES.includes(file.type)) return file
+  try {
+    const buffer = Buffer.from(await file.arrayBuffer())
+    const rotated = await sharp(buffer).rotate().toBuffer()
+    return new File([rotated], file.name, { type: file.type })
+  } catch (err) {
+    console.error('[/api/upload] Falha ao normalizar orientação EXIF, enviando arquivo original:', err)
+    return file
+  }
+}
 
 export async function POST(req: NextRequest) {
   try {
@@ -41,8 +61,10 @@ export async function POST(req: NextRequest) {
       }
     }
 
+    const normalizedFile = await normalizeImageOrientation(file)
+
     const url = await uploadFile(
-      file,
+      normalizedFile,
       folder as 'avatars' | 'org-logos' | 'chat-media',
       identifier || session.user.id!
     )

@@ -169,6 +169,10 @@ export function useLeadActivities(organizationId: string, leadId: string) {
     try {
       const body: any = {
         content,
+        // Legenda de verdade — só preenchida se alguém realmente escreveu algo.
+        // "content" acima pode ser um rótulo interno (ex: "📷 Imagem") usado só
+        // pra timeline/lista do CRM; nunca deve ser enviado como legenda real.
+        caption: caption.trim() || null,
         type: 'whatsapp',
         source: 'human',
         direction: 'outbound',
