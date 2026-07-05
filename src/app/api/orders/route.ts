@@ -27,6 +27,8 @@ function toSnake(o: any, items: any[] = [], productNameById: Map<string, string>
     customer_neighborhood: o.customerNeighborhood,
     customer_city: o.customerCity,
     customer_state: o.customerState,
+    cash_settled: o.cashSettled,
+    cash_settled_at: o.cashSettledAt,
     created_at: o.createdAt,
     updated_at: o.updatedAt,
     delivered_at: o.deliveredAt,
@@ -144,6 +146,9 @@ export async function POST(req: NextRequest) {
         customerNeighborhood: body.customer_neighborhood || null,
         customerCity: body.customer_city || null,
         customerState: body.customer_state || null,
+        // Dinheiro nasce "pendente de repasse" (motoboy ainda não passou o físico pra
+        // empresa); os outros métodos não passam por essa custódia, nascem resolvidos.
+        cashSettled: (body.payment_method || 'pix') !== 'dinheiro',
         ...(orderDate ? { createdAt: orderDate } : {}),
         deliveredAt: deliveryStatus === 'delivered' ? new Date() : null,
       })
@@ -183,7 +188,15 @@ export async function POST(req: NextRequest) {
     // Salva último status do pedido no lead para exibir tags na lista, e avisa
     // quem estiver com o Chat aberto (lista de conversas + perfil do cliente)
     if (body.lead_id) {
-      await syncLeadLastOrderAttributes(auth.organizationId, body.lead_id, order.paymentStatus, order.paymentMethod)
+      await syncLeadLastOrderAttributes(auth.organizationId, body.lead_id, order.paymentStatus, order.paymentMethod, {
+        cep: order.customerCep,
+        address: order.customerAddress,
+        addressNumber: order.customerAddressNumber,
+        addressComplement: order.customerAddressComplement,
+        neighborhood: order.customerNeighborhood,
+        city: order.customerCity,
+        state: order.customerState,
+      })
       await publishEvent(channels.orgLeads(auth.organizationId), events.LEAD_UPDATED, { id: body.lead_id })
     }
 

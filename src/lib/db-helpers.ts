@@ -16,18 +16,56 @@ import {
 
 // ── Pedidos ───────────────────────────────────────────────────────────────────
 
+export interface OrderAddressSync {
+  cep?: string | null
+  address?: string | null
+  addressNumber?: string | null
+  addressComplement?: string | null
+  neighborhood?: string | null
+  city?: string | null
+  state?: string | null
+}
+
 /**
  * Espelha o último status/forma de pagamento do pedido no lead, usado pela
  * etiqueta "Pago/Pendente" da lista de conversas do Chat (LeadListItem).
  * Precisa ser chamado tanto na criação quanto em qualquer atualização do
  * payment_status de um pedido, senão a etiqueta da lista fica desatualizada.
+ *
+ * Quando `address` é passado, também grava o endereço nas colunas do lead
+ * (cep/address/address_number/...) — assim o endereço do último pedido já
+ * vem pronto pra pré-preencher a próxima compra do mesmo cliente.
  */
 export async function syncLeadLastOrderAttributes(
   organizationId: string,
   leadId: string,
   paymentStatus: string,
-  paymentMethod: string
+  paymentMethod: string,
+  address?: OrderAddressSync
 ) {
+  if (address) {
+    await db.execute(sql`
+      UPDATE leads
+      SET custom_attributes = jsonb_set(
+        jsonb_set(
+          COALESCE(custom_attributes, '{}'),
+          '{last_order_payment_status}', ${JSON.stringify(paymentStatus)}::jsonb
+        ),
+        '{last_order_payment_method}', ${JSON.stringify(paymentMethod)}::jsonb
+      ),
+      cep = ${address.cep ?? null},
+      address = ${address.address ?? null},
+      address_number = ${address.addressNumber ?? null},
+      address_complement = ${address.addressComplement ?? null},
+      neighborhood = ${address.neighborhood ?? null},
+      city = ${address.city ?? null},
+      state = ${address.state ?? null},
+      updated_at = NOW()
+      WHERE id = ${leadId} AND organization_id = ${organizationId}
+    `)
+    return
+  }
+
   await db.execute(sql`
     UPDATE leads
     SET custom_attributes = jsonb_set(

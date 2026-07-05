@@ -1,9 +1,10 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { ArrowSquareOut } from '@phosphor-icons/react'
+import { ArrowSquareOut, PencilSimple } from '@phosphor-icons/react'
 import { LeadWithOwner } from '@/lib/types'
 import { PAYMENT_STATUS_META, DELIVERY_STATUS_META, TONE_STYLES } from '@/lib/orderStatus'
+import OrderDetailModal, { OrderDetail } from '@/app/(authenticated)/logistica/OrderDetailModal'
 
 interface OrderSummary {
   id: string
@@ -32,6 +33,8 @@ export default function LeadOrderCard({ lead, refreshKey }: LeadOrderCardProps) 
   const [orders, setOrders] = useState<OrderSummary[]>([])
   const [loading, setLoading] = useState(true)
   const [savingPayment, setSavingPayment] = useState(false)
+  const [detailOrder, setDetailOrder] = useState<OrderDetail | null>(null)
+  const [loadingDetail, setLoadingDetail] = useState(false)
 
   const fetchOrders = useCallback(async () => {
     setLoading(true)
@@ -72,11 +75,36 @@ export default function LeadOrderCard({ lead, refreshKey }: LeadOrderCardProps) 
     }
   }
 
+  // Endereço e pagamento editáveis pelo vendedor; entrega e repasse de dinheiro
+  // continuam só-leitura (modo "sellerView") — quem mexe nisso é a Logística.
+  const handleOpenDetail = async () => {
+    setLoadingDetail(true)
+    try {
+      const res = await fetch(`/api/orders/${latest.id}`)
+      if (res.ok) {
+        const { data } = await res.json()
+        setDetailOrder(data)
+      }
+    } finally {
+      setLoadingDetail(false)
+    }
+  }
+
   return (
     <div className="rounded-xl border border-[#2f3b44] bg-[#182229] p-3 space-y-2.5">
       <div className="flex items-center justify-between">
         <p className="text-[10px] font-bold uppercase tracking-wider text-[#8696a0]">Pedido</p>
-        <p className="text-[10px] text-[#667781]">{formatDate(latest.created_at)}</p>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={handleOpenDetail}
+            disabled={loadingDetail}
+            className="flex items-center gap-1 text-[10px] font-medium text-[#53bdeb] hover:text-[#aedff7] disabled:opacity-50"
+          >
+            <PencilSimple size={10} weight="bold" />
+            {loadingDetail ? 'Abrindo...' : 'Editar'}
+          </button>
+          <p className="text-[10px] text-[#667781]">{formatDate(latest.created_at)}</p>
+        </div>
       </div>
 
       <div className="flex items-center justify-between gap-2">
@@ -122,6 +150,15 @@ export default function LeadOrderCard({ lead, refreshKey }: LeadOrderCardProps) 
           Ver todos os pedidos ({orders.length})
           <ArrowSquareOut size={11} weight="bold" />
         </a>
+      )}
+
+      {detailOrder && (
+        <OrderDetailModal
+          order={detailOrder}
+          sellerView
+          onClose={() => setDetailOrder(null)}
+          onUpdate={(orderId, updates) => setOrders(prev => prev.map((o, i) => (i === 0 && o.id === orderId ? { ...o, ...updates } : o)))}
+        />
       )}
     </div>
   )

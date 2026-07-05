@@ -106,6 +106,35 @@ export async function GET(req: NextRequest) {
       effective_status: effectiveStatus(e.status, e.dueDate),
     }))
 
+    // ── Dinheiro pendente de repasse (motoboy recebeu, ainda não passou pra empresa) ──
+    // Saldo corrente, não filtra por período — representa dinheiro que ainda não voltou.
+    const [cashPendingTotals] = await db.select({
+      total: sql<string>`coalesce(sum(${orders.totalValue}), 0)`,
+      count: sql<number>`count(*)::int`,
+    }).from(orders).where(and(
+      eq(orders.organizationId, orgId), isNull(orders.deletedAt),
+      eq(orders.paymentMethod, 'dinheiro'), eq(orders.paymentStatus, 'paid'), eq(orders.cashSettled, false),
+    ))
+
+    const cashPendingRows = await db.select().from(orders)
+      .where(and(
+        eq(orders.organizationId, orgId), isNull(orders.deletedAt),
+        eq(orders.paymentMethod, 'dinheiro'), eq(orders.paymentStatus, 'paid'), eq(orders.cashSettled, false),
+      ))
+      .orderBy(asc(orders.createdAt))
+      .limit(20)
+
+    const cash_pending = {
+      total: cashPendingTotals.total,
+      count: cashPendingTotals.count,
+      orders: cashPendingRows.map(o => ({
+        id: o.id,
+        customer_name: o.customerName,
+        total_value: o.totalValue,
+        created_at: o.createdAt,
+      })),
+    }
+
     // ── Série temporal para os gráficos ──
     const orderSeries = await db.select({
       bucket: bucketTrunc(orders.createdAt, bucket),
@@ -198,6 +227,7 @@ export async function GET(req: NextRequest) {
           overdue_total: liabilityTotals.overdueTotal,
           upcoming,
         },
+        cash_pending,
         time_series,
         payment_methods,
         expenses_by_category,

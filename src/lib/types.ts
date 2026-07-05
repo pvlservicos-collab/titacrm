@@ -66,6 +66,15 @@ export interface Lead {
   is_group?: boolean
   avatar_url?: string
   custom_attributes?: Record<string, any>
+  // Endereço salvo do cliente — preenchido a partir do último pedido com
+  // endereço informado, pra já vir pronto em compras futuras.
+  cep?: string
+  address?: string
+  address_number?: string
+  address_complement?: string
+  neighborhood?: string
+  city?: string
+  state?: string
   created_at: string
   updated_at: string
 }

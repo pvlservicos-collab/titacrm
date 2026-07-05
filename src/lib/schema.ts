@@ -392,6 +392,12 @@ export const orders = pgTable('orders', {
   customerNeighborhood: text('customer_neighborhood'),
   customerCity: text('customer_city'),
   customerState: text('customer_state'),
+  // Dinheiro em espécie: o motoboy recebe fisicamente na entrega, então "pago" não
+  // significa "já está com a empresa" — cashSettled controla esse repasse à parte.
+  // Default true pra não afetar pedidos existentes/outros métodos de pagamento;
+  // só pedidos novos em dinheiro nascem com false (ver POST /api/orders).
+  cashSettled: boolean('cash_settled').notNull().default(true),
+  cashSettledAt: timestamp('cash_settled_at', { withTimezone: true }),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow(),
   deliveredAt: timestamp('delivered_at', { withTimezone: true }),

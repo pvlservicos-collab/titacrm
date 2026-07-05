@@ -1,9 +1,13 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { X, MapPin, WhatsappLogo, IdentificationCard, EnvelopeSimple, Phone } from '@phosphor-icons/react'
+import { X, MapPin, WhatsappLogo, IdentificationCard, EnvelopeSimple, Phone, PencilSimple, Motorcycle } from '@phosphor-icons/react'
 import { buildDeliveryWhatsAppLink } from './whatsapp'
 import { PAYMENT_STATUS_META, DELIVERY_STATUS_META, PAYMENT_METHOD_META, TONE_STYLES, StatusTone } from '@/lib/orderStatus'
+
+function maskCep(v: string) {
+  return v.replace(/\D/g, '').slice(0, 8).replace(/(\d{5})(\d)/, '$1-$2')
+}
 
 const TONE_CLASSES: Record<StatusTone, string> = {
   warning: 'text-yellow-400 bg-yellow-400/10 border-yellow-400/30',
@@ -12,14 +16,14 @@ const TONE_CLASSES: Record<StatusTone, string> = {
   info: 'text-blue-400 bg-blue-400/10 border-blue-400/30',
 }
 
-interface OrderDetailItem {
+export interface OrderDetailItem {
   id: string
   product_name: string
   quantity: number
   unit_price: string
 }
 
-interface OrderDetail {
+export interface OrderDetail {
   id: string
   customer_name: string | null
   customer_phone: string | null
@@ -38,6 +42,8 @@ interface OrderDetail {
   total_value: string
   created_at: string
   delivered_at: string | null
+  cash_settled: boolean
+  cash_settled_at: string | null
   items: OrderDetailItem[]
 }
 
@@ -87,15 +93,99 @@ interface OrderDetailModalProps {
   order: OrderDetail
   onClose: () => void
   onUpdate?: (orderId: string, updates: Partial<Pick<OrderDetail, 'payment_status' | 'delivery_status' | 'delivered_at'>>) => void
+  /** Modo vendedor (Chat): entrega e repasse de dinheiro ficam só-leitura —
+   * quem mexe nisso é a Logística, pra não bagunçar o trabalho do motoboy sem querer. */
+  sellerView?: boolean
 }
 
-export default function OrderDetailModal({ order: initialOrder, onClose, onUpdate }: OrderDetailModalProps) {
+export default function OrderDetailModal({ order: initialOrder, onClose, onUpdate, sellerView }: OrderDetailModalProps) {
   const [order, setOrder] = useState(initialOrder)
   const [saving, setSaving] = useState(false)
   const [history, setHistory] = useState<StatusHistoryEvent[]>([])
   const [historyLoading, setHistoryLoading] = useState(true)
   const address = formatAddress(order)
   const whatsappLink = buildDeliveryWhatsAppLink(order)
+
+  const [editingAddress, setEditingAddress] = useState(false)
+  const [savingAddress, setSavingAddress] = useState(false)
+  const [addrCep, setAddrCep] = useState(order.customer_cep || '')
+  const [addrAddress, setAddrAddress] = useState(order.customer_address || '')
+  const [addrNumber, setAddrNumber] = useState(order.customer_address_number || '')
+  const [addrComplement, setAddrComplement] = useState(order.customer_address_complement || '')
+  const [addrNeighborhood, setAddrNeighborhood] = useState(order.customer_neighborhood || '')
+  const [addrCity, setAddrCity] = useState(order.customer_city || '')
+  const [addrState, setAddrState] = useState(order.customer_state || '')
+  const [cepLoading, setCepLoading] = useState(false)
+  const [settlingCash, setSettlingCash] = useState(false)
+
+  const handleCepBlur = async () => {
+    const cleanCep = addrCep.replace(/\D/g, '')
+    if (cleanCep.length !== 8) return
+    setCepLoading(true)
+    try {
+      const res = await fetch(`https://viacep.com.br/ws/${cleanCep}/json/`)
+      const data = await res.json()
+      if (!data.erro) {
+        setAddrAddress(data.logradouro || '')
+        setAddrNeighborhood(data.bairro || '')
+        setAddrCity(data.localidade || '')
+        setAddrState(data.uf || '')
+      }
+    } catch {}
+    setCepLoading(false)
+  }
+
+  const handleSaveAddress = async () => {
+    setSavingAddress(true)
+    try {
+      const res = await fetch(`/api/orders/${order.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          customer_cep: addrCep.replace(/\D/g, '') || null,
+          customer_address: addrAddress || null,
+          customer_address_number: addrNumber || null,
+          customer_address_complement: addrComplement || null,
+          customer_neighborhood: addrNeighborhood || null,
+          customer_city: addrCity || null,
+          customer_state: addrState || null,
+        }),
+      })
+      if (res.ok) {
+        const { data } = await res.json()
+        setOrder(prev => ({
+          ...prev,
+          customer_cep: data.customer_cep,
+          customer_address: data.customer_address,
+          customer_address_number: data.customer_address_number,
+          customer_address_complement: data.customer_address_complement,
+          customer_neighborhood: data.customer_neighborhood,
+          customer_city: data.customer_city,
+          customer_state: data.customer_state,
+        }))
+        setEditingAddress(false)
+      }
+    } finally {
+      setSavingAddress(false)
+    }
+  }
+
+  const handleMarkCashSettled = async () => {
+    setSettlingCash(true)
+    try {
+      const res = await fetch(`/api/orders/${order.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ cash_settled: true }),
+      })
+      if (res.ok) {
+        const { data } = await res.json()
+        setOrder(prev => ({ ...prev, cash_settled: data.cash_settled, cash_settled_at: data.cash_settled_at }))
+      }
+    } finally {
+      setSettlingCash(false)
+    }
+  }
 
   const fetchHistory = useCallback(async () => {
     setHistoryLoading(true)
@@ -167,10 +257,61 @@ export default function OrderDetailModal({ order: initialOrder, onClose, onUpdat
 
           {/* Endereço */}
           <div className="space-y-2">
-            <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400 flex items-center gap-1.5">
-              <MapPin size={12} /> Endereço de entrega
-            </p>
-            <p className="text-sm text-gray-700">{address || 'Endereço não informado'}</p>
+            <div className="flex items-center justify-between">
+              <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400 flex items-center gap-1.5">
+                <MapPin size={12} /> Endereço de entrega
+              </p>
+              {!editingAddress && (
+                <button onClick={() => setEditingAddress(true)} className="flex items-center gap-1 text-xs font-medium text-blue-600 hover:text-blue-700">
+                  <PencilSimple size={12} /> Editar
+                </button>
+              )}
+            </div>
+            {!editingAddress ? (
+              <p className="text-sm text-gray-700">{address || 'Endereço não informado'}</p>
+            ) : (
+              <div className="space-y-2">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                  <div>
+                    <label className="text-[10px] text-gray-400 font-medium">CEP</label>
+                    <input value={addrCep} onChange={e => setAddrCep(maskCep(e.target.value))} onBlur={handleCepBlur} placeholder="00000-000" className="w-full mt-1 px-2.5 py-1.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:border-blue-400" />
+                    {cepLoading && <span className="text-[10px] text-blue-500">Buscando...</span>}
+                  </div>
+                  <div className="sm:col-span-2">
+                    <label className="text-[10px] text-gray-400 font-medium">Endereço</label>
+                    <input value={addrAddress} onChange={e => setAddrAddress(e.target.value)} placeholder="Rua, Av..." className="w-full mt-1 px-2.5 py-1.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:border-blue-400" />
+                  </div>
+                  <div>
+                    <label className="text-[10px] text-gray-400 font-medium">Número</label>
+                    <input value={addrNumber} onChange={e => setAddrNumber(e.target.value)} className="w-full mt-1 px-2.5 py-1.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:border-blue-400" />
+                  </div>
+                  <div className="sm:col-span-2">
+                    <label className="text-[10px] text-gray-400 font-medium">Complemento</label>
+                    <input value={addrComplement} onChange={e => setAddrComplement(e.target.value)} placeholder="Apto, Bloco..." className="w-full mt-1 px-2.5 py-1.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:border-blue-400" />
+                  </div>
+                  <div>
+                    <label className="text-[10px] text-gray-400 font-medium">Bairro</label>
+                    <input value={addrNeighborhood} onChange={e => setAddrNeighborhood(e.target.value)} className="w-full mt-1 px-2.5 py-1.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:border-blue-400" />
+                  </div>
+                  <div>
+                    <label className="text-[10px] text-gray-400 font-medium">Cidade</label>
+                    <input value={addrCity} onChange={e => setAddrCity(e.target.value)} className="w-full mt-1 px-2.5 py-1.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:border-blue-400" />
+                  </div>
+                  <div>
+                    <label className="text-[10px] text-gray-400 font-medium">Estado</label>
+                    <input value={addrState} onChange={e => setAddrState(e.target.value)} maxLength={2} placeholder="SP" className="w-full mt-1 px-2.5 py-1.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:border-blue-400" />
+                  </div>
+                </div>
+                <div className="flex items-center gap-2 pt-1">
+                  <button onClick={handleSaveAddress} disabled={savingAddress} className="px-3 py-1.5 bg-blue-600 text-white rounded-lg text-xs font-medium hover:bg-blue-700 disabled:opacity-50">
+                    {savingAddress ? 'Salvando...' : 'Salvar'}
+                  </button>
+                  <button onClick={() => setEditingAddress(false)} className="px-3 py-1.5 text-xs font-medium text-gray-500 hover:text-gray-700">
+                    Cancelar
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Itens */}
@@ -209,21 +350,48 @@ export default function OrderDetailModal({ order: initialOrder, onClose, onUpdat
             </div>
             <div>
               <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400 mb-1">Entrega</p>
-              <select
-                value={order.delivery_status}
-                disabled={saving}
-                onChange={e => handleStatusChange('delivery_status', e.target.value)}
-                className={`text-xs font-medium px-2 py-1 rounded-full border bg-transparent focus:outline-none cursor-pointer ${TONE_CLASSES[DELIVERY_STATUS_META[order.delivery_status]?.tone || 'warning']}`}
-              >
-                {Object.entries(DELIVERY_STATUS_META).map(([val, meta]) => (
-                  <option key={val} value={val} className="bg-white text-gray-700">{meta.label}</option>
-                ))}
-              </select>
+              {sellerView ? (
+                <span
+                  title="Status de entrega — só pode ser alterado na Logística"
+                  className={`inline-block text-xs font-medium px-2 py-1 rounded-full border ${TONE_CLASSES[DELIVERY_STATUS_META[order.delivery_status]?.tone || 'warning']}`}
+                >
+                  {DELIVERY_STATUS_META[order.delivery_status]?.label || order.delivery_status}
+                </span>
+              ) : (
+                <select
+                  value={order.delivery_status}
+                  disabled={saving}
+                  onChange={e => handleStatusChange('delivery_status', e.target.value)}
+                  className={`text-xs font-medium px-2 py-1 rounded-full border bg-transparent focus:outline-none cursor-pointer ${TONE_CLASSES[DELIVERY_STATUS_META[order.delivery_status]?.tone || 'warning']}`}
+                >
+                  {Object.entries(DELIVERY_STATUS_META).map(([val, meta]) => (
+                    <option key={val} value={val} className="bg-white text-gray-700">{meta.label}</option>
+                  ))}
+                </select>
+              )}
               {order.delivered_at && (
                 <p className="text-[10px] text-gray-400 mt-1">Entregue em {formatDateTime(order.delivered_at)}</p>
               )}
             </div>
           </div>
+
+          {/* Repasse de dinheiro — só relevante pra pedidos pagos em espécie, que o
+              motoboy recebe fisicamente na entrega antes de repassar pra empresa */}
+          {order.payment_method === 'dinheiro' && order.payment_status === 'paid' && (
+            <div className="flex items-center justify-between bg-orange-50 border border-orange-100 rounded-lg px-3 py-2.5">
+              <div className="flex items-center gap-2">
+                <Motorcycle size={16} className={order.cash_settled ? 'text-green-600' : 'text-orange-500'} />
+                <span className="text-sm text-gray-700">
+                  {order.cash_settled ? 'Dinheiro repassado' : 'Aguardando repasse do motoboy'}
+                </span>
+              </div>
+              {!order.cash_settled && !sellerView && (
+                <button onClick={handleMarkCashSettled} disabled={settlingCash} className="text-xs font-medium text-green-600 hover:text-green-700 disabled:opacity-50">
+                  {settlingCash ? 'Salvando...' : 'Marcar repassado'}
+                </button>
+              )}
+            </div>
+          )}
 
           {/* Histórico de status — data/hora de cada mudança, tipo rastreamento */}
           <div className="space-y-2">

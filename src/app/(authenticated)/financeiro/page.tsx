@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo } from 'react'
 import Link from 'next/link'
 import {
   CurrencyDollar, TrendUp, TrendDown, Wallet, ShoppingCart, Receipt,
-  WarningCircle, CaretRight, Package, Plus, X, Check,
+  WarningCircle, CaretRight, Package, Plus, X, Check, Motorcycle,
 } from '@phosphor-icons/react'
 import { EXPENSE_CATEGORY_LABELS, EXPENSE_CATEGORY_OPTIONS } from '@/lib/expense-categories'
 
@@ -23,6 +23,11 @@ interface SummaryData {
     month_total: string
     overdue_total: string
     upcoming: { id: string; description: string; category: string; amount: string; due_date: string; effective_status: string }[]
+  }
+  cash_pending: {
+    total: string
+    count: number
+    orders: { id: string; customer_name: string | null; total_value: string; created_at: string }[]
   }
   time_series: { date: string; inflow: string; outflow: string; sales_count: number }[]
   payment_methods: { method: string; total: string; pct: number }[]
@@ -348,6 +353,11 @@ export default function FinanceiroPage() {
     await Promise.all([fetchSummary(), fetchMovements()])
   }
 
+  const markCashSettled = async (id: string) => {
+    await fetch(`/api/orders/${id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ cash_settled: true }) })
+    await fetchSummary()
+  }
+
   const handleQuickExpenseSaved = async () => {
     await Promise.all([fetchSummary(), fetchMovements()])
   }
@@ -578,6 +588,34 @@ export default function FinanceiroPage() {
                   </div>
                 )}
               </div>
+
+              {/* Dinheiro pendente de repasse — o motoboy recebe em espécie na entrega,
+                  esse dinheiro só entra de fato quando ele repassa pra empresa. */}
+              {Number(summary.cash_pending.total) > 0 && (
+                <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+                  <div className="flex items-center gap-2 mb-1">
+                    <Motorcycle size={18} className="text-orange-500" />
+                    <h2 className="text-base font-semibold text-gray-900">Dinheiro pendente de repasse</h2>
+                  </div>
+                  <p className="text-2xl font-bold text-gray-900 mt-2">{formatCurrency(summary.cash_pending.total)}</p>
+                  <p className="text-xs text-gray-400 mb-4">
+                    {summary.cash_pending.count} pedido{summary.cash_pending.count !== 1 ? 's' : ''} em dinheiro ainda com o motoboy
+                  </p>
+                  <div className="space-y-1">
+                    {summary.cash_pending.orders.map(item => (
+                      <div key={item.id} className="flex items-center justify-between py-2 border-b border-gray-50 last:border-0 gap-2">
+                        <div className="min-w-0">
+                          <p className="text-sm text-gray-800 truncate">{item.customer_name || 'Cliente'}</p>
+                          <p className="text-xs text-gray-400">{formatDate(item.created_at)} · {formatCurrency(item.total_value)}</p>
+                        </div>
+                        <button onClick={() => markCashSettled(item.id)} className="text-xs font-medium text-green-600 hover:text-green-700 flex-shrink-0">
+                          Marcar repassado
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
 
               {/* Payment Methods Breakdown */}
               <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">

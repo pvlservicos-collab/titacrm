@@ -52,6 +52,8 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
       customer_neighborhood: order.customerNeighborhood,
       customer_city: order.customerCity,
       customer_state: order.customerState,
+      cash_settled: order.cashSettled,
+      cash_settled_at: order.cashSettledAt,
       created_at: order.createdAt,
       updated_at: order.updatedAt,
       delivered_at: order.deliveredAt,
@@ -93,6 +95,24 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     if (body.notes !== undefined) updates.notes = body.notes
     if (body.total_value !== undefined) updates.totalValue = body.total_value
 
+    // Endereço de entrega — editável pelo vendedor (Chat) e pela Logística
+    const addressFields = ['customer_cep', 'customer_address', 'customer_address_number', 'customer_address_complement', 'customer_neighborhood', 'customer_city', 'customer_state']
+    const addressChanged = addressFields.some(f => body[f] !== undefined)
+    if (body.customer_cep !== undefined) updates.customerCep = body.customer_cep
+    if (body.customer_address !== undefined) updates.customerAddress = body.customer_address
+    if (body.customer_address_number !== undefined) updates.customerAddressNumber = body.customer_address_number
+    if (body.customer_address_complement !== undefined) updates.customerAddressComplement = body.customer_address_complement
+    if (body.customer_neighborhood !== undefined) updates.customerNeighborhood = body.customer_neighborhood
+    if (body.customer_city !== undefined) updates.customerCity = body.customer_city
+    if (body.customer_state !== undefined) updates.customerState = body.customer_state
+
+    // Repasse do dinheiro físico que o motoboy coletou — ação de confirmação, não
+    // precisa suportar desfazer (não existe "desmarcar repassado").
+    if (body.cash_settled === true) {
+      updates.cashSettled = true
+      updates.cashSettledAt = new Date()
+    }
+
     const [order] = await db
       .update(orders)
       .set(updates)
@@ -119,8 +139,19 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 
     // Mantém a etiqueta "Pago/Pendente" da lista de conversas em dia e avisa
     // quem estiver com o Chat aberto (lista + perfil do cliente) em tempo real.
-    if (order.leadId && body.payment_status !== undefined) {
-      await syncLeadLastOrderAttributes(auth.organizationId, order.leadId, order.paymentStatus, order.paymentMethod)
+    if (order.leadId && (body.payment_status !== undefined || addressChanged)) {
+      await syncLeadLastOrderAttributes(
+        auth.organizationId, order.leadId, order.paymentStatus, order.paymentMethod,
+        addressChanged ? {
+          cep: order.customerCep,
+          address: order.customerAddress,
+          addressNumber: order.customerAddressNumber,
+          addressComplement: order.customerAddressComplement,
+          neighborhood: order.customerNeighborhood,
+          city: order.customerCity,
+          state: order.customerState,
+        } : undefined
+      )
     }
     if (order.leadId) {
       await publishEvent(channels.orgLeads(auth.organizationId), events.LEAD_UPDATED, { id: order.leadId })
@@ -135,6 +166,15 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       notes: order.notes,
       customer_name: order.customerName,
       customer_phone: order.customerPhone,
+      customer_cep: order.customerCep,
+      customer_address: order.customerAddress,
+      customer_address_number: order.customerAddressNumber,
+      customer_address_complement: order.customerAddressComplement,
+      customer_neighborhood: order.customerNeighborhood,
+      customer_city: order.customerCity,
+      customer_state: order.customerState,
+      cash_settled: order.cashSettled,
+      cash_settled_at: order.cashSettledAt,
       created_at: order.createdAt,
       updated_at: order.updatedAt,
       delivered_at: order.deliveredAt,

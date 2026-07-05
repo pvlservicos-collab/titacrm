@@ -36,6 +36,8 @@ interface Order {
   total_value: string
   created_at: string
   delivered_at: string | null
+  cash_settled: boolean
+  cash_settled_at: string | null
   items: OrderItem[]
 }
 
