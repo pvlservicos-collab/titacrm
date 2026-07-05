@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import ReactDOM from 'react-dom'
-import { X, Plus, Minus, MapPin, Check } from '@phosphor-icons/react'
+import { X, Plus, Minus, MapPin, Check, Copy, ClipboardText, MagicWand, CaretDown, CaretUp } from '@phosphor-icons/react'
 import { LeadWithOwner } from '@/lib/types'
 
 interface Product {
@@ -49,6 +49,65 @@ function maskCep(v: string) {
   return v.replace(/\D/g, '').slice(0, 8).replace(/(\d{5})(\d)/, '$1-$2')
 }
 
+// Reconhece o template fixo que o funil automatizado pede pro cliente preencher
+// ("DADOS PARA ENVIO: NOME COMPLETO, CPF, CEP, ENDEREÇO...") e extrai o que der.
+const TEMPLATE_LABELS = ['NOME COMPLETO', 'CPF', 'CEP', 'ENDEREÇO', 'COMPLEMENTO', 'PRODUTO', 'PAGAMENTO', 'VALOR', 'E-MAIL', 'TELEFONE']
+
+interface ParsedCustomerData {
+  name?: string
+  cpf?: string
+  cep?: string
+  address?: string
+  complement?: string
+  email?: string
+  paymentMethod?: string
+  value?: number
+}
+
+function countMatchedLabels(text: string): number {
+  const upper = text.toUpperCase()
+  return TEMPLATE_LABELS.filter(l => upper.includes(l)).length
+}
+
+function normalizeLine(line: string): string {
+  return line.replace(/[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}]/gu, '').trim()
+}
+
+function matchLabelValue(line: string, label: string): string | null {
+  const upper = line.toUpperCase()
+  const idx = upper.indexOf(label)
+  if (idx === -1) return null
+  const rest = line.slice(idx + label.length).replace(/^[:\s]+/, '').trim()
+  return rest || null
+}
+
+function parseCustomerDataMessage(text: string): ParsedCustomerData {
+  const result: ParsedCustomerData = {}
+  for (const rawLine of text.split('\n')) {
+    const line = normalizeLine(rawLine)
+    if (!line || line.startsWith('(')) continue // linha de dica do próprio template
+    if (!result.name) { const v = matchLabelValue(line, 'NOME COMPLETO'); if (v) result.name = v }
+    if (!result.cpf) { const v = matchLabelValue(line, 'CPF'); if (v) result.cpf = v }
+    if (!result.cep) { const v = matchLabelValue(line, 'CEP'); if (v) result.cep = v }
+    if (!result.address) { const v = matchLabelValue(line, 'ENDEREÇO'); if (v) result.address = v }
+    if (!result.complement) { const v = matchLabelValue(line, 'COMPLEMENTO'); if (v) result.complement = v }
+    if (!result.email) { const v = matchLabelValue(line, 'E-MAIL'); if (v) result.email = v }
+    if (result.value === undefined) {
+      const v = matchLabelValue(line, 'VALOR')
+      if (v) {
+        const num = parseFloat(v.replace(/[^\d,.-]/g, '').replace(',', '.'))
+        if (!isNaN(num)) result.value = num
+      }
+    }
+  }
+  const upperText = text.toUpperCase()
+  if (upperText.includes('PIX')) result.paymentMethod = 'pix'
+  else if (upperText.includes('CART')) result.paymentMethod = 'credit_card'
+  else if (upperText.includes('BOLETO')) result.paymentMethod = 'boleto'
+  else if (upperText.includes('DINHEIRO')) result.paymentMethod = 'dinheiro'
+  return result
+}
+
 export default function OrderModal({ lead, organizationId, onClose, onSuccess }: OrderModalProps) {
   const [products, setProducts] = useState<Product[]>([])
   const [items, setItems] = useState<OrderItem[]>([{ product_id: null, product_name: '', quantity: 1, unit_price: 0 }])
@@ -72,6 +131,11 @@ export default function OrderModal({ lead, organizationId, onClose, onSuccess }:
   const [error, setError] = useState<string | null>(null)
   const [productSearch, setProductSearch] = useState<Record<number, string>>({})
   const [showProductDropdown, setShowProductDropdown] = useState<Record<number, boolean>>({})
+  const [sourceMessage, setSourceMessage] = useState<string | null>(null)
+  const [parsedData, setParsedData] = useState<ParsedCustomerData | null>(null)
+  const [showSourceMessage, setShowSourceMessage] = useState(true)
+  const [copied, setCopied] = useState(false)
+  const [autoFilled, setAutoFilled] = useState(false)
 
   useEffect(() => {
     fetch('/api/products?include_inactive=false')
@@ -80,8 +144,24 @@ export default function OrderModal({ lead, organizationId, onClose, onSuccess }:
       .catch(() => {})
   }, [])
 
-  const handleCepBlur = async () => {
-    const cleanCep = cep.replace(/\D/g, '')
+  useEffect(() => {
+    fetch(`/api/leads/${lead.id}/messages`)
+      .then(r => r.ok ? r.json() : { data: [] })
+      .then(({ data }) => {
+        const messages: { content: string }[] = data || []
+        for (let i = messages.length - 1; i >= 0; i--) {
+          const content = messages[i]?.content || ''
+          if (countMatchedLabels(content) >= 3) {
+            setSourceMessage(content)
+            setParsedData(parseCustomerDataMessage(content))
+            break
+          }
+        }
+      })
+      .catch(() => {})
+  }, [lead.id])
+
+  const resolveCep = async (cleanCep: string) => {
     if (cleanCep.length !== 8) return
     setCepLoading(true)
     try {
@@ -95,6 +175,39 @@ export default function OrderModal({ lead, organizationId, onClose, onSuccess }:
       }
     } catch {}
     setCepLoading(false)
+  }
+
+  const handleCepBlur = () => resolveCep(cep.replace(/\D/g, ''))
+
+  const handleAutoFill = () => {
+    if (!parsedData) return
+    if (parsedData.name) setCustomerName(parsedData.name)
+    if (parsedData.cpf) setCpf(maskCpf(parsedData.cpf))
+    if (parsedData.email) setCustomerEmail(parsedData.email)
+    if (parsedData.address) setAddress(parsedData.address)
+    if (parsedData.complement) setAddressComplement(parsedData.complement)
+    if (parsedData.paymentMethod) setSelectedMethods([parsedData.paymentMethod])
+    if (parsedData.value && items.length === 1 && items[0].unit_price === 0) {
+      setItems(prev => prev.map((it, i) => i === 0 ? { ...it, unit_price: parsedData.value! } : it))
+    }
+    if (parsedData.cep) {
+      const cleanCep = parsedData.cep.replace(/\D/g, '')
+      if (cleanCep.length === 8) {
+        setCep(maskCep(parsedData.cep))
+        if (!parsedData.address) resolveCep(cleanCep)
+      }
+    }
+    setAutoFilled(true)
+    setTimeout(() => setAutoFilled(false), 2000)
+  }
+
+  const handleCopySourceMessage = async () => {
+    if (!sourceMessage) return
+    try {
+      await navigator.clipboard.writeText(sourceMessage)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    } catch {}
   }
 
   const toggleMethod = (value: string) => {
@@ -174,6 +287,46 @@ export default function OrderModal({ lead, organizationId, onClose, onSuccess }:
         </div>
 
         <div className="flex-1 overflow-y-auto p-5 space-y-5 chat-dark-scroll">
+          {/* Dados enviados pelo cliente na conversa — evita ter que decorar/rolar o chat por trás do modal */}
+          {sourceMessage && (
+            <div className="rounded-xl border border-[#2f3b44] bg-[#182229] overflow-hidden">
+              <div className="flex items-center justify-between gap-2 px-4 py-3">
+                <div className="flex items-center gap-2 text-[#53bdeb]">
+                  <ClipboardText size={16} weight="bold" />
+                  <p className="text-xs font-bold uppercase tracking-wide">Dados enviados pelo cliente</p>
+                </div>
+                <div className="flex items-center gap-3">
+                  <button onClick={handleCopySourceMessage} className="flex items-center gap-1 text-xs font-medium text-[#8696a0] hover:text-[#e9edef] transition-colors">
+                    {copied ? <Check size={14} className="text-green-400" /> : <Copy size={14} />}
+                    {copied ? 'Copiado' : 'Copiar'}
+                  </button>
+                  <button onClick={() => setShowSourceMessage(v => !v)} className="text-[#8696a0] hover:text-[#e9edef] transition-colors" aria-label={showSourceMessage ? 'Recolher' : 'Expandir'}>
+                    {showSourceMessage ? <CaretUp size={16} /> : <CaretDown size={16} />}
+                  </button>
+                </div>
+              </div>
+
+              {parsedData && Object.keys(parsedData).length > 0 && (
+                <div className="px-4 pb-3">
+                  <button
+                    onClick={handleAutoFill}
+                    className="w-full flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-sm font-bold transition-colors"
+                    style={{ backgroundColor: 'rgba(83,189,235,0.12)', border: '1px solid rgba(83,189,235,0.4)', color: '#53bdeb' }}
+                  >
+                    {autoFilled ? <Check size={16} weight="bold" /> : <MagicWand size={16} weight="bold" />}
+                    {autoFilled ? 'Campos preenchidos!' : 'Preencher formulário com esses dados'}
+                  </button>
+                </div>
+              )}
+
+              {showSourceMessage && (
+                <div className="px-4 pb-4">
+                  <pre className="whitespace-pre-wrap break-words text-xs leading-relaxed text-[#d1d7db] bg-[#111b21] rounded-lg p-3 max-h-48 overflow-y-auto font-sans">{sourceMessage}</pre>
+                </div>
+              )}
+            </div>
+          )}
+
           {/* Produtos */}
           <div>
             <p className="text-[10px] font-bold uppercase tracking-wider text-[#8696a0] mb-3">Produtos</p>
