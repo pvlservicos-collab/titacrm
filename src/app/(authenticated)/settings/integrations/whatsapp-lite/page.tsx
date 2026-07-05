@@ -339,7 +339,7 @@ export default function WhatsAppLitePage() {
 
             <div className="grid grid-cols-1 lg:grid-cols-5 gap-6 mb-8">
                 {/* Left side: QR Code / Initialization*/}
-                <div className="bg-white border rounded-xl p-8 flex flex-col items-center justify-center lg:col-span-3 min-h-[400px]">
+                <div className="bg-white border rounded-xl p-4 sm:p-8 flex flex-col items-center justify-center lg:col-span-3 min-h-[400px]">
                     {connectionState === 'loading' && (
                         <div className="flex flex-col items-center justify-center">
                             <div className="w-12 h-12 border-4 border-blue-200 border-t-blue-500 rounded-full animate-spin mb-4" />
@@ -448,12 +448,12 @@ export default function WhatsAppLitePage() {
 
                     {(connectionState === 'created' || connectionState === 'disconnected' || connectionState === 'connecting') && (
                         <>
-                            <div className="relative w-64 h-64 bg-gray-50 border-2 border-dashed border-gray-200 rounded-xl flex items-center justify-center mb-8 overflow-hidden">
+                            <div className="relative w-48 h-48 sm:w-64 sm:h-64 bg-gray-50 border-2 border-dashed border-gray-200 rounded-xl flex items-center justify-center mb-8 overflow-hidden">
                                 {/* Placeholder / QR Code render */}
                                 {qrCodeBase64 ? (
                                     <img src={qrCodeBase64} alt="WhatsApp QR Code" className="w-full h-full object-cover" />
                                 ) : (
-                                    <div className="w-48 h-48 bg-gray-200 rounded-lg animate-pulse" />
+                                    <div className="w-32 h-32 sm:w-48 sm:h-48 bg-gray-200 rounded-lg animate-pulse" />
                                 )}
 
                                 <div className="absolute top-0 bottom-0 left-1/2 w-[2px] bg-blue-400 opacity-50 -ml-[1px]" />
@@ -477,7 +477,7 @@ export default function WhatsAppLitePage() {
                 </div>
 
                 {/* Right side: Instructions */}
-                <div className="bg-white border rounded-xl p-8 lg:col-span-2 shadow-sm">
+                <div className="bg-white border rounded-xl p-4 sm:p-8 lg:col-span-2 shadow-sm">
                     <div className="flex items-center gap-3 mb-6">
                         <div className="w-8 h-8 rounded-full bg-blue-50 flex items-center justify-center text-blue-600">
                             <Info size={18} weight="bold" />
@@ -527,7 +527,7 @@ export default function WhatsAppLitePage() {
             </div>
 
             {/* FAQs */}
-            <div className="bg-white border rounded-xl p-8">
+            <div className="bg-white border rounded-xl p-4 sm:p-8">
                 <div className="flex items-center gap-3 mb-6">
                     <div className="w-10 h-10 rounded-lg bg-blue-50 flex items-center justify-center text-blue-600">
                         <MonitorPlay size={20} weight="fill" className="opacity-50 absolute" />

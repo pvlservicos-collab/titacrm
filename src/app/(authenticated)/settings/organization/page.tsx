@@ -323,7 +323,7 @@ export default function ProfileSettingsPage() {
                         />
                     </div>
 
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         {/* Corporate Email */}
                         <div>
                             <label className="block text-sm font-semibold text-gray-700 mb-1.5">
@@ -354,7 +354,7 @@ export default function ProfileSettingsPage() {
                     </div>
 
                     {/* Website / Data Fundacao Row */}
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         {/* Website */}
                         <div>
                             <label className="block text-sm font-semibold text-gray-700 mb-1.5">

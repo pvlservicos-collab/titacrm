@@ -139,6 +139,7 @@ export default function ProductsSettingsPage() {
           </div>
         ) : (
           <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden shadow-sm">
+            <div className="overflow-x-auto">
             <table className="w-full">
               <thead>
                 <tr className="border-b border-gray-100 bg-gray-50/50">
@@ -191,6 +192,7 @@ export default function ProductsSettingsPage() {
                 ))}
               </tbody>
             </table>
+            </div>
           </div>
         )}
 
