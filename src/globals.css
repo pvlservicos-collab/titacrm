@@ -157,9 +157,13 @@
    PWA / "parece um app" — tela cheia instalada
    ============================================ */
 
-/* Tira o elástico de puxar a página (pull-to-refresh) que denuncia "é um site" */
+/* Tira o elástico de puxar a página (pull-to-refresh) que denuncia "é um site".
+   overflow-x: hidden trava a página pra nunca escorregar na horizontal — se algum
+   elemento (ex: uma fileira de filtros) estourar a largura da tela, ele é cortado
+   em vez de arrastar a página inteira torta pro lado. */
 html, body {
   overscroll-behavior: none;
+  overflow-x: hidden;
 }
 
 /* Remove o flash cinza padrão do navegador ao tocar em algo */

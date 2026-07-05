@@ -233,7 +233,7 @@ export default function LogisticaPage() {
                 className="w-full pl-9 pr-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400"
               />
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
               <span className="text-xs font-medium text-gray-500">Pagamento:</span>
               {['', 'pending', 'paid', 'refunded'].map(s => (
                 <button
@@ -245,7 +245,7 @@ export default function LogisticaPage() {
                 </button>
               ))}
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
               <span className="text-xs font-medium text-gray-500">Entrega:</span>
               {['', 'pending', 'shipped', 'delivered', 'cancelled'].map(s => (
                 <button
