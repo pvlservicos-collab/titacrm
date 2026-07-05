@@ -82,7 +82,7 @@ export default function OrderModal({ lead, organizationId, onClose, onSuccess }:
   const [error, setError] = useState<string | null>(null)
   const [productSearch, setProductSearch] = useState<Record<number, string>>({})
   const [showProductDropdown, setShowProductDropdown] = useState<Record<number, boolean>>({})
-  const [sourceMessage, setSourceMessage] = useState<string | null>(null)
+  const [sourceMessage, setSourceMessage] = useState('')
   const [showSourceMessage, setShowSourceMessage] = useState(true)
   const [copied, setCopied] = useState(false)
 
@@ -212,32 +212,37 @@ export default function OrderModal({ lead, organizationId, onClose, onSuccess }:
         </div>
 
         <div className="flex-1 overflow-y-auto p-5 space-y-5 chat-dark-scroll">
-          {/* Dados enviados pelo cliente na conversa — evita ter que decorar/rolar o chat por trás do modal */}
-          {sourceMessage && (
-            <div className="rounded-xl border border-[#2f3b44] bg-[#182229] overflow-hidden">
-              <div className="flex items-center justify-between gap-2 px-4 py-3">
-                <div className="flex items-center gap-2 text-[#53bdeb]">
-                  <ClipboardText size={16} weight="bold" />
-                  <p className="text-xs font-bold uppercase tracking-wide">Dados enviados pelo cliente</p>
-                </div>
-                <div className="flex items-center gap-3">
-                  <button onClick={handleCopySourceMessage} className="flex items-center gap-1 text-xs font-medium text-[#8696a0] hover:text-[#e9edef] transition-colors">
-                    {copied ? <Check size={14} className="text-green-400" /> : <Copy size={14} />}
-                    {copied ? 'Copiado' : 'Copiar'}
-                  </button>
-                  <button onClick={() => setShowSourceMessage(v => !v)} className="text-[#8696a0] hover:text-[#e9edef] transition-colors" aria-label={showSourceMessage ? 'Recolher' : 'Expandir'}>
-                    {showSourceMessage ? <CaretUp size={16} /> : <CaretDown size={16} />}
-                  </button>
-                </div>
+          {/* Mensagem do cliente — preenche sozinho quando reconhece o template, mas também
+              dá pra colar/editar na mão (ex: se a detecção não achar ou vier de outra conversa) */}
+          <div className="rounded-xl border border-[#2f3b44] bg-[#182229] overflow-hidden">
+            <div className="flex items-center justify-between gap-2 px-4 py-3">
+              <div className="flex items-center gap-2 text-[#53bdeb]">
+                <ClipboardText size={16} weight="bold" />
+                <p className="text-xs font-bold uppercase tracking-wide">Mensagem do cliente</p>
               </div>
-
-              {showSourceMessage && (
-                <div className="px-4 pb-4">
-                  <pre className="whitespace-pre-wrap break-words text-xs leading-relaxed text-[#d1d7db] bg-[#111b21] rounded-lg p-3 max-h-48 overflow-y-auto font-sans">{sourceMessage}</pre>
-                </div>
-              )}
+              <div className="flex items-center gap-3">
+                <button onClick={handleCopySourceMessage} className="flex items-center gap-1 text-xs font-medium text-[#8696a0] hover:text-[#e9edef] transition-colors">
+                  {copied ? <Check size={14} className="text-green-400" /> : <Copy size={14} />}
+                  {copied ? 'Copiado' : 'Copiar'}
+                </button>
+                <button onClick={() => setShowSourceMessage(v => !v)} className="text-[#8696a0] hover:text-[#e9edef] transition-colors" aria-label={showSourceMessage ? 'Recolher' : 'Expandir'}>
+                  {showSourceMessage ? <CaretUp size={16} /> : <CaretDown size={16} />}
+                </button>
+              </div>
             </div>
-          )}
+
+            {showSourceMessage && (
+              <div className="px-4 pb-4">
+                <textarea
+                  value={sourceMessage}
+                  onChange={e => setSourceMessage(e.target.value)}
+                  placeholder="Cole aqui a mensagem que o cliente mandou com os dados de entrega..."
+                  rows={6}
+                  className="w-full text-xs leading-relaxed text-[#d1d7db] bg-[#111b21] rounded-lg p-3 max-h-48 overflow-y-auto resize-y focus:outline-none focus:ring-1 focus:ring-[#53bdeb] placeholder-[#667781]"
+                />
+              </div>
+            )}
+          </div>
 
           {/* Produtos */}
           <div>
