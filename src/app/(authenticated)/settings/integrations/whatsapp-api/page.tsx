@@ -56,7 +56,7 @@ export default function WhatsAppAPIPage() {
     return (
         <div className="max-w-5xl pb-12">
             {/* Header Status */}
-            <div className="flex items-center justify-between mb-8 pb-6 border-b">
+            <div className="flex items-center flex-wrap gap-3 justify-between mb-8 pb-6 border-b">
                 <div className="flex items-center gap-4">
                     <Link href="/settings/integrations" className="p-2 -ml-2 hover:bg-gray-100 rounded-full transition-colors text-gray-500">
                         <ArrowLeft size={20} />

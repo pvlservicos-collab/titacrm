@@ -194,9 +194,9 @@ export function CustomFieldModal({ isOpen, onClose, field, categories, onSubmit,
 
                 <form onSubmit={handleSubmit} className="flex flex-col flex-1 overflow-hidden">
                     <div className="p-6 space-y-6 overflow-y-auto">
-                        <div className="grid grid-cols-2 gap-4">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             {/* Nome */}
-                            <div className="col-span-2 space-y-1.5">
+                            <div className="sm:col-span-2 space-y-1.5">
                                 <label className="text-sm font-semibold text-gray-700">Nome do Campo</label>
                                 <input
                                     type="text"
@@ -209,7 +209,7 @@ export function CustomFieldModal({ isOpen, onClose, field, categories, onSubmit,
                             </div>
 
                             {/* Tipo */}
-                            <div className="space-y-1.5 min-w-[200px]">
+                            <div className="space-y-1.5">
                                 <label className="text-sm font-semibold text-gray-700">Tipo do Campo</label>
                                 <CustomSelect
                                     value={fieldType}
@@ -220,7 +220,7 @@ export function CustomFieldModal({ isOpen, onClose, field, categories, onSubmit,
                             </div>
 
                             {/* Categoria */}
-                            <div className="space-y-1.5 min-w-[200px]">
+                            <div className="space-y-1.5">
                                 <label className="text-sm font-semibold text-gray-700">Categoria</label>
                                 <CustomSelect
                                     value={categoryId}

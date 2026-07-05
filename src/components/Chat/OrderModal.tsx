@@ -290,7 +290,7 @@ export default function OrderModal({ lead, organizationId, onClose, onSuccess }:
           {/* Dados do cliente */}
           <div>
             <p className="text-[10px] font-bold uppercase tracking-wider text-[#8696a0] mb-3">Dados do Cliente</p>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
                 <label className="text-[10px] text-[#8696a0] font-medium">Nome</label>
                 <input value={customerName} onChange={e => setCustomerName(e.target.value)} className="w-full mt-1 px-3 py-2 text-sm bg-[#202c33] border border-[#2f3b44] rounded-lg text-[#e9edef] focus:outline-none focus:border-[#53bdeb]" />
@@ -315,7 +315,7 @@ export default function OrderModal({ lead, organizationId, onClose, onSuccess }:
             <p className="text-[10px] font-bold uppercase tracking-wider text-[#8696a0] mb-3 flex items-center gap-1.5">
               <MapPin size={12} /> Endereço de Entrega
             </p>
-            <div className="grid grid-cols-3 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <div>
                 <label className="text-[10px] text-[#8696a0] font-medium">CEP</label>
                 <input value={cep} onChange={e => setCep(maskCep(e.target.value))} onBlur={handleCepBlur} placeholder="00000-000" className="w-full mt-1 px-3 py-2 text-sm bg-[#202c33] border border-[#2f3b44] rounded-lg text-[#e9edef] placeholder-[#667781] focus:outline-none focus:border-[#53bdeb]" />

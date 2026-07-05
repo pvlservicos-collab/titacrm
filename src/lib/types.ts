@@ -89,7 +89,7 @@ export interface LeadWithOwner extends Lead {
 export interface ChatMetadata {
   message_id?: string
   direction?: 'inbound' | 'outbound'
-  source?: 'human' | 'ai' | 'ai_agent' | 'automation' | 'custom_field' | 'system' | 'rename'
+  source?: 'human' | 'ai' | 'ai_agent' | 'automation' | 'custom_field' | 'system' | 'rename' | 'evolution'
   status?: 'sent' | 'delivered' | 'read' | 'failed'
   sender_name?: string
   media_url?: string

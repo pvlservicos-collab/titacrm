@@ -212,10 +212,8 @@ export default function Navbar() {
 
       {/* Right: Search + Notifications + User + Button */}
       <div className="flex items-center gap-2 sm:gap-4">
-        {/* Search (oculto no celular pra caber o resto do cabeçalho) */}
-        <div className="hidden md:block">
-          <GlobalSearch />
-        </div>
+        {/* Busca — input+dropdown no desktop, ícone que abre overlay de tela cheia no celular */}
+        <GlobalSearch />
 
         {/* Notifications */}
         <NotificationDropdown />

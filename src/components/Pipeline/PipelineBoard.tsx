@@ -18,8 +18,9 @@ import {
 import { arrayMove } from '@dnd-kit/sortable'
 import { usePipeline, useAuth, useIsMobile } from '@/hooks'
 import { useLeadsContext } from '@/contexts/LeadsContext'
+import { usePipelineFilters } from '@/contexts/FilterContext'
 import { LeadWithOwner } from '@/lib/types'
-import { FilterState } from '@/components/Shared/FilterButton'
+import FilterButton, { FilterState } from '@/components/Shared/FilterButton'
 import StageColumn from './StageColumn'
 import LeadCard from './LeadCard'
 import LoadingSpinner from '@/components/Shared/LoadingSpinner'
@@ -40,6 +41,7 @@ export default function PipelineBoard({ organizationId, filters }: PipelineBoard
   const { currentOrganization, permissions } = useAuth()
 
   const { leads: globalLeads, moveLeadToStage, setLeads, stageStats } = useLeadsContext()
+  const { setFilters } = usePipelineFilters()
 
   // Apply pipeline-specific filters in memory
   const leads = useMemo(() => {
@@ -359,6 +361,11 @@ export default function PipelineBoard({ organizationId, filters }: PipelineBoard
             </div>
           ) : isMobile ? (
             <div>
+              {/* Filtro — some do topo desktop no celular, então reaparece aqui */}
+              <div className="mb-3">
+                <FilterButton organizationId={organizationId} onFilterChange={setFilters} />
+              </div>
+
               {/* Seletor de etapa — abas roláveis horizontalmente */}
               <div className="flex gap-2 overflow-x-auto pb-3 -mx-1 px-1">
                 {stages.map(stage => {

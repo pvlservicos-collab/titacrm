@@ -138,7 +138,48 @@ export default function ProductsSettingsPage() {
             <button onClick={openCreate} className="text-sm text-blue-600 hover:underline">Criar primeiro produto</button>
           </div>
         ) : (
-          <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden shadow-sm">
+          <>
+          {/* Mobile: lista de cartões */}
+          <div className="md:hidden space-y-3">
+            {products.map(product => (
+              <div key={product.id} className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4">
+                <div className="flex items-start justify-between gap-2">
+                  <p className="font-medium text-gray-900 text-sm truncate">{product.name}</p>
+                  <p className="text-sm font-semibold text-gray-900 flex-shrink-0">{formatCurrency(product.price)}</p>
+                </div>
+                {product.description && (
+                  <p className="text-sm text-gray-500 mt-1 line-clamp-2">{product.description}</p>
+                )}
+                <div className="flex items-center justify-between gap-2 mt-3 pt-3 border-t border-gray-50">
+                  <button
+                    onClick={() => handleToggleStatus(product)}
+                    className={`flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-full border transition-colors ${product.status === 'active' ? 'bg-green-50 text-green-700 border-green-200' : 'bg-gray-100 text-gray-500 border-gray-200'}`}
+                  >
+                    {product.status === 'active' ? <ToggleRight size={14} /> : <ToggleLeft size={14} />}
+                    {product.status === 'active' ? 'Ativo' : 'Inativo'}
+                  </button>
+                  <div className="flex items-center gap-1">
+                    <button
+                      onClick={() => openEdit(product)}
+                      className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                    >
+                      <PencilSimple size={16} />
+                    </button>
+                    <button
+                      onClick={() => handleDelete(product)}
+                      disabled={deletingId === product.id}
+                      className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-40"
+                    >
+                      <Trash size={16} />
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Desktop: tabela */}
+          <div className="hidden md:block bg-white rounded-2xl border border-gray-100 overflow-hidden shadow-sm">
             <div className="overflow-x-auto">
             <table className="w-full">
               <thead>
@@ -194,6 +235,7 @@ export default function ProductsSettingsPage() {
             </table>
             </div>
           </div>
+          </>
         )}
 
       {/* Modal */}

@@ -88,6 +88,12 @@ function EmptyChartState({ label }: { label: string }) {
   return <div className="flex items-center justify-center h-28 text-sm text-gray-400">{label}</div>
 }
 
+function tooltipAlignClass(i: number, length: number) {
+  if (i <= 1) return 'left-0'
+  if (i >= length - 2) return 'right-0'
+  return 'left-1/2 -translate-x-1/2'
+}
+
 function CashFlowChart({ data, bucketType }: { data: SummaryData['time_series']; bucketType: 'hour' | 'day' }) {
   const [hoverIdx, setHoverIdx] = useState<number | null>(null)
   const zoneHeight = 90
@@ -130,7 +136,7 @@ function CashFlowChart({ data, bucketType }: { data: SummaryData['time_series'];
                 />
               </div>
               {hoverIdx === i && (
-                <div className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 z-10 bg-gray-900 text-white text-xs rounded-lg px-3 py-2 shadow-lg whitespace-nowrap pointer-events-none">
+                <div className={`absolute bottom-full mb-2 ${tooltipAlignClass(i, data.length)} z-10 bg-gray-900 text-white text-xs rounded-lg px-3 py-2 shadow-lg whitespace-nowrap pointer-events-none`}>
                   <p className="font-semibold mb-1">{formatBucketLabel(d.date, bucketType)}</p>
                   <p><span className="text-green-400">Entradas:</span> {formatCurrency(d.inflow)}</p>
                   <p><span className="text-red-400">Saídas:</span> {formatCurrency(d.outflow)}</p>
@@ -178,7 +184,7 @@ function SalesCountChart({ data, bucketType }: { data: SummaryData['time_series'
                 style={{ height: `${Math.max(pct, d.sales_count > 0 ? 4 : 0)}%` }}
               />
               {hoverIdx === i && (
-                <div className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 z-10 bg-gray-900 text-white text-xs rounded-lg px-3 py-2 shadow-lg whitespace-nowrap pointer-events-none">
+                <div className={`absolute bottom-full mb-2 ${tooltipAlignClass(i, data.length)} z-10 bg-gray-900 text-white text-xs rounded-lg px-3 py-2 shadow-lg whitespace-nowrap pointer-events-none`}>
                   <p className="font-semibold">{formatBucketLabel(d.date, bucketType)}</p>
                   <p>{d.sales_count} venda{d.sales_count !== 1 ? 's' : ''}</p>
                 </div>
@@ -377,7 +383,7 @@ export default function FinanceiroPage() {
   const bucketType: 'hour' | 'day' = period === 'day' ? 'hour' : 'day'
 
   return (
-    <div className="max-w-7xl mx-auto px-6 py-6 space-y-6">
+    <div className="max-w-7xl mx-auto p-4 sm:p-6 space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between flex-wrap gap-4">
         <div className="flex items-center gap-3">
@@ -406,6 +412,35 @@ export default function FinanceiroPage() {
         <div className="flex items-center justify-center h-48 text-gray-400">Carregando...</div>
       ) : summary && (
         <>
+          {/* Fixos do dia */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm flex items-center gap-3">
+              <div className="w-10 h-10 bg-blue-50 rounded-xl flex items-center justify-center flex-shrink-0">
+                <ShoppingCart size={18} className="text-blue-600" />
+              </div>
+              <div>
+                <p className="text-lg font-bold text-gray-900 leading-tight">{summary.sales_today_count}</p>
+                <p className="text-xs text-gray-500">venda{summary.sales_today_count !== 1 ? 's' : ''} hoje</p>
+              </div>
+            </div>
+            <div className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm flex items-center gap-3">
+              <div className="w-10 h-10 bg-red-50 rounded-xl flex items-center justify-center flex-shrink-0">
+                <Receipt size={18} className="text-red-600" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-lg font-bold text-gray-900 leading-tight">{formatCurrency(summary.expenses_today_total)}</p>
+                <p className="text-xs text-gray-500">gastos hoje</p>
+              </div>
+              <button
+                onClick={() => setShowQuickExpense(true)}
+                title="Registrar gasto de hoje"
+                className="flex-shrink-0 w-8 h-8 flex items-center justify-center rounded-lg bg-gray-50 text-gray-500 hover:bg-red-50 hover:text-red-600 transition-colors"
+              >
+                <Plus size={16} weight="bold" />
+              </button>
+            </div>
+          </div>
+
           {/* KPI Cards */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             <div className="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm">
@@ -452,35 +487,6 @@ export default function FinanceiroPage() {
                 {formatCurrency(summary.accumulated_balance)}
               </p>
               <p className="text-xs text-gray-400 mt-1">desde o início</p>
-            </div>
-          </div>
-
-          {/* Fixos do dia */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm flex items-center gap-3">
-              <div className="w-10 h-10 bg-blue-50 rounded-xl flex items-center justify-center flex-shrink-0">
-                <ShoppingCart size={18} className="text-blue-600" />
-              </div>
-              <div>
-                <p className="text-lg font-bold text-gray-900 leading-tight">{summary.sales_today_count}</p>
-                <p className="text-xs text-gray-500">venda{summary.sales_today_count !== 1 ? 's' : ''} hoje</p>
-              </div>
-            </div>
-            <div className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm flex items-center gap-3">
-              <div className="w-10 h-10 bg-red-50 rounded-xl flex items-center justify-center flex-shrink-0">
-                <Receipt size={18} className="text-red-600" />
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-lg font-bold text-gray-900 leading-tight">{formatCurrency(summary.expenses_today_total)}</p>
-                <p className="text-xs text-gray-500">gastos hoje</p>
-              </div>
-              <button
-                onClick={() => setShowQuickExpense(true)}
-                title="Registrar gasto de hoje"
-                className="flex-shrink-0 w-8 h-8 flex items-center justify-center rounded-lg bg-gray-50 text-gray-500 hover:bg-red-50 hover:text-red-600 transition-colors"
-              >
-                <Plus size={16} weight="bold" />
-              </button>
             </div>
           </div>
 

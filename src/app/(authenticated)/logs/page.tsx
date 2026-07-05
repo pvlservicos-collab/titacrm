@@ -77,6 +77,7 @@ export default function LogsPage() {
             </p>
           </div>
         ) : (
+          <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead className="sticky top-0 bg-gray-50 border-b border-gray-100">
               <tr className="text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">
@@ -114,6 +115,7 @@ export default function LogsPage() {
               ))}
             </tbody>
           </table>
+          </div>
         )}
       </div>
     </div>

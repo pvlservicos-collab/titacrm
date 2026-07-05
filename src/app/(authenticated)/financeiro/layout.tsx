@@ -21,7 +21,7 @@ export default function FinanceiroLayout({ children }: { children: React.ReactNo
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <div className="max-w-7xl mx-auto px-6 pt-6">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 pt-4 sm:pt-6">
         <div className="flex items-center gap-1 border-b border-gray-200">
           {TABS.map(tab => {
             const isActive = tab.href === '/financeiro' ? pathname === tab.href : pathname.startsWith(tab.href)
