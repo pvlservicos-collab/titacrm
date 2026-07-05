@@ -1,8 +1,8 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import ReactDOM from 'react-dom'
-import { X, Plus, Minus, MapPin, Check, Copy, ClipboardText, CaretDown, CaretUp } from '@phosphor-icons/react'
+import { X, Plus, Minus, MapPin, Check, Copy, ClipboardText, CaretDown, CaretUp, MagicWand } from '@phosphor-icons/react'
 import { LeadWithOwner } from '@/lib/types'
 
 interface Product {
@@ -50,13 +50,64 @@ function maskCep(v: string) {
 }
 
 // Reconhece o template fixo que o funil automatizado pede pro cliente preencher
-// ("DADOS PARA ENVIO: NOME COMPLETO, CPF, CEP, ENDEREÇO...") — só pra saber se vale
-// mostrar a mensagem em destaque, sem extrair/preencher nada automaticamente.
+// ("DADOS PARA ENVIO: NOME COMPLETO, CPF, CEP, ENDEREÇO...") — usado tanto pra saber
+// se vale destacar uma mensagem do histórico quanto pra extrair os campos quando o
+// vendedor pede pra preencher (sempre sob revisão dele, nunca automático sem clique).
 const TEMPLATE_LABELS = ['NOME COMPLETO', 'CPF', 'CEP', 'ENDEREÇO', 'COMPLEMENTO', 'PRODUTO', 'PAGAMENTO', 'VALOR', 'E-MAIL', 'TELEFONE']
+
+interface ParsedCustomerData {
+  name?: string
+  cpf?: string
+  cep?: string
+  address?: string
+  complement?: string
+  email?: string
+  paymentMethod?: string
+  value?: number
+}
 
 function countMatchedLabels(text: string): number {
   const upper = text.toUpperCase()
   return TEMPLATE_LABELS.filter(l => upper.includes(l)).length
+}
+
+function normalizeLine(line: string): string {
+  return line.replace(/[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}]/gu, '').trim()
+}
+
+function matchLabelValue(line: string, label: string): string | null {
+  const upper = line.toUpperCase()
+  const idx = upper.indexOf(label)
+  if (idx === -1) return null
+  const rest = line.slice(idx + label.length).replace(/^[:\s]+/, '').trim()
+  return rest || null
+}
+
+function parseCustomerDataMessage(text: string): ParsedCustomerData {
+  const result: ParsedCustomerData = {}
+  for (const rawLine of text.split('\n')) {
+    const line = normalizeLine(rawLine)
+    if (!line || line.startsWith('(')) continue // linha de dica do próprio template
+    if (!result.name) { const v = matchLabelValue(line, 'NOME COMPLETO'); if (v) result.name = v }
+    if (!result.cpf) { const v = matchLabelValue(line, 'CPF'); if (v) result.cpf = v }
+    if (!result.cep) { const v = matchLabelValue(line, 'CEP'); if (v) result.cep = v }
+    if (!result.address) { const v = matchLabelValue(line, 'ENDEREÇO'); if (v) result.address = v }
+    if (!result.complement) { const v = matchLabelValue(line, 'COMPLEMENTO'); if (v) result.complement = v }
+    if (!result.email) { const v = matchLabelValue(line, 'E-MAIL'); if (v) result.email = v }
+    if (result.value === undefined) {
+      const v = matchLabelValue(line, 'VALOR')
+      if (v) {
+        const num = parseFloat(v.replace(/[^\d,.-]/g, '').replace(',', '.'))
+        if (!isNaN(num)) result.value = num
+      }
+    }
+  }
+  const upperText = text.toUpperCase()
+  if (upperText.includes('PIX')) result.paymentMethod = 'pix'
+  else if (upperText.includes('CART')) result.paymentMethod = 'credit_card'
+  else if (upperText.includes('BOLETO')) result.paymentMethod = 'boleto'
+  else if (upperText.includes('DINHEIRO')) result.paymentMethod = 'dinheiro'
+  return result
 }
 
 export default function OrderModal({ lead, organizationId, onClose, onSuccess }: OrderModalProps) {
@@ -85,6 +136,11 @@ export default function OrderModal({ lead, organizationId, onClose, onSuccess }:
   const [sourceMessage, setSourceMessage] = useState('')
   const [showSourceMessage, setShowSourceMessage] = useState(true)
   const [copied, setCopied] = useState(false)
+  const [autoFilled, setAutoFilled] = useState(false)
+
+  // Reparseia toda vez que o texto muda (seja preenchido sozinho, colado ou editado à mão)
+  const parsedData = useMemo(() => parseCustomerDataMessage(sourceMessage), [sourceMessage])
+  const parsedFieldsCount = Object.keys(parsedData).length
 
   useEffect(() => {
     fetch('/api/products?include_inactive=false')
@@ -109,8 +165,7 @@ export default function OrderModal({ lead, organizationId, onClose, onSuccess }:
       .catch(() => {})
   }, [lead.id])
 
-  const handleCepBlur = async () => {
-    const cleanCep = cep.replace(/\D/g, '')
+  const resolveCep = async (cleanCep: string) => {
     if (cleanCep.length !== 8) return
     setCepLoading(true)
     try {
@@ -126,6 +181,8 @@ export default function OrderModal({ lead, organizationId, onClose, onSuccess }:
     setCepLoading(false)
   }
 
+  const handleCepBlur = () => resolveCep(cep.replace(/\D/g, ''))
+
   const handleCopySourceMessage = async () => {
     if (!sourceMessage) return
     try {
@@ -133,6 +190,27 @@ export default function OrderModal({ lead, organizationId, onClose, onSuccess }:
       setCopied(true)
       setTimeout(() => setCopied(false), 2000)
     } catch {}
+  }
+
+  const handleAutoFill = () => {
+    if (parsedData.name) setCustomerName(parsedData.name)
+    if (parsedData.cpf) setCpf(maskCpf(parsedData.cpf))
+    if (parsedData.email) setCustomerEmail(parsedData.email)
+    if (parsedData.address) setAddress(parsedData.address)
+    if (parsedData.complement) setAddressComplement(parsedData.complement)
+    if (parsedData.paymentMethod) setSelectedMethods([parsedData.paymentMethod])
+    if (parsedData.value && items.length === 1 && items[0].unit_price === 0) {
+      setItems(prev => prev.map((it, i) => i === 0 ? { ...it, unit_price: parsedData.value! } : it))
+    }
+    if (parsedData.cep) {
+      const cleanCep = parsedData.cep.replace(/\D/g, '')
+      if (cleanCep.length === 8) {
+        setCep(maskCep(parsedData.cep))
+        if (!parsedData.address) resolveCep(cleanCep)
+      }
+    }
+    setAutoFilled(true)
+    setTimeout(() => setAutoFilled(false), 2000)
   }
 
   const toggleMethod = (value: string) => {
@@ -232,7 +310,7 @@ export default function OrderModal({ lead, organizationId, onClose, onSuccess }:
             </div>
 
             {showSourceMessage && (
-              <div className="px-4 pb-4">
+              <div className="px-4 pb-4 space-y-3">
                 <textarea
                   value={sourceMessage}
                   onChange={e => setSourceMessage(e.target.value)}
@@ -240,6 +318,16 @@ export default function OrderModal({ lead, organizationId, onClose, onSuccess }:
                   rows={6}
                   className="w-full text-xs leading-relaxed text-[#d1d7db] bg-[#111b21] rounded-lg p-3 max-h-48 overflow-y-auto resize-y focus:outline-none focus:ring-1 focus:ring-[#53bdeb] placeholder-[#667781]"
                 />
+                {parsedFieldsCount > 0 && (
+                  <button
+                    onClick={handleAutoFill}
+                    className="w-full flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-sm font-bold transition-colors"
+                    style={{ backgroundColor: 'rgba(83,189,235,0.12)', border: '1px solid rgba(83,189,235,0.4)', color: '#53bdeb' }}
+                  >
+                    {autoFilled ? <Check size={16} weight="bold" /> : <MagicWand size={16} weight="bold" />}
+                    {autoFilled ? 'Campos preenchidos!' : `Preencher ${parsedFieldsCount} campo${parsedFieldsCount !== 1 ? 's' : ''} identificado${parsedFieldsCount !== 1 ? 's' : ''}`}
+                  </button>
+                )}
               </div>
             )}
           </div>
