@@ -40,9 +40,10 @@ const NAV_ITEMS = [
   { label: 'Configurações', href: '/settings/organization', icon: Gear },
 ]
 
-// Destinos mais usados — ficam sempre à mão na barra inferior do celular,
-// ao alcance do polegar, sem precisar abrir o menu hambúrguer.
-const MOBILE_TAB_LABELS = ['Chat', 'Pipeline', 'Logística', 'Financeiro', 'Configurações']
+// Destinos mais usados — ficam sempre à mão na barra inferior do celular.
+// Os demais (Configurações, Funil de Mensagens, Métricas) ficam atrás do "Mais",
+// que abre a mesma gaveta lateral — só um sistema de navegação por vez no celular.
+const MOBILE_TAB_LABELS = ['Chat', 'Pipeline', 'Logística', 'Financeiro']
 
 export default function Navbar() {
   const pathname = usePathname()
@@ -123,15 +124,6 @@ export default function Navbar() {
     <nav className="app-safe-top dark-nav bg-white dark:bg-[#161b22] border-b border-gray-200 dark:border-[#30363d] px-4 sm:px-6 h-14 flex items-center justify-between sticky top-0 z-50">
       {/* Left: Logo + Nav */}
       <div className="flex items-center gap-8">
-        {/* Mobile menu button — área de toque 44px (recomendado), ícone do mesmo tamanho de antes */}
-        <button
-          onClick={() => setShowMobileMenu(true)}
-          className="app-tap-target md:hidden w-11 h-11 flex items-center justify-center rounded-lg text-gray-600 dark:text-[#8b949e] hover:bg-gray-100 dark:hover:bg-[#21262d] transition-colors -ml-1.5"
-          aria-label="Abrir menu"
-        >
-          <List size={22} />
-        </button>
-
         {/* Logo */}
         <Link href="/" className="flex items-center gap-2">
           <img src="/logos/Atlas.svg" alt="Atlas Eye Logo" className="h-6 w-auto object-contain" />
@@ -349,10 +341,19 @@ export default function Navbar() {
                 }`}
             >
               <Icon size={22} weight={isActive ? 'fill' : 'regular'} />
-              <span className="text-[10px] font-medium leading-none">{item.label === 'Configurações' ? 'Ajustes' : item.label}</span>
+              <span className="text-[10px] font-medium leading-none">{item.label}</span>
             </Link>
           )
         })}
+        {/* "Mais" — único outro jeito de navegar no celular; abre a mesma gaveta lateral
+            (Configurações, Funil de Mensagens, Métricas etc), nunca os dois ao mesmo tempo. */}
+        <button
+          onClick={() => setShowMobileMenu(true)}
+          className="app-tap-target flex-1 flex flex-col items-center justify-center gap-0.5 text-gray-500 dark:text-[#8b949e] transition-colors"
+        >
+          <List size={22} />
+          <span className="text-[10px] font-medium leading-none">Mais</span>
+        </button>
       </div>
     </div>
     </>
