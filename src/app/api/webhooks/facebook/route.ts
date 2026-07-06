@@ -14,6 +14,7 @@ import { db } from '@/lib/db'
 import { leads, leadActivities, pipelineStages, integrationMessageLogs } from '@/lib/schema'
 import { eq, and, isNull, ilike, asc } from 'drizzle-orm'
 import { publishEvent, channels, events } from '@/lib/realtime'
+import { dispatchOutboundWebhook } from '@/lib/outbound-webhook'
 import { ORGANIZATION_ID } from '@/lib/automated-message'
 import {
   FIGURINHA_BUSCANDO_MESSAGE,
@@ -223,6 +224,26 @@ export async function POST(req: NextRequest) {
       leadId,
       status: 'success',
       payload: body,
+    })
+
+    const momment = message.timestamp ? Number(message.timestamp) * 1000 : Date.now()
+
+    await dispatchOutboundWebhook(orgId, {
+      leadId,
+      phone,
+      fromMe: isOutboundEcho,
+      isGroup: false,
+      senderName: isOutboundEcho ? null : senderName,
+      content,
+      messageId: message.id || null,
+      timestamp: momment,
+      instanceId: value?.metadata?.phone_number_id || entry?.id || null,
+      connectedPhone: ownNumber || null,
+      mediaType: mediaType as any,
+      mediaUrl,
+      mediaMimetype,
+      mediaFilename,
+      audioPtt: message.type === 'audio' ? !!message.audio?.voice : undefined,
     })
 
     // Fluxo de figurinha: cliente pede "Quero minha figurinha Nº#..."

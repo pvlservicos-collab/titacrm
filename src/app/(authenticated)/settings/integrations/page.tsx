@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { WhatsappLogo, ArrowRight, DeviceMobile, HardDrives, NumberCircleTwo } from '@phosphor-icons/react'
+import { WhatsappLogo, ArrowRight, DeviceMobile, HardDrives, NumberCircleTwo, WebhooksLogo } from '@phosphor-icons/react'
 
 export default function IntegrationsSettingsPage() {
     return (
@@ -95,6 +95,23 @@ export default function IntegrationsSettingsPage() {
                             Segundo número via QR Code usando a Evolution API. Ideal para alto volume de atendimento sem restrições de template.
                         </p>
                         <div className="flex items-center text-purple-600 font-medium text-sm mt-6 group-hover:text-purple-700">
+                            Configurar <ArrowRight size={16} className="ml-1 transition-transform group-hover:translate-x-1" />
+                        </div>
+                    </div>
+                </Link>
+                {/* Outbound Webhook Card */}
+                <Link href="/settings/integrations/webhook" className="block group">
+                    <div className="bg-white border hover:border-emerald-500 border-gray-200 rounded-xl p-6 shadow-sm transition-all h-full flex flex-col cursor-pointer min-h-[340px]">
+                        <div className="w-12 h-12 rounded-lg bg-emerald-50 flex items-center justify-center mb-6">
+                            <WebhooksLogo size={28} weight="fill" className="text-emerald-600" />
+                        </div>
+                        <h2 className="text-lg font-semibold text-gray-900 mb-2 flex items-center gap-2">
+                            Webhook de Saída
+                        </h2>
+                        <p className="text-gray-500 text-sm mb-auto">
+                            Envie toda mensagem recebida ou enviada pelo WhatsApp para uma URL externa, no formato Z-API, para seu agente de IA ou automação.
+                        </p>
+                        <div className="flex items-center text-emerald-600 font-medium text-sm mt-6 group-hover:text-emerald-700">
                             Configurar <ArrowRight size={16} className="ml-1 transition-transform group-hover:translate-x-1" />
                         </div>
                     </div>

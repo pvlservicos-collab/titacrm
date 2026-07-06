@@ -3,17 +3,26 @@ import { db } from '@/lib/db'
 import { leads, leadActivities, integrations, pipelineStages } from '@/lib/schema'
 import { eq, and, isNull, asc, ilike } from 'drizzle-orm'
 import { publishEvent, channels, events } from '@/lib/realtime'
+import { dispatchOutboundWebhook } from '@/lib/outbound-webhook'
 
-function extractMessage(data: any): { text: string; mediaUrl?: string; mediaType?: string } | null {
+function extractMessage(data: any): {
+  text: string
+  mediaUrl?: string
+  mediaType?: string
+  mediaMimetype?: string
+  mediaFilename?: string
+  audioSeconds?: number
+  audioPtt?: boolean
+} | null {
   const msg = data?.message
   if (!msg) return null
 
   if (msg.conversation) return { text: msg.conversation }
   if (msg.extendedTextMessage?.text) return { text: msg.extendedTextMessage.text }
-  if (msg.imageMessage) return { text: msg.imageMessage.caption || '', mediaType: 'image', mediaUrl: msg.imageMessage.url }
-  if (msg.videoMessage) return { text: msg.videoMessage.caption || '', mediaType: 'video', mediaUrl: msg.videoMessage.url }
-  if (msg.audioMessage) return { text: '[Áudio]', mediaType: 'audio', mediaUrl: msg.audioMessage.url }
-  if (msg.documentMessage) return { text: msg.documentMessage.fileName || '[Documento]', mediaType: 'document', mediaUrl: msg.documentMessage.url }
+  if (msg.imageMessage) return { text: msg.imageMessage.caption || '', mediaType: 'image', mediaUrl: msg.imageMessage.url, mediaMimetype: msg.imageMessage.mimetype }
+  if (msg.videoMessage) return { text: msg.videoMessage.caption || '', mediaType: 'video', mediaUrl: msg.videoMessage.url, mediaMimetype: msg.videoMessage.mimetype }
+  if (msg.audioMessage) return { text: '[Áudio]', mediaType: 'audio', mediaUrl: msg.audioMessage.url, mediaMimetype: msg.audioMessage.mimetype, audioSeconds: msg.audioMessage.seconds, audioPtt: msg.audioMessage.ptt }
+  if (msg.documentMessage) return { text: msg.documentMessage.fileName || '[Documento]', mediaType: 'document', mediaUrl: msg.documentMessage.url, mediaMimetype: msg.documentMessage.mimetype, mediaFilename: msg.documentMessage.fileName }
 
   return null
 }
@@ -179,6 +188,31 @@ export async function POST(req: NextRequest) {
 
     await publishEvent(channels.leadActivities(lead.id), events.ACTIVITY_CREATED, { id: activity.id })
     await publishEvent(channels.orgLeads(orgId), events.LEAD_UPDATED, { id: lead.id })
+
+    const chatLid = (!isGroup && key.addressingMode === 'lid' && remoteJid.endsWith('@lid')) ? remoteJid : null
+    const connectedPhone = typeof body.sender === 'string' ? body.sender.split('@')[0] : null
+    const momment = typeof data?.messageTimestamp === 'number' ? data.messageTimestamp * 1000 : Date.now()
+
+    await dispatchOutboundWebhook(orgId, {
+      leadId: lead.id,
+      phone,
+      fromMe: isFromMe,
+      isGroup,
+      chatLid,
+      senderName: isFromMe ? null : senderName,
+      chatName: lead.title,
+      content: extracted.text,
+      messageId,
+      timestamp: momment,
+      instanceId: body.instance || integration?.id || null,
+      connectedPhone,
+      mediaType: extracted.mediaType as any,
+      mediaUrl: extracted.mediaUrl,
+      mediaMimetype: extracted.mediaMimetype,
+      mediaFilename: extracted.mediaFilename,
+      audioSeconds: extracted.audioSeconds,
+      audioPtt: extracted.audioPtt,
+    })
 
     return NextResponse.json({ ok: true, activityId: activity.id })
   } catch (err: any) {
