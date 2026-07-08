@@ -69,6 +69,8 @@
   --chat-icon: #54656f;
   --chat-accent: #53bdeb;
   --chat-accent-hover: #1a91c9;
+  --chat-bg-field-evolution: #f3f0fd;
+  --chat-border-evolution: rgba(139, 92, 246, 0.25);
 }
 .dark {
   --chat-bg-base: #111b21;
@@ -85,6 +87,8 @@
   --chat-icon: #aebac1;
   --chat-accent: #53bdeb;
   --chat-accent-hover: #7cd0f5;
+  --chat-bg-field-evolution: #1e1a2e;
+  --chat-border-evolution: rgba(139, 92, 246, 0.2);
 }
 
 /* ============================================

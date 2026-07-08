@@ -521,7 +521,7 @@ function MessageBubble({
           <div
             className={`relative rounded-2xl px-3 pt-2 pb-1.5 border shadow-sm min-w-[80px] ${showHeader ? 'rounded-tl-[2px]' : ''}`}
             style={isEvolution
-              ? { backgroundColor: '#1e1a2e', borderColor: 'rgba(139,92,246,0.2)' }
+              ? { backgroundColor: 'var(--chat-bg-field-evolution)', borderColor: 'var(--chat-border-evolution)' }
               : { backgroundColor: 'var(--chat-bg-field)', borderColor: 'rgba(255,255,255,0.05)' }
             }
           >

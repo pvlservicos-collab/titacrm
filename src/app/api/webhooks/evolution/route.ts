@@ -4,6 +4,7 @@ import { leads, leadActivities, integrations, pipelineStages } from '@/lib/schem
 import { eq, and, isNull, asc, ilike } from 'drizzle-orm'
 import { publishEvent, channels, events } from '@/lib/realtime'
 import { dispatchOutboundWebhook } from '@/lib/outbound-webhook'
+import { downloadEvolutionMedia } from '@/lib/evolution'
 
 function extractMessage(data: any): {
   text: string
@@ -137,6 +138,19 @@ export async function POST(req: NextRequest) {
       if (duplicate) return NextResponse.json({ ok: true, skipped: 'duplicate' })
     }
 
+    // A URL bruta do payload é um link criptografado (*.enc) do CDN do WhatsApp — não
+    // abre direto no navegador e expira em poucos dias. Pedimos pra Evolution API
+    // decriptar e re-hospedamos num link estável antes de salvar.
+    let hostedMediaUrl: string | undefined
+    let hostedMimetype: string | undefined
+    if (extracted.mediaUrl && messageId) {
+      const hosted = await downloadEvolutionMedia(orgId, messageId)
+      if (hosted) {
+        hostedMediaUrl = hosted.url
+        hostedMimetype = hosted.mimetype || extracted.mediaMimetype
+      }
+    }
+
     const metadata: Record<string, any> = {
       source: 'evolution',
       direction: isFromMe ? 'outbound' : 'inbound',
@@ -144,8 +158,13 @@ export async function POST(req: NextRequest) {
     }
     if (isGroup) metadata.is_group = true
     if (!isFromMe) metadata.sender_name = senderName
-    if (extracted.mediaUrl) metadata.media_url = extracted.mediaUrl
+    // Só grava media_url se conseguimos decriptar e re-hospedar — um link *.enc
+    // quebrado no chat é pior do que só mostrar o rótulo de texto (ex: "🎵 Áudio").
+    if (hostedMediaUrl) metadata.media_url = hostedMediaUrl
     if (extracted.mediaType) metadata.media_type = extracted.mediaType
+    if (hostedMimetype || extracted.mediaMimetype) metadata.media_mimetype = hostedMimetype || extracted.mediaMimetype
+    if (extracted.mediaFilename) metadata.media_filename = extracted.mediaFilename
+    if (extracted.audioPtt !== undefined) metadata.audio_ptt = extracted.audioPtt
 
     const [activity] = await db
       .insert(leadActivities)
@@ -207,8 +226,8 @@ export async function POST(req: NextRequest) {
       instanceId: body.instance || integration?.id || null,
       connectedPhone,
       mediaType: extracted.mediaType as any,
-      mediaUrl: extracted.mediaUrl,
-      mediaMimetype: extracted.mediaMimetype,
+      mediaUrl: hostedMediaUrl,
+      mediaMimetype: hostedMimetype || extracted.mediaMimetype,
       mediaFilename: extracted.mediaFilename,
       audioSeconds: extracted.audioSeconds,
       audioPtt: extracted.audioPtt,

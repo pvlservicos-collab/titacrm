@@ -128,20 +128,26 @@ async function downloadInstagramMedia(orgId: string, url: string, mediaType: str
   }
 }
 
+// share/ig_reel/story_mention: conteúdo compartilhado de dentro do Instagram
+// (Reels, posts, menção em story). A Meta não inclui uma URL baixável pra esses
+// tipos no payload do webhook — só um id de referência (ex: reel_video_id) que a
+// Graph API não expõe pra download. Por isso não tem mídia re-hospedada pra eles,
+// só o rótulo — não é um bug do parsing, é limitação da própria API da Meta.
 const IG_MEDIA_LABELS: Record<string, string> = {
   image: '📷 Imagem',
   video: '🎥 Vídeo',
   audio: '🎵 Áudio',
   file: '📄 Documento',
-  share: '🔗 Compartilhado',
+  share: '🔗 Publicação compartilhada (sem prévia — Meta não envia o link)',
+  ig_reel: '🎬 Reels compartilhado (sem prévia — Meta não envia o vídeo original)',
+  story_mention: '📸 Menção em story (sem prévia — Meta não envia a imagem)',
 }
 
 /**
  * Instagram Messaging entrega eventos no formato `entry.messaging[]` (padrão
  * Messenger Platform) — diferente do `entry.changes[].value.messages[]` do
- * WhatsApp Cloud API. Não testado ainda contra payload real (sem app Meta
- * aprovado); validar no console de teste de webhooks do App Dashboard assim
- * que houver credenciais e ajustar o parsing se o formato divergir.
+ * WhatsApp Cloud API. Validado contra payloads reais em 2026-07-08 (texto e
+ * anexo tipo ig_reel) — os dois formatos batem com o parsing abaixo.
  */
 async function handleInstagramEntry(entry: any) {
   const integration = await findInstagramIntegration(entry.id)

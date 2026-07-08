@@ -33,6 +33,46 @@ async function getEvolutionCredentials(organizationId: string) {
   return { instanceName, apiKey, server }
 }
 
+/**
+ * A URL que vem no payload do webhook (`msg.imageMessage.url` etc.) aponta pro CDN
+ * criptografado do WhatsApp (`mmg.whatsapp.net/.../*.enc`) — só abre com a mediaKey,
+ * que não temos aqui, e ainda expira em poucos dias. Por isso pedimos pra própria
+ * Evolution API decriptar (ela tem a mediaKey da instância) e devolver em base64,
+ * pra então re-hospedar num link estável no Blob — igual já fazemos com WhatsApp
+ * Cloud API e Instagram.
+ */
+export async function downloadEvolutionMedia(organizationId: string, messageId: string): Promise<{ url: string; mimetype?: string } | null> {
+  try {
+    const { instanceName, apiKey, server } = await getEvolutionCredentials(organizationId)
+
+    const res = await fetch(`${server}/chat/getBase64FromMediaMessage/${instanceName}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', apikey: apiKey },
+      body: JSON.stringify({ message: { key: { id: messageId } }, convertToMp4: false }),
+    })
+    if (!res.ok) return null
+
+    const data = await res.json().catch(() => null)
+    const base64: string | undefined = data?.base64
+    if (!base64) return null
+
+    const mimetype = data?.mimetype || 'application/octet-stream'
+    const buffer = Buffer.from(base64, 'base64')
+
+    const { put } = await import('@vercel/blob')
+    const ext = mimetype.split('/')[1]?.split(';')[0] || 'bin'
+    const blob = await put(`evolution-media/${organizationId}/${messageId}.${ext}`, buffer, {
+      access: 'public',
+      contentType: mimetype,
+    })
+
+    return { url: blob.url, mimetype }
+  } catch (err) {
+    console.error('[Evolution] media download failed', err)
+    return null
+  }
+}
+
 /** Grupo precisa do JID completo (`<id>@g.us`); contato usa só os dígitos do telefone. */
 function formatRecipient(phone: string, isGroup?: boolean) {
   const digits = phone.replace(/\D/g, '')
