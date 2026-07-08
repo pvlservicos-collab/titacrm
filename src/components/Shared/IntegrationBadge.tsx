@@ -27,7 +27,7 @@ const sizeMap = {
     }
 }
 
-type BadgeOrigin = 'whatsapp_lite' | 'whatsapp_official' | 'instagram' | 'api' | null
+type BadgeOrigin = 'whatsapp_lite' | 'whatsapp_official' | 'whatsapp_evolution' | 'instagram' | 'api' | null
 
 const IntegrationBadge = ({ lead, size = 'md' }: IntegrationBadgeProps) => {
     if (!lead) return null
@@ -41,6 +41,8 @@ const IntegrationBadge = ({ lead, size = 'md' }: IntegrationBadgeProps) => {
             origin = 'whatsapp_lite'
         } else if (lead.integration.type === 'instagram_direct') {
             origin = 'instagram'
+        } else if (lead.integration.type === 'whatsapp_evolution') {
+            origin = 'whatsapp_evolution'
         } else if (lead.integration.type.includes('whatsapp')) {
             origin = 'whatsapp_official'
         } else {
@@ -66,6 +68,11 @@ const IntegrationBadge = ({ lead, size = 'md' }: IntegrationBadgeProps) => {
         whatsapp_official: {
             bg: 'bg-green-500',
             title: 'WhatsApp Oficial',
+            Icon: Phone,
+        },
+        whatsapp_evolution: {
+            bg: 'bg-violet-500',
+            title: 'WhatsApp Nº 2 (Evolution)',
             Icon: Phone,
         },
         instagram: {

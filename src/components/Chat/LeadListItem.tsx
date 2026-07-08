@@ -2,9 +2,10 @@
 
 import { memo } from 'react'
 import { LeadWithOwner, SearchHit } from '@/lib/types'
-import { Robot, PushPin, UsersThree } from '@phosphor-icons/react'
+import { Robot, PushPin } from '@phosphor-icons/react'
 import { getInitials, formatPhone, renderSnippet } from '@/lib/utils'
 import IntegrationBadge from '@/components/Shared/IntegrationBadge'
+import LeadBadges from '@/components/Shared/LeadBadges'
 import { PAYMENT_STATUS_META, TONE_STYLES } from '@/lib/orderStatus'
 
 interface LeadListItemProps {
@@ -84,10 +85,13 @@ const LeadListItem = ({ lead, isSelected, onClick, onContextMenu, timeStr, hit, 
                     {/* Text Content */}
                     <div className="flex-1 min-w-0 overflow-hidden">
                         <div className="flex items-start justify-between mb-[2px] w-full">
-                            <h3 className={`text-[15px] leading-tight truncate ${lead.is_unread ? 'font-bold text-[var(--chat-text-primary)]' : 'font-medium text-[var(--chat-text-secondary)]'}`}>
-                                {formatPhone(lead.title)}
-                            </h3>
-                            <div className="flex items-center gap-2 pl-2">
+                            <div className="flex items-center gap-1.5 min-w-0 flex-1">
+                                <LeadBadges lead={lead} size="sm" />
+                                <h3 className={`text-[15px] leading-tight truncate ${lead.is_unread ? 'font-bold text-[var(--chat-text-primary)]' : 'font-medium text-[var(--chat-text-secondary)]'}`}>
+                                    {formatPhone(lead.title)}
+                                </h3>
+                            </div>
+                            <div className="flex items-center gap-2 pl-2 flex-shrink-0">
                                 {lead.is_unread && (
                                     <div className="w-2 h-2 rounded-full bg-[var(--chat-accent)] flex-shrink-0" />
                                 )}
@@ -111,20 +115,9 @@ const LeadListItem = ({ lead, isSelected, onClick, onContextMenu, timeStr, hit, 
                             </div>
                         )}
 
-                        {/* Grupo + channel tag + order status tags + lead tags */}
-                        {(lead.is_group || lead.integration_id || orderPaymentMethod || (lead.lead_tags && lead.lead_tags.length > 0)) && (
+                        {/* Order status tags + lead tags — badges de grupo/canal já saíram daqui, ficam do lado do nome */}
+                        {(orderPaymentMethod || (lead.lead_tags && lead.lead_tags.length > 0)) && (
                             <div className="flex flex-wrap gap-1 mt-1.5 items-center">
-                                {lead.is_group && (
-                                    <span className="text-[9px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded-full flex-shrink-0 flex items-center gap-0.5" style={{ backgroundColor: 'rgba(251,146,60,0.15)', color: '#fb923c' }}>
-                                        <UsersThree size={10} weight="bold" />
-                                        Grupo
-                                    </span>
-                                )}
-                                {lead.integration_id && (
-                                    <span className="text-[9px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded-full flex-shrink-0" style={{ backgroundColor: 'rgba(139,92,246,0.15)', color: '#a78bfa' }}>
-                                        Nº 2
-                                    </span>
-                                )}
                                 {orderPaymentMethod && PAYMENT_METHOD_TAGS[orderPaymentMethod] && (
                                     <span className="text-[9px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded-full flex-shrink-0" style={PAYMENT_METHOD_TAGS[orderPaymentMethod].style}>
                                         {PAYMENT_METHOD_TAGS[orderPaymentMethod].label}
@@ -165,6 +158,8 @@ export default memo(LeadListItem, (prevProps, nextProps) => {
         prevProps.lead.is_unread === nextProps.lead.is_unread &&
         prevProps.lead.last_message_sender_type === nextProps.lead.last_message_sender_type &&
         prevProps.lead.integration_id === nextProps.lead.integration_id &&
+        prevProps.lead.integration?.type === nextProps.lead.integration?.type &&
+        prevProps.lead.is_group === nextProps.lead.is_group &&
         prevProps.lead.custom_attributes?.last_order_payment_status === nextProps.lead.custom_attributes?.last_order_payment_status &&
         prevProps.lead.custom_attributes?.last_order_payment_method === nextProps.lead.custom_attributes?.last_order_payment_method &&
         prevProps.isSelected === nextProps.isSelected &&

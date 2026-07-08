@@ -20,7 +20,6 @@ import {
   ChatText,
   ShoppingCart,
   Trash,
-  UsersThree,
   InstagramLogo,
 } from '@phosphor-icons/react'
 import { CustomFieldDefinition, LeadWithOwner, PipelineStage, LeadStageHistory, Pipeline } from '@/lib/types'
@@ -33,6 +32,7 @@ import { useNotification } from '@/contexts/NotificationContext'
 import { ChatButtonKey } from '@/hooks/useChatButtonSettings'
 import DebouncedInput from '@/components/Shared/DebouncedInput'
 import IntegrationBadge from '@/components/Shared/IntegrationBadge'
+import LeadBadges from '@/components/Shared/LeadBadges'
 import CustomFieldSelect from '@/components/Shared/CustomFieldSelect'
 import CustomFieldMultiSelect from '@/components/Shared/CustomFieldMultiSelect'
 import OrderModal from './OrderModal'
@@ -296,15 +296,10 @@ export default function LeadDetailsSidebar({
             )}
           </div>
 
-          {lead.is_group && (
-            <span
-              className="mb-3 text-[10px] font-bold uppercase tracking-wide px-2.5 py-1 rounded-full inline-flex items-center gap-1.5"
-              style={{ backgroundColor: 'rgba(251,146,60,0.15)', color: '#fb923c' }}
-              title="Grupo do WhatsApp — várias pessoas diferentes podem mandar mensagem nessa mesma conversa"
-            >
-              <UsersThree size={12} weight="bold" />
-              Grupo — várias pessoas nessa conversa
-            </span>
+          {(lead.is_group || lead.integration?.type === 'instagram_direct' || lead.integration?.type === 'whatsapp_evolution') && (
+            <div className="flex items-center justify-center flex-wrap gap-1.5 mb-3">
+              <LeadBadges lead={lead} size="md" />
+            </div>
           )}
 
           <style>{`
