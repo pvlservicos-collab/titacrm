@@ -21,6 +21,7 @@ import {
   ShoppingCart,
   Trash,
   UsersThree,
+  InstagramLogo,
 } from '@phosphor-icons/react'
 import { CustomFieldDefinition, LeadWithOwner, PipelineStage, LeadStageHistory, Pipeline } from '@/lib/types'
 import { useSession } from 'next-auth/react'
@@ -506,6 +507,24 @@ export default function LeadDetailsSidebar({
             Informações de Contato
           </p>
           <div className="space-y-3">
+            {lead.custom_attributes?.instagram_username && (
+              <div className="flex items-center gap-2.5">
+                <InstagramLogo size={16} className="text-[var(--chat-text-muted)] flex-shrink-0" />
+                <div>
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-[var(--chat-text-muted)]">
+                    Instagram
+                  </p>
+                  <a
+                    href={`https://instagram.com/${lead.custom_attributes.instagram_username}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-sm text-[var(--chat-accent)] hover:underline break-all"
+                  >
+                    @{lead.custom_attributes.instagram_username}
+                  </a>
+                </div>
+              </div>
+            )}
             {lead.email && (
               <div className="flex items-center gap-2.5">
                 <EnvelopeSimple
@@ -531,7 +550,7 @@ export default function LeadDetailsSidebar({
                 </div>
               </div>
             )}
-            {!lead.email && !lead.phone && (
+            {!lead.email && !lead.phone && !lead.custom_attributes?.instagram_username && (
               <p className="text-sm text-[var(--chat-text-muted)]">
                 Sem informações de contato
               </p>

@@ -74,6 +74,29 @@ export async function sendInstagramMessage(organizationId: string, integrationId
 }
 
 /**
+ * Busca nome, @usuário e foto de perfil de quem mandou mensagem (pelo IGSID) —
+ * usado só pra exibir a conversa de forma legível no CRM, nunca falha o
+ * recebimento da mensagem em si (retorna null em qualquer erro).
+ */
+export async function getInstagramUserProfile(organizationId: string, integrationId: string, igsid: string) {
+  try {
+    const { apiVersion, token } = await getInstagramCredentials(organizationId, integrationId)
+
+    const res = await fetch(`https://graph.instagram.com/${apiVersion}/${igsid}?fields=name,username,profile_pic&access_token=${encodeURIComponent(token)}`)
+    if (!res.ok) return null
+
+    const data = await res.json()
+    return {
+      name: data.name as string | undefined,
+      username: data.username as string | undefined,
+      profilePic: data.profile_pic as string | undefined,
+    }
+  } catch {
+    return null
+  }
+}
+
+/**
  * A Instagram Messaging API não aceita texto + anexo na mesma mensagem (diferente
  * do WhatsApp Cloud API) — caption é ignorada aqui; se necessário, envie como
  * mensagem de texto separada antes da mídia.

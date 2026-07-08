@@ -203,11 +203,16 @@ async function handleInstagramEntry(entry: any) {
         .where(and(eq(pipelineStages.organizationId, orgId), isNull(pipelineStages.deletedAt)))
         .orderBy(asc(pipelineStages.rank)).limit(1)
 
+      const { getInstagramUserProfile } = await import('@/lib/instagram')
+      const profile = await getInstagramUserProfile(orgId, integration.id, senderId)
+
       const [newLead] = await db.insert(leads).values({
         organizationId: orgId,
         integrationId: integration.id,
-        title: senderId,
+        title: profile?.name || senderId,
         externalId: senderId,
+        avatarUrl: profile?.profilePic || null,
+        customAttributes: profile?.username ? { instagram_username: profile.username } : {},
         stageId: firstStage?.id || null,
         lastActivityAt: new Date(),
       }).returning({ id: leads.id })
