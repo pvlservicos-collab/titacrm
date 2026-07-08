@@ -2,7 +2,7 @@
 
 import { memo } from 'react'
 import { LeadWithOwner, SearchHit } from '@/lib/types'
-import { Robot, PushPin } from '@phosphor-icons/react'
+import { Robot, PushPin, UsersThree } from '@phosphor-icons/react'
 import { getInitials, formatPhone, renderSnippet } from '@/lib/utils'
 import IntegrationBadge from '@/components/Shared/IntegrationBadge'
 import { PAYMENT_STATUS_META, TONE_STYLES } from '@/lib/orderStatus'
@@ -111,9 +111,15 @@ const LeadListItem = ({ lead, isSelected, onClick, onContextMenu, timeStr, hit, 
                             </div>
                         )}
 
-                        {/* Channel tag + order status tags + lead tags */}
-                        {(lead.integration_id || orderPaymentMethod || (lead.lead_tags && lead.lead_tags.length > 0)) && (
+                        {/* Grupo + channel tag + order status tags + lead tags */}
+                        {(lead.is_group || lead.integration_id || orderPaymentMethod || (lead.lead_tags && lead.lead_tags.length > 0)) && (
                             <div className="flex flex-wrap gap-1 mt-1.5 items-center">
+                                {lead.is_group && (
+                                    <span className="text-[9px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded-full flex-shrink-0 flex items-center gap-0.5" style={{ backgroundColor: 'rgba(251,146,60,0.15)', color: '#fb923c' }}>
+                                        <UsersThree size={10} weight="bold" />
+                                        Grupo
+                                    </span>
+                                )}
                                 {lead.integration_id && (
                                     <span className="text-[9px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded-full flex-shrink-0" style={{ backgroundColor: 'rgba(139,92,246,0.15)', color: '#a78bfa' }}>
                                         Nº 2

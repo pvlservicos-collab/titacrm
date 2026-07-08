@@ -20,6 +20,7 @@ import {
   ChatText,
   ShoppingCart,
   Trash,
+  UsersThree,
 } from '@phosphor-icons/react'
 import { CustomFieldDefinition, LeadWithOwner, PipelineStage, LeadStageHistory, Pipeline } from '@/lib/types'
 import { useSession } from 'next-auth/react'
@@ -293,6 +294,17 @@ export default function LeadDetailsSidebar({
               </h2>
             )}
           </div>
+
+          {lead.is_group && (
+            <span
+              className="mb-3 text-[10px] font-bold uppercase tracking-wide px-2.5 py-1 rounded-full inline-flex items-center gap-1.5"
+              style={{ backgroundColor: 'rgba(251,146,60,0.15)', color: '#fb923c' }}
+              title="Grupo do WhatsApp — várias pessoas diferentes podem mandar mensagem nessa mesma conversa"
+            >
+              <UsersThree size={12} weight="bold" />
+              Grupo — várias pessoas nessa conversa
+            </span>
+          )}
 
           <style>{`
             .tag-pill .tag-x {
