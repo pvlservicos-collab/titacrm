@@ -3,7 +3,7 @@ import { authenticateRequest, apiError, validateRequired, validateSource } from 
 import { db } from '@/lib/db'
 import { publishEvent, channels, events } from '@/lib/realtime'
 import {
-  leads, leadActivities, pipelineStages, organizationMembers, profiles, notifications,
+  leads, leadActivities, pipelineStages, organizationMembers, profiles, notifications, organizationRoles,
 } from '@/lib/schema'
 import { eq, and, isNull, desc, asc, ilike, sql } from 'drizzle-orm'
 import { getChannelAdapter } from '@/lib/channels/registry'
@@ -13,6 +13,19 @@ const CHANNEL_LABELS: Record<string, string> = {
   whatsapp_evolution: 'Nº 2 (Evolution)',
   whatsapp_cloud_official: 'API Oficial',
   instagram_direct: 'Instagram',
+}
+
+// Mesma heurística de admin usada em quick-replies/permissions.ts / RolePermissionsPanel.tsx
+async function isAdminAuth(auth: { isSuperAdmin?: boolean; roleId: string | null }): Promise<boolean> {
+  if (auth.isSuperAdmin) return true
+  if (!auth.roleId) return false
+  const [role] = await db
+    .select({ name: organizationRoles.name })
+    .from(organizationRoles)
+    .where(eq(organizationRoles.id, auth.roleId))
+    .limit(1)
+  const name = role?.name?.toLowerCase()
+  return name === 'administrador' || name === 'owner' || name === 'master'
 }
 
 /**
@@ -282,6 +295,67 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       channel: metadata.channel,
       lead_name: lead?.title,
     }, { status: 201 })
+  } catch (err: any) {
+    return apiError(err.status || 500, err.message || 'Erro interno.')
+  }
+}
+
+/**
+ * DELETE /api/leads/[id]/messages
+ * Apaga o histórico de mensagens da conversa do lead (mantém o lead/contato).
+ * Restrito a administradores.
+ */
+export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  try {
+    const auth = await authenticateRequest(req)
+    if (!(await isAdminAuth(auth))) {
+      return apiError(403, 'Apenas administradores podem apagar o histórico de conversas.')
+    }
+
+    const { id } = await params
+    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(id)
+
+    const [lead] = await db
+      .select({ id: leads.id })
+      .from(leads)
+      .where(
+        and(
+          eq(leads.organizationId, auth.organizationId),
+          isNull(leads.deletedAt),
+          isUuid ? eq(leads.id, id) : eq(leads.phone, decodeURIComponent(id))
+        )
+      )
+      .limit(1)
+
+    if (!lead) return apiError(404, 'Lead não encontrado.')
+
+    // Mesmo filtro de tipos exibidos na timeline do chat (GET acima)
+    await db
+      .delete(leadActivities)
+      .where(
+        and(
+          eq(leadActivities.organizationId, auth.organizationId),
+          eq(leadActivities.leadId, lead.id),
+          sql`${leadActivities.type} IN ('whatsapp','note','email','system')`
+        )
+      )
+
+    await db
+      .update(leads)
+      .set({
+        lastMessageContent: null,
+        lastMessageSenderType: null,
+        lastActivityType: null,
+        lastActivityByMemberId: null,
+        isUnread: false,
+        updatedAt: new Date(),
+      })
+      .where(eq(leads.id, lead.id))
+
+    await publishEvent(channels.leadActivities(lead.id), events.ACTIVITY_UPDATED, { id: lead.id })
+    await publishEvent(channels.orgLeads(auth.organizationId), events.LEAD_UPDATED, { id: lead.id })
+
+    return Response.json({ success: true })
   } catch (err: any) {
     return apiError(err.status || 500, err.message || 'Erro interno.')
   }

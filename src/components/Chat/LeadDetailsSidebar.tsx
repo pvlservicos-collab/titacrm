@@ -19,6 +19,7 @@ import {
   Pause,
   ChatText,
   ShoppingCart,
+  Trash,
 } from '@phosphor-icons/react'
 import { CustomFieldDefinition, LeadWithOwner, PipelineStage, LeadStageHistory, Pipeline } from '@/lib/types'
 import { useSession } from 'next-auth/react'
@@ -26,6 +27,7 @@ import { getInitials, formatPhone } from '@/lib/utils'
 import FunnelMiniMap from './FunnelMiniMap'
 import LeadHistoryTimeline from './LeadHistoryTimeline'
 import { useTags, useCustomFields, useChatButtonSettings, useAuth } from '@/hooks'
+import { useNotification } from '@/contexts/NotificationContext'
 import { ChatButtonKey } from '@/hooks/useChatButtonSettings'
 import DebouncedInput from '@/components/Shared/DebouncedInput'
 import IntegrationBadge from '@/components/Shared/IntegrationBadge'
@@ -68,7 +70,10 @@ export default function LeadDetailsSidebar({
     ? ownerName.split(' ').map((n) => n[0]).join('').slice(0, 2).toUpperCase()
     : ''
 
-  const { currentOrganization, user, profileName } = useAuth()
+  const { currentOrganization, user, profileName, isMaster, roleName } = useAuth()
+  const { addNotification } = useNotification()
+  const isAdmin = isMaster || roleName?.toLowerCase() === 'administrador' || roleName?.toLowerCase() === 'owner'
+  const [deletingHistory, setDeletingHistory] = useState(false)
 
   const { allTags, leadTags, addTagToLead, removeTagFromLead, loading: tagsLoading } = useTags(lead.organization_id, lead.id)
   const { categories, definitions, values, updateFieldValue } = useCustomFields(lead.organization_id, lead.id)
@@ -191,6 +196,32 @@ export default function LeadDetailsSidebar({
           metadata: { source: 'rename', sender_name: profileName || user?.email || 'Usuário' },
         }),
       })
+    }
+  }
+
+  const handleDeleteHistory = async () => {
+    if (deletingHistory) return
+    if (!confirm(`Apagar todo o histórico de mensagens da conversa com "${formatPhone(lead.title)}"? O contato continua no CRM, só as mensagens somem. Essa ação não pode ser desfeita.`)) return
+
+    setDeletingHistory(true)
+    try {
+      const res = await fetch(`/api/leads/${lead.id}/messages`, { method: 'DELETE' })
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}))
+        throw new Error(err.error || 'Falha ao apagar histórico.')
+      }
+      if (onUpdateLead) {
+        onUpdateLead(lead.id, { last_message_content: undefined, last_message_sender_type: undefined })
+      }
+      addNotification({ type: 'success', title: 'Histórico apagado', message: 'As mensagens da conversa foram removidas.' })
+    } catch (err) {
+      addNotification({
+        type: 'error',
+        title: 'Falha ao apagar histórico',
+        message: err instanceof Error ? err.message : 'Erro desconhecido.',
+      })
+    } finally {
+      setDeletingHistory(false)
     }
   }
 
@@ -638,6 +669,20 @@ export default function LeadDetailsSidebar({
           organizationId={lead.organization_id}
           leadId={lead.id}
         />
+
+        {isAdmin && (
+          <>
+            <div className="border-t border-[var(--chat-border)]" />
+            <button
+              onClick={handleDeleteHistory}
+              disabled={deletingHistory}
+              className="w-full py-2.5 px-4 rounded-xl text-sm font-bold flex items-center justify-center gap-2 bg-red-500/10 border border-red-500/30 text-red-400 hover:bg-red-500/20 transition-colors disabled:opacity-60 disabled:cursor-wait"
+            >
+              <Trash size={16} weight="fill" />
+              {deletingHistory ? 'Apagando...' : 'Apagar histórico da conversa'}
+            </button>
+          </>
+        )}
       </div>
     </div>
 
