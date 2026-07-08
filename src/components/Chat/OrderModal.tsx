@@ -284,28 +284,28 @@ export default function OrderModal({ lead, organizationId, onClose, onSuccess }:
 
   const modal = (
     <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4" style={{ backgroundColor: 'rgba(0,0,0,0.75)' }}>
-      <div className="bg-[#1a2730] border border-[#2f3b44] rounded-2xl w-full max-w-2xl max-h-[90vh] flex flex-col shadow-2xl">
+      <div className="bg-[#1a2730] border border-[var(--chat-border)] rounded-2xl w-full max-w-2xl max-h-[90vh] flex flex-col shadow-2xl">
         {/* Header */}
-        <div className="flex items-center justify-between p-5 border-b border-[#2f3b44]">
-          <h2 className="text-lg font-bold text-[#e9edef]">Registrar Venda</h2>
-          <button onClick={onClose} className="text-[#8696a0] hover:text-[#e9edef] transition-colors"><X size={20} /></button>
+        <div className="flex items-center justify-between p-5 border-b border-[var(--chat-border)]">
+          <h2 className="text-lg font-bold text-[var(--chat-text-primary)]">Registrar Venda</h2>
+          <button onClick={onClose} className="text-[var(--chat-text-muted)] hover:text-[var(--chat-text-primary)] transition-colors"><X size={20} /></button>
         </div>
 
         <div className="flex-1 overflow-y-auto p-5 space-y-5 chat-dark-scroll">
           {/* Mensagem do cliente — preenche sozinho quando reconhece o template, mas também
               dá pra colar/editar na mão (ex: se a detecção não achar ou vier de outra conversa) */}
-          <div className="rounded-xl border border-[#2f3b44] bg-[#182229] overflow-hidden">
+          <div className="rounded-xl border border-[var(--chat-border)] bg-[var(--chat-bg-panel)] overflow-hidden">
             <div className="flex items-center justify-between gap-2 px-4 py-3">
-              <div className="flex items-center gap-2 text-[#53bdeb]">
+              <div className="flex items-center gap-2 text-[var(--chat-accent)]">
                 <ClipboardText size={16} weight="bold" />
                 <p className="text-xs font-bold uppercase tracking-wide">Mensagem do cliente</p>
               </div>
               <div className="flex items-center gap-3">
-                <button onClick={handleCopySourceMessage} className="flex items-center gap-1 text-xs font-medium text-[#8696a0] hover:text-[#e9edef] transition-colors">
+                <button onClick={handleCopySourceMessage} className="flex items-center gap-1 text-xs font-medium text-[var(--chat-text-muted)] hover:text-[var(--chat-text-primary)] transition-colors">
                   {copied ? <Check size={14} className="text-green-400" /> : <Copy size={14} />}
                   {copied ? 'Copiado' : 'Copiar'}
                 </button>
-                <button onClick={() => setShowSourceMessage(v => !v)} className="text-[#8696a0] hover:text-[#e9edef] transition-colors" aria-label={showSourceMessage ? 'Recolher' : 'Expandir'}>
+                <button onClick={() => setShowSourceMessage(v => !v)} className="text-[var(--chat-text-muted)] hover:text-[var(--chat-text-primary)] transition-colors" aria-label={showSourceMessage ? 'Recolher' : 'Expandir'}>
                   {showSourceMessage ? <CaretUp size={16} /> : <CaretDown size={16} />}
                 </button>
               </div>
@@ -318,13 +318,13 @@ export default function OrderModal({ lead, organizationId, onClose, onSuccess }:
                   onChange={e => setSourceMessage(e.target.value)}
                   placeholder="Cole aqui a mensagem que o cliente mandou com os dados de entrega..."
                   rows={6}
-                  className="w-full text-xs leading-relaxed text-[#d1d7db] bg-[#111b21] rounded-lg p-3 max-h-48 overflow-y-auto resize-y focus:outline-none focus:ring-1 focus:ring-[#53bdeb] placeholder-[#667781]"
+                  className="w-full text-xs leading-relaxed text-[var(--chat-text-secondary)] bg-[var(--chat-bg-base)] rounded-lg p-3 max-h-48 overflow-y-auto resize-y focus:outline-none focus:ring-1 focus:ring-[var(--chat-accent)] placeholder-[var(--chat-text-tertiary)]"
                 />
                 {parsedFieldsCount > 0 && (
                   <button
                     onClick={handleAutoFill}
                     className="w-full flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-sm font-bold transition-colors"
-                    style={{ backgroundColor: 'rgba(83,189,235,0.12)', border: '1px solid rgba(83,189,235,0.4)', color: '#53bdeb' }}
+                    style={{ backgroundColor: 'rgba(83,189,235,0.12)', border: '1px solid rgba(83,189,235,0.4)', color: 'var(--chat-accent)' }}
                   >
                     {autoFilled ? <Check size={16} weight="bold" /> : <MagicWand size={16} weight="bold" />}
                     {autoFilled ? 'Campos preenchidos!' : `Preencher ${parsedFieldsCount} campo${parsedFieldsCount !== 1 ? 's' : ''} identificado${parsedFieldsCount !== 1 ? 's' : ''}`}
@@ -336,7 +336,7 @@ export default function OrderModal({ lead, organizationId, onClose, onSuccess }:
 
           {/* Produtos */}
           <div>
-            <p className="text-[10px] font-bold uppercase tracking-wider text-[#8696a0] mb-3">Produtos</p>
+            <p className="text-[10px] font-bold uppercase tracking-wider text-[var(--chat-text-muted)] mb-3">Produtos</p>
             <div className="space-y-2">
               {items.map((item, idx) => {
                 const filtered = products.filter(p => p.name.toLowerCase().includes((productSearch[idx] || '').toLowerCase()))
@@ -354,39 +354,39 @@ export default function OrderModal({ lead, organizationId, onClose, onSuccess }:
                         }}
                         onFocus={() => setShowProductDropdown(prev => ({ ...prev, [idx]: true }))}
                         onBlur={() => setTimeout(() => setShowProductDropdown(prev => ({ ...prev, [idx]: false })), 150)}
-                        className="w-full px-3 py-2 text-sm bg-[#202c33] border border-[#2f3b44] rounded-lg text-[#e9edef] placeholder-[#667781] focus:outline-none focus:border-[#53bdeb]"
+                        className="w-full px-3 py-2 text-sm bg-[var(--chat-bg-field)] border border-[var(--chat-border)] rounded-lg text-[var(--chat-text-primary)] placeholder-[var(--chat-text-tertiary)] focus:outline-none focus:border-[var(--chat-accent)]"
                       />
                       {showProductDropdown[idx] && filtered.length > 0 && (
-                        <div className="absolute top-full left-0 right-0 mt-1 bg-[#233138] border border-[#2f3b44] rounded-lg shadow-lg z-10 max-h-40 overflow-y-auto">
+                        <div className="absolute top-full left-0 right-0 mt-1 bg-[var(--chat-bg-menu)] border border-[var(--chat-border)] rounded-lg shadow-lg z-10 max-h-40 overflow-y-auto">
                           {filtered.map(p => (
-                            <button key={p.id} onMouseDown={() => handleItemProductSelect(idx, p)} className="w-full text-left px-3 py-2 text-sm text-[#d1d7db] hover:bg-[#2a3942] flex items-center justify-between">
+                            <button key={p.id} onMouseDown={() => handleItemProductSelect(idx, p)} className="w-full text-left px-3 py-2 text-sm text-[var(--chat-text-secondary)] hover:bg-[var(--chat-bg-hover)] flex items-center justify-between">
                               <span>{p.name}</span>
-                              <span className="text-[#53bdeb] text-xs">R$ {Number(p.price).toFixed(2)}</span>
+                              <span className="text-[var(--chat-accent)] text-xs">R$ {Number(p.price).toFixed(2)}</span>
                             </button>
                           ))}
                         </div>
                       )}
                     </div>
                     <div className="flex items-center gap-1 flex-shrink-0">
-                      <button onClick={() => setItems(prev => prev.map((it, i) => i === idx ? { ...it, quantity: Math.max(1, it.quantity - 1) } : it))} className="w-7 h-7 rounded bg-[#202c33] border border-[#2f3b44] flex items-center justify-center text-[#8696a0] hover:text-[#e9edef]">
+                      <button onClick={() => setItems(prev => prev.map((it, i) => i === idx ? { ...it, quantity: Math.max(1, it.quantity - 1) } : it))} className="w-7 h-7 rounded bg-[var(--chat-bg-field)] border border-[var(--chat-border)] flex items-center justify-center text-[var(--chat-text-muted)] hover:text-[var(--chat-text-primary)]">
                         <Minus size={12} />
                       </button>
-                      <span className="w-8 text-center text-sm text-[#e9edef]">{item.quantity}</span>
-                      <button onClick={() => setItems(prev => prev.map((it, i) => i === idx ? { ...it, quantity: it.quantity + 1 } : it))} className="w-7 h-7 rounded bg-[#202c33] border border-[#2f3b44] flex items-center justify-center text-[#8696a0] hover:text-[#e9edef]">
+                      <span className="w-8 text-center text-sm text-[var(--chat-text-primary)]">{item.quantity}</span>
+                      <button onClick={() => setItems(prev => prev.map((it, i) => i === idx ? { ...it, quantity: it.quantity + 1 } : it))} className="w-7 h-7 rounded bg-[var(--chat-bg-field)] border border-[var(--chat-border)] flex items-center justify-center text-[var(--chat-text-muted)] hover:text-[var(--chat-text-primary)]">
                         <Plus size={12} />
                       </button>
                     </div>
                     <div className="w-28 flex-shrink-0">
-                      <input type="number" step="0.01" min="0" value={item.unit_price || ''} onChange={e => setItems(prev => prev.map((it, i) => i === idx ? { ...it, unit_price: Number(e.target.value) } : it))} placeholder="R$ 0,00" className="w-full px-3 py-2 text-sm bg-[#202c33] border border-[#2f3b44] rounded-lg text-[#e9edef] placeholder-[#667781] focus:outline-none focus:border-[#53bdeb]" />
+                      <input type="number" step="0.01" min="0" value={item.unit_price || ''} onChange={e => setItems(prev => prev.map((it, i) => i === idx ? { ...it, unit_price: Number(e.target.value) } : it))} placeholder="R$ 0,00" className="w-full px-3 py-2 text-sm bg-[var(--chat-bg-field)] border border-[var(--chat-border)] rounded-lg text-[var(--chat-text-primary)] placeholder-[var(--chat-text-tertiary)] focus:outline-none focus:border-[var(--chat-accent)]" />
                     </div>
                     {items.length > 1 && (
-                      <button onClick={() => setItems(prev => prev.filter((_, i) => i !== idx))} className="w-8 h-8 flex items-center justify-center text-[#667781] hover:text-red-400 flex-shrink-0 mt-0.5"><X size={16} /></button>
+                      <button onClick={() => setItems(prev => prev.filter((_, i) => i !== idx))} className="w-8 h-8 flex items-center justify-center text-[var(--chat-text-tertiary)] hover:text-red-400 flex-shrink-0 mt-0.5"><X size={16} /></button>
                     )}
                   </div>
                 )
               })}
             </div>
-            <button onClick={() => setItems(prev => [...prev, { product_id: null, product_name: '', quantity: 1, unit_price: 0 }])} className="mt-2 flex items-center gap-1.5 text-sm text-[#53bdeb] hover:text-[#aedff7]">
+            <button onClick={() => setItems(prev => [...prev, { product_id: null, product_name: '', quantity: 1, unit_price: 0 }])} className="mt-2 flex items-center gap-1.5 text-sm text-[var(--chat-accent)] hover:text-[var(--chat-accent-hover)]">
               <Plus size={14} /> Adicionar produto
             </button>
           </div>
@@ -394,8 +394,8 @@ export default function OrderModal({ lead, organizationId, onClose, onSuccess }:
           {/* Pagamento — Forma e Status como tags coloridas */}
           <div className="space-y-4">
             <div>
-              <p className="text-[10px] font-bold uppercase tracking-wider text-[#8696a0] mb-2">
-                Forma de Pagamento <span className="text-[#667781] normal-case font-normal">(selecione até 2)</span>
+              <p className="text-[10px] font-bold uppercase tracking-wider text-[var(--chat-text-muted)] mb-2">
+                Forma de Pagamento <span className="text-[var(--chat-text-tertiary)] normal-case font-normal">(selecione até 2)</span>
               </p>
               <div className="flex flex-wrap gap-2">
                 {PAYMENT_METHODS.map(m => {
@@ -407,7 +407,7 @@ export default function OrderModal({ lead, organizationId, onClose, onSuccess }:
                       className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold border transition-all duration-150"
                       style={selected
                         ? { backgroundColor: m.bg, color: m.color, borderColor: m.border, boxShadow: `0 0 0 1px ${m.border}` }
-                        : { backgroundColor: 'rgba(255,255,255,0.03)', color: '#8696a0', borderColor: '#2f3b44' }
+                        : { backgroundColor: 'rgba(255,255,255,0.03)', color: 'var(--chat-text-muted)', borderColor: 'var(--chat-border)' }
                       }
                     >
                       {selected && <Check size={10} weight="bold" />}
@@ -417,14 +417,14 @@ export default function OrderModal({ lead, organizationId, onClose, onSuccess }:
                 })}
               </div>
               {selectedMethods.length === 2 && (
-                <p className="text-[10px] text-[#8696a0] mt-1.5">
+                <p className="text-[10px] text-[var(--chat-text-muted)] mt-1.5">
                   Pagamento dividido: {selectedMethods.map(m => PAYMENT_METHODS.find(p => p.value === m)?.label).join(' + ')}
                 </p>
               )}
             </div>
 
             <div>
-              <p className="text-[10px] font-bold uppercase tracking-wider text-[#8696a0] mb-2">Status do Pagamento</p>
+              <p className="text-[10px] font-bold uppercase tracking-wider text-[var(--chat-text-muted)] mb-2">Status do Pagamento</p>
               <div className="flex gap-2">
                 {PAYMENT_STATUS.map(s => {
                   const selected = paymentStatus === s.value
@@ -435,7 +435,7 @@ export default function OrderModal({ lead, organizationId, onClose, onSuccess }:
                       className="flex items-center gap-1.5 px-4 py-2 rounded-full text-xs font-bold border transition-all duration-150"
                       style={selected
                         ? { backgroundColor: s.bg, color: s.color, borderColor: s.border, boxShadow: `0 0 0 1px ${s.border}` }
-                        : { backgroundColor: 'rgba(255,255,255,0.03)', color: '#8696a0', borderColor: '#2f3b44' }
+                        : { backgroundColor: 'rgba(255,255,255,0.03)', color: 'var(--chat-text-muted)', borderColor: 'var(--chat-border)' }
                       }
                     >
                       {selected && <Check size={10} weight="bold" />}
@@ -449,76 +449,76 @@ export default function OrderModal({ lead, organizationId, onClose, onSuccess }:
 
           {/* Dados do cliente */}
           <div>
-            <p className="text-[10px] font-bold uppercase tracking-wider text-[#8696a0] mb-3">Dados do Cliente</p>
+            <p className="text-[10px] font-bold uppercase tracking-wider text-[var(--chat-text-muted)] mb-3">Dados do Cliente</p>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
-                <label className="text-[10px] text-[#8696a0] font-medium">Nome</label>
-                <input value={customerName} onChange={e => setCustomerName(e.target.value)} className="w-full mt-1 px-3 py-2 text-sm bg-[#202c33] border border-[#2f3b44] rounded-lg text-[#e9edef] focus:outline-none focus:border-[#53bdeb]" />
+                <label className="text-[10px] text-[var(--chat-text-muted)] font-medium">Nome</label>
+                <input value={customerName} onChange={e => setCustomerName(e.target.value)} className="w-full mt-1 px-3 py-2 text-sm bg-[var(--chat-bg-field)] border border-[var(--chat-border)] rounded-lg text-[var(--chat-text-primary)] focus:outline-none focus:border-[var(--chat-accent)]" />
               </div>
               <div>
-                <label className="text-[10px] text-[#8696a0] font-medium">Telefone</label>
-                <input value={customerPhone} onChange={e => setCustomerPhone(e.target.value)} className="w-full mt-1 px-3 py-2 text-sm bg-[#202c33] border border-[#2f3b44] rounded-lg text-[#e9edef] focus:outline-none focus:border-[#53bdeb]" />
+                <label className="text-[10px] text-[var(--chat-text-muted)] font-medium">Telefone</label>
+                <input value={customerPhone} onChange={e => setCustomerPhone(e.target.value)} className="w-full mt-1 px-3 py-2 text-sm bg-[var(--chat-bg-field)] border border-[var(--chat-border)] rounded-lg text-[var(--chat-text-primary)] focus:outline-none focus:border-[var(--chat-accent)]" />
               </div>
               <div>
-                <label className="text-[10px] text-[#8696a0] font-medium">E-mail</label>
-                <input value={customerEmail} onChange={e => setCustomerEmail(e.target.value)} className="w-full mt-1 px-3 py-2 text-sm bg-[#202c33] border border-[#2f3b44] rounded-lg text-[#e9edef] focus:outline-none focus:border-[#53bdeb]" />
+                <label className="text-[10px] text-[var(--chat-text-muted)] font-medium">E-mail</label>
+                <input value={customerEmail} onChange={e => setCustomerEmail(e.target.value)} className="w-full mt-1 px-3 py-2 text-sm bg-[var(--chat-bg-field)] border border-[var(--chat-border)] rounded-lg text-[var(--chat-text-primary)] focus:outline-none focus:border-[var(--chat-accent)]" />
               </div>
               <div>
-                <label className="text-[10px] text-[#8696a0] font-medium">CPF</label>
-                <input value={cpf} onChange={e => setCpf(maskCpf(e.target.value))} placeholder="000.000.000-00" className="w-full mt-1 px-3 py-2 text-sm bg-[#202c33] border border-[#2f3b44] rounded-lg text-[#e9edef] placeholder-[#667781] focus:outline-none focus:border-[#53bdeb]" />
+                <label className="text-[10px] text-[var(--chat-text-muted)] font-medium">CPF</label>
+                <input value={cpf} onChange={e => setCpf(maskCpf(e.target.value))} placeholder="000.000.000-00" className="w-full mt-1 px-3 py-2 text-sm bg-[var(--chat-bg-field)] border border-[var(--chat-border)] rounded-lg text-[var(--chat-text-primary)] placeholder-[var(--chat-text-tertiary)] focus:outline-none focus:border-[var(--chat-accent)]" />
               </div>
             </div>
           </div>
 
           {/* Endereço */}
           <div>
-            <p className="text-[10px] font-bold uppercase tracking-wider text-[#8696a0] mb-3 flex items-center gap-1.5">
+            <p className="text-[10px] font-bold uppercase tracking-wider text-[var(--chat-text-muted)] mb-3 flex items-center gap-1.5">
               <MapPin size={12} /> Endereço de Entrega
             </p>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <div>
-                <label className="text-[10px] text-[#8696a0] font-medium">CEP</label>
-                <input value={cep} onChange={e => setCep(maskCep(e.target.value))} onBlur={handleCepBlur} placeholder="00000-000" className="w-full mt-1 px-3 py-2 text-sm bg-[#202c33] border border-[#2f3b44] rounded-lg text-[#e9edef] placeholder-[#667781] focus:outline-none focus:border-[#53bdeb]" />
-                {cepLoading && <span className="text-[10px] text-[#53bdeb]">Buscando...</span>}
+                <label className="text-[10px] text-[var(--chat-text-muted)] font-medium">CEP</label>
+                <input value={cep} onChange={e => setCep(maskCep(e.target.value))} onBlur={handleCepBlur} placeholder="00000-000" className="w-full mt-1 px-3 py-2 text-sm bg-[var(--chat-bg-field)] border border-[var(--chat-border)] rounded-lg text-[var(--chat-text-primary)] placeholder-[var(--chat-text-tertiary)] focus:outline-none focus:border-[var(--chat-accent)]" />
+                {cepLoading && <span className="text-[10px] text-[var(--chat-accent)]">Buscando...</span>}
               </div>
               <div className="col-span-2">
-                <label className="text-[10px] text-[#8696a0] font-medium">Endereço</label>
-                <input value={address} onChange={e => setAddress(e.target.value)} placeholder="Rua, Av..." className="w-full mt-1 px-3 py-2 text-sm bg-[#202c33] border border-[#2f3b44] rounded-lg text-[#e9edef] placeholder-[#667781] focus:outline-none focus:border-[#53bdeb]" />
+                <label className="text-[10px] text-[var(--chat-text-muted)] font-medium">Endereço</label>
+                <input value={address} onChange={e => setAddress(e.target.value)} placeholder="Rua, Av..." className="w-full mt-1 px-3 py-2 text-sm bg-[var(--chat-bg-field)] border border-[var(--chat-border)] rounded-lg text-[var(--chat-text-primary)] placeholder-[var(--chat-text-tertiary)] focus:outline-none focus:border-[var(--chat-accent)]" />
               </div>
               <div>
-                <label className="text-[10px] text-[#8696a0] font-medium">Número</label>
-                <input value={addressNumber} onChange={e => setAddressNumber(e.target.value)} className="w-full mt-1 px-3 py-2 text-sm bg-[#202c33] border border-[#2f3b44] rounded-lg text-[#e9edef] focus:outline-none focus:border-[#53bdeb]" />
+                <label className="text-[10px] text-[var(--chat-text-muted)] font-medium">Número</label>
+                <input value={addressNumber} onChange={e => setAddressNumber(e.target.value)} className="w-full mt-1 px-3 py-2 text-sm bg-[var(--chat-bg-field)] border border-[var(--chat-border)] rounded-lg text-[var(--chat-text-primary)] focus:outline-none focus:border-[var(--chat-accent)]" />
               </div>
               <div className="col-span-2">
-                <label className="text-[10px] text-[#8696a0] font-medium">Complemento</label>
-                <input value={addressComplement} onChange={e => setAddressComplement(e.target.value)} placeholder="Apto, Bloco..." className="w-full mt-1 px-3 py-2 text-sm bg-[#202c33] border border-[#2f3b44] rounded-lg text-[#e9edef] placeholder-[#667781] focus:outline-none focus:border-[#53bdeb]" />
+                <label className="text-[10px] text-[var(--chat-text-muted)] font-medium">Complemento</label>
+                <input value={addressComplement} onChange={e => setAddressComplement(e.target.value)} placeholder="Apto, Bloco..." className="w-full mt-1 px-3 py-2 text-sm bg-[var(--chat-bg-field)] border border-[var(--chat-border)] rounded-lg text-[var(--chat-text-primary)] placeholder-[var(--chat-text-tertiary)] focus:outline-none focus:border-[var(--chat-accent)]" />
               </div>
               <div>
-                <label className="text-[10px] text-[#8696a0] font-medium">Bairro</label>
-                <input value={neighborhood} onChange={e => setNeighborhood(e.target.value)} className="w-full mt-1 px-3 py-2 text-sm bg-[#202c33] border border-[#2f3b44] rounded-lg text-[#e9edef] focus:outline-none focus:border-[#53bdeb]" />
+                <label className="text-[10px] text-[var(--chat-text-muted)] font-medium">Bairro</label>
+                <input value={neighborhood} onChange={e => setNeighborhood(e.target.value)} className="w-full mt-1 px-3 py-2 text-sm bg-[var(--chat-bg-field)] border border-[var(--chat-border)] rounded-lg text-[var(--chat-text-primary)] focus:outline-none focus:border-[var(--chat-accent)]" />
               </div>
               <div>
-                <label className="text-[10px] text-[#8696a0] font-medium">Cidade</label>
-                <input value={city} onChange={e => setCity(e.target.value)} className="w-full mt-1 px-3 py-2 text-sm bg-[#202c33] border border-[#2f3b44] rounded-lg text-[#e9edef] focus:outline-none focus:border-[#53bdeb]" />
+                <label className="text-[10px] text-[var(--chat-text-muted)] font-medium">Cidade</label>
+                <input value={city} onChange={e => setCity(e.target.value)} className="w-full mt-1 px-3 py-2 text-sm bg-[var(--chat-bg-field)] border border-[var(--chat-border)] rounded-lg text-[var(--chat-text-primary)] focus:outline-none focus:border-[var(--chat-accent)]" />
               </div>
               <div>
-                <label className="text-[10px] text-[#8696a0] font-medium">Estado</label>
-                <input value={state} onChange={e => setState(e.target.value)} maxLength={2} placeholder="SP" className="w-full mt-1 px-3 py-2 text-sm bg-[#202c33] border border-[#2f3b44] rounded-lg text-[#e9edef] placeholder-[#667781] focus:outline-none focus:border-[#53bdeb]" />
+                <label className="text-[10px] text-[var(--chat-text-muted)] font-medium">Estado</label>
+                <input value={state} onChange={e => setState(e.target.value)} maxLength={2} placeholder="SP" className="w-full mt-1 px-3 py-2 text-sm bg-[var(--chat-bg-field)] border border-[var(--chat-border)] rounded-lg text-[var(--chat-text-primary)] placeholder-[var(--chat-text-tertiary)] focus:outline-none focus:border-[var(--chat-accent)]" />
               </div>
             </div>
           </div>
 
           {/* Observações */}
           <div>
-            <label className="text-[10px] font-bold uppercase tracking-wider text-[#8696a0]">Observações</label>
-            <textarea value={notes} onChange={e => setNotes(e.target.value)} rows={2} placeholder="Notas internas..." className="w-full mt-2 px-3 py-2 text-sm bg-[#202c33] border border-[#2f3b44] rounded-lg text-[#e9edef] focus:outline-none focus:border-[#53bdeb] placeholder-[#667781] resize-none" />
+            <label className="text-[10px] font-bold uppercase tracking-wider text-[var(--chat-text-muted)]">Observações</label>
+            <textarea value={notes} onChange={e => setNotes(e.target.value)} rows={2} placeholder="Notas internas..." className="w-full mt-2 px-3 py-2 text-sm bg-[var(--chat-bg-field)] border border-[var(--chat-border)] rounded-lg text-[var(--chat-text-primary)] focus:outline-none focus:border-[var(--chat-accent)] placeholder-[var(--chat-text-tertiary)] resize-none" />
           </div>
 
-          {error && <div className="px-4 py-2.5 bg-red-500/10 border border-red-500/30 rounded-lg text-sm text-red-300">{error}</div>}
+          {error && <div className="px-4 py-2.5 bg-red-500/10 border border-red-500/30 rounded-lg text-sm text-red-700 dark:text-red-300">{error}</div>}
         </div>
 
         {/* Footer */}
-        <div className="p-5 border-t border-[#2f3b44] flex items-center justify-between">
+        <div className="p-5 border-t border-[var(--chat-border)] flex items-center justify-between">
           <div>
             {/* Show selected payment tags */}
             <div className="flex items-center gap-1.5 mb-1">
@@ -540,13 +540,13 @@ export default function OrderModal({ lead, organizationId, onClose, onSuccess }:
                 ) : null
               })()}
             </div>
-            <p className="text-xl font-bold text-[#53bdeb]">
+            <p className="text-xl font-bold text-[var(--chat-accent)]">
               R$ {totalValue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
             </p>
           </div>
           <div className="flex items-center gap-3">
-            <button onClick={onClose} className="px-5 py-2 rounded-lg text-sm font-medium text-[#8696a0] hover:text-[#e9edef] transition-colors">Cancelar</button>
-            <button onClick={handleSubmit} disabled={saving} className="px-6 py-2 rounded-lg text-sm font-bold bg-[#53bdeb] text-[#0b141a] hover:bg-[#aedff7] disabled:opacity-50 disabled:cursor-wait transition-colors">
+            <button onClick={onClose} className="px-5 py-2 rounded-lg text-sm font-medium text-[var(--chat-text-muted)] hover:text-[var(--chat-text-primary)] transition-colors">Cancelar</button>
+            <button onClick={handleSubmit} disabled={saving} className="px-6 py-2 rounded-lg text-sm font-bold bg-[var(--chat-accent)] text-[var(--chat-bg-conversation)] hover:bg-[var(--chat-accent-hover)] disabled:opacity-50 disabled:cursor-wait transition-colors">
               {saving ? 'Salvando...' : 'Confirmar Venda'}
             </button>
           </div>

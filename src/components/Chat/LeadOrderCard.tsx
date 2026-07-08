@@ -91,30 +91,30 @@ export default function LeadOrderCard({ lead, refreshKey }: LeadOrderCardProps) 
   }
 
   return (
-    <div className="rounded-xl border border-[#2f3b44] bg-[#182229] p-3 space-y-2.5">
+    <div className="rounded-xl border border-[var(--chat-border)] bg-[var(--chat-bg-panel)] p-3 space-y-2.5">
       <div className="flex items-center justify-between">
-        <p className="text-[10px] font-bold uppercase tracking-wider text-[#8696a0]">Pedido</p>
+        <p className="text-[10px] font-bold uppercase tracking-wider text-[var(--chat-text-muted)]">Pedido</p>
         <div className="flex items-center gap-2">
           <button
             onClick={handleOpenDetail}
             disabled={loadingDetail}
-            className="flex items-center gap-1 text-[10px] font-medium text-[#53bdeb] hover:text-[#aedff7] disabled:opacity-50"
+            className="flex items-center gap-1 text-[10px] font-medium text-[var(--chat-accent)] hover:text-[var(--chat-accent-hover)] disabled:opacity-50"
           >
             <PencilSimple size={10} weight="bold" />
             {loadingDetail ? 'Abrindo...' : 'Editar'}
           </button>
-          <p className="text-[10px] text-[#667781]">{formatDate(latest.created_at)}</p>
+          <p className="text-[10px] text-[var(--chat-text-tertiary)]">{formatDate(latest.created_at)}</p>
         </div>
       </div>
 
       <div className="flex items-center justify-between gap-2">
-        <p className="text-sm text-[#d1d7db] truncate">{mainItem}{extraItems ? ` ${extraItems}` : ''}</p>
-        <p className="text-sm font-bold text-[#53bdeb] flex-shrink-0">{formatCurrency(latest.total_value)}</p>
+        <p className="text-sm text-[var(--chat-text-secondary)] truncate">{mainItem}{extraItems ? ` ${extraItems}` : ''}</p>
+        <p className="text-sm font-bold text-[var(--chat-accent)] flex-shrink-0">{formatCurrency(latest.total_value)}</p>
       </div>
 
       <div className="flex items-start gap-4 flex-wrap">
         <div className="space-y-1">
-          <p className="text-[9px] font-bold uppercase tracking-wider text-[#667781]">Pagamento</p>
+          <p className="text-[9px] font-bold uppercase tracking-wider text-[var(--chat-text-tertiary)]">Pagamento</p>
           <select
             value={latest.payment_status}
             disabled={savingPayment}
@@ -123,13 +123,13 @@ export default function LeadOrderCard({ lead, refreshKey }: LeadOrderCardProps) 
             style={TONE_STYLES[PAYMENT_STATUS_META[latest.payment_status]?.tone || 'warning']}
           >
             {Object.entries(PAYMENT_STATUS_META).map(([val, meta]) => (
-              <option key={val} value={val} className="bg-[#233138] text-[#d1d7db]">{meta.label}</option>
+              <option key={val} value={val} className="bg-[var(--chat-bg-menu)] text-[var(--chat-text-secondary)]">{meta.label}</option>
             ))}
           </select>
         </div>
         {/* Entrega: somente leitura no Chat — quem gerencia o motoboy é a Logística */}
         <div className="space-y-1">
-          <p className="text-[9px] font-bold uppercase tracking-wider text-[#667781]">Entrega</p>
+          <p className="text-[9px] font-bold uppercase tracking-wider text-[var(--chat-text-tertiary)]">Entrega</p>
           <span
             title="Status de entrega — só pode ser alterado na Logística"
             className="inline-block text-[11px] font-bold px-2 py-1 rounded-full"
@@ -145,7 +145,7 @@ export default function LeadOrderCard({ lead, refreshKey }: LeadOrderCardProps) 
           href={`/logistica?search=${encodeURIComponent(lead.phone || '')}`}
           target="_blank"
           rel="noopener noreferrer"
-          className="flex items-center gap-1 text-[11px] font-medium text-[#53bdeb] hover:underline pt-0.5"
+          className="flex items-center gap-1 text-[11px] font-medium text-[var(--chat-accent)] hover:underline pt-0.5"
         >
           Ver todos os pedidos ({orders.length})
           <ArrowSquareOut size={11} weight="bold" />

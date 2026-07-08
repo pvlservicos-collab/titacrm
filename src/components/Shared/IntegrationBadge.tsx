@@ -1,7 +1,7 @@
 'use client'
 
 import { memo } from 'react'
-import { Phone, Robot } from '@phosphor-icons/react'
+import { Phone, Robot, InstagramLogo } from '@phosphor-icons/react'
 import { LeadWithOwner } from '@/lib/types'
 
 interface IntegrationBadgeProps {
@@ -27,7 +27,7 @@ const sizeMap = {
     }
 }
 
-type BadgeOrigin = 'whatsapp_lite' | 'whatsapp_official' | 'api' | null
+type BadgeOrigin = 'whatsapp_lite' | 'whatsapp_official' | 'instagram' | 'api' | null
 
 const IntegrationBadge = ({ lead, size = 'md' }: IntegrationBadgeProps) => {
     if (!lead) return null
@@ -39,6 +39,8 @@ const IntegrationBadge = ({ lead, size = 'md' }: IntegrationBadgeProps) => {
         // Lead has an explicit integration — use its type
         if (lead.integration.type === 'whatsapp_lite') {
             origin = 'whatsapp_lite'
+        } else if (lead.integration.type === 'instagram_direct') {
+            origin = 'instagram'
         } else if (lead.integration.type.includes('whatsapp')) {
             origin = 'whatsapp_official'
         } else {
@@ -65,6 +67,11 @@ const IntegrationBadge = ({ lead, size = 'md' }: IntegrationBadgeProps) => {
             bg: 'bg-green-500',
             title: 'WhatsApp Oficial',
             Icon: Phone,
+        },
+        instagram: {
+            bg: 'bg-fuchsia-500',
+            title: 'Instagram Direct',
+            Icon: InstagramLogo,
         },
         api: {
             bg: 'bg-violet-600',

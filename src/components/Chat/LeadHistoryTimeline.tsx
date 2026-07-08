@@ -25,10 +25,10 @@ function dotColor(type: HistoryEvent['type']): string {
 
 /** Icon badge color per secondary label */
 function badgeStyle(label: string | undefined): { bg: string; fg: string } {
-    if (!label) return { bg: 'rgba(134,150,160,0.15)', fg: '#8696a0' }
+    if (!label) return { bg: 'rgba(134,150,160,0.15)', fg: 'var(--chat-text-muted)' }
     const lower = label.toLowerCase()
     if (lower === 'automação') return { bg: 'rgba(217,119,6,0.15)', fg: '#fbbf24' }
-    if (lower === 'atendente') return { bg: 'rgba(83,189,235,0.15)', fg: '#53bdeb' }
+    if (lower === 'atendente') return { bg: 'rgba(83,189,235,0.15)', fg: 'var(--chat-accent)' }
     if (lower === 'nota') return { bg: 'rgba(129,140,248,0.15)', fg: '#a5b4fc' }
     // Rótulos de status de pagamento (evento tipo "order") — mesma cor por tom do resto do app
     if (lower === 'pago') return { bg: TONE_STYLES.success.backgroundColor, fg: TONE_STYLES.success.color }
@@ -56,16 +56,16 @@ export default function LeadHistoryTimeline({ organizationId, leadId }: LeadHist
     if (loading) {
         return (
             <div>
-                <p className="text-[10px] font-bold uppercase tracking-wider text-[#8696a0] mb-3">
+                <p className="text-[10px] font-bold uppercase tracking-wider text-[var(--chat-text-muted)] mb-3">
                     Histórico
                 </p>
                 <div className="animate-pulse space-y-3">
                     {[1, 2, 3].map(i => (
                         <div key={i} className="flex items-start gap-2">
-                            <div className="w-3 h-3 rounded-full bg-[#2a3942] mt-0.5 flex-shrink-0" />
+                            <div className="w-3 h-3 rounded-full bg-[var(--chat-bg-hover)] mt-0.5 flex-shrink-0" />
                             <div className="flex-1 space-y-1">
-                                <div className="h-3 bg-[#2a3942] rounded w-4/5" />
-                                <div className="h-2.5 bg-[#202c33] rounded w-3/5" />
+                                <div className="h-3 bg-[var(--chat-bg-hover)] rounded w-4/5" />
+                                <div className="h-2.5 bg-[var(--chat-bg-field)] rounded w-3/5" />
                             </div>
                         </div>
                     ))}
@@ -77,10 +77,10 @@ export default function LeadHistoryTimeline({ organizationId, leadId }: LeadHist
     if (events.length === 0) {
         return (
             <div>
-                <p className="text-[10px] font-bold uppercase tracking-wider text-[#8696a0] mb-3">
+                <p className="text-[10px] font-bold uppercase tracking-wider text-[var(--chat-text-muted)] mb-3">
                     Histórico
                 </p>
-                <p className="text-xs text-[#8696a0]">Nenhum evento registrado.</p>
+                <p className="text-xs text-[var(--chat-text-muted)]">Nenhum evento registrado.</p>
             </div>
         )
     }
@@ -92,11 +92,11 @@ export default function LeadHistoryTimeline({ organizationId, leadId }: LeadHist
         <div>
             {/* Header */}
             <div className="flex items-center justify-between mb-3">
-                <p className="text-[10px] font-bold uppercase tracking-wider text-[#8696a0]">
+                <p className="text-[10px] font-bold uppercase tracking-wider text-[var(--chat-text-muted)]">
                     Histórico
                 </p>
                 <button
-                    className="flex items-center gap-0.5 text-[10px] font-semibold text-[#53bdeb] hover:text-[#7cd0f5] transition-colors"
+                    className="flex items-center gap-0.5 text-[10px] font-semibold text-[var(--chat-accent)] hover:text-[var(--chat-accent-hover)] transition-colors"
                     title="Adicionar evento"
                 >
                     <Plus size={11} weight="bold" />
@@ -159,7 +159,7 @@ export default function LeadHistoryTimeline({ organizationId, leadId }: LeadHist
                             {/* Content */}
                             <div className="flex-1 min-w-0 pb-3">
                                 {/* Description */}
-                                <p className="text-[11.5px] leading-snug text-[#d1d7db] break-words">
+                                <p className="text-[11.5px] leading-snug text-[var(--chat-text-secondary)] break-words">
                                     {event.description}
                                 </p>
 
@@ -175,7 +175,7 @@ export default function LeadHistoryTimeline({ organizationId, leadId }: LeadHist
                                     )}
 
                                     {event.actorName && event.type !== 'conversation' && (
-                                        <span className="text-[10px] text-[#8696a0] flex items-center gap-1">
+                                        <span className="text-[10px] text-[var(--chat-text-muted)] flex items-center gap-1">
                                             {event.actorAvatar ? (
                                                 <img src={event.actorAvatar} alt="" className="w-3.5 h-3.5 rounded-full object-cover" />
                                             ) : null}
@@ -185,7 +185,7 @@ export default function LeadHistoryTimeline({ organizationId, leadId }: LeadHist
                                 </div>
 
                                 {/* Timestamp */}
-                                <p className="text-[10px] text-[#667781] mt-0.5">
+                                <p className="text-[10px] text-[var(--chat-text-tertiary)] mt-0.5">
                                     {formatDate(event.timestamp)}
                                 </p>
                             </div>
@@ -198,7 +198,7 @@ export default function LeadHistoryTimeline({ organizationId, leadId }: LeadHist
             {hasMore && (
                 <button
                     onClick={() => setExpanded(!expanded)}
-                    className="flex items-center gap-1 text-[10px] font-semibold text-[#53bdeb] hover:text-[#7cd0f5] transition-colors mt-1 ml-5"
+                    className="flex items-center gap-1 text-[10px] font-semibold text-[var(--chat-accent)] hover:text-[var(--chat-accent-hover)] transition-colors mt-1 ml-5"
                 >
                     {expanded ? (
                         <>

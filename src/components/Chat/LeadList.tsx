@@ -6,7 +6,9 @@ import { MagnifyingGlass, PushPin } from '@phosphor-icons/react'
 import LoadingSpinner from '@/components/Shared/LoadingSpinner'
 import { useSession } from 'next-auth/react'
 import { useLeadSearch } from '@/hooks/useLeadSearch'
+import { getLeadChannel } from '@/lib/leadChannel'
 import LeadListItem from './LeadListItem'
+import ChatFilterTabs, { type ChatTab } from './ChatFilterTabs'
 
 interface LeadListProps {
   leads: LeadWithOwner[]
@@ -14,7 +16,6 @@ interface LeadListProps {
   onSelectLead: (lead: LeadWithOwner) => void
   onUpdateLead?: (leadId: string, updates: Partial<LeadWithOwner>) => void
   loading: boolean
-  isDark?: boolean
 }
 
 const WEEKDAYS_PT = [
@@ -63,9 +64,9 @@ export default function LeadList({
   onSelectLead,
   onUpdateLead,
   loading,
-  isDark,
 }: LeadListProps) {
   const [search, setSearch] = useState('')
+  const [activeTab, setActiveTab] = useState<ChatTab>('all')
   const [contextMenu, setContextMenu] = useState<ContextMenuState>({
     visible: false, x: 0, y: 0, lead: null
   })
@@ -214,28 +215,45 @@ export default function LeadList({
     return tb - ta
   })
 
-  const visibleHits = filteredHits.slice(0, displayLimit)
+  const tabCounts: Record<ChatTab, number> = { all: filteredHits.length, unread: 0, whatsapp: 0, instagram: 0 }
+  for (const hit of filteredHits) {
+    if (hit.lead.is_unread) tabCounts.unread++
+    const channel = getLeadChannel(hit.lead)
+    if (channel === 'whatsapp') tabCounts.whatsapp++
+    else if (channel === 'instagram') tabCounts.instagram++
+  }
+
+  const tabFilteredHits = activeTab === 'all'
+    ? filteredHits
+    : filteredHits.filter((hit) => {
+        if (activeTab === 'unread') return !!hit.lead.is_unread
+        return getLeadChannel(hit.lead) === activeTab
+      })
+
+  const visibleHits = tabFilteredHits.slice(0, displayLimit)
 
   return (
-    <div className={`flex flex-col h-full border-r border-[#2f3b44] ${isDark ? 'bg-[#0d1419]' : 'bg-[#111b21]'}`}>
+    <div className="flex flex-col h-full border-r border-[var(--chat-border)] bg-[var(--chat-bg-base)]">
       {/* Search Bar */}
-      <div className="p-3 border-b border-[#2f3b44]">
+      <div className="p-3 border-b border-[var(--chat-border)]">
         <div className="relative">
-          <MagnifyingGlass className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#8696a0]" />
+          <MagnifyingGlass className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--chat-text-muted)]" />
           <input
             type="text"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Buscar leads..."
-            className={`w-full pl-9 pr-3 py-2 text-sm border border-[#2f3b44] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#53bdeb] text-[#e9edef] placeholder-[#8696a0] transition-shadow ${isDark ? 'bg-[#192229]' : 'bg-[#202c33]'}`}
+            className="w-full pl-9 pr-3 py-2 text-sm border border-[var(--chat-border)] rounded-lg focus:outline-none focus:ring-2 focus:ring-[var(--chat-accent)] text-[var(--chat-text-primary)] placeholder-[var(--chat-text-muted)] transition-shadow bg-[var(--chat-bg-field)]"
           />
         </div>
       </div>
 
+      <ChatFilterTabs activeTab={activeTab} onChange={setActiveTab} counts={tabCounts} />
+
       {/* Leads List */}
       <div ref={scrollContainerRef} className="flex-1 overflow-y-auto overflow-x-hidden chat-dark-scroll">
-        {filteredHits.length === 0 ? (
-          <div className="flex items-center justify-center h-full text-[#8696a0] text-sm">
+        {tabFilteredHits.length === 0 ? (
+          <div className="flex items-center justify-center h-full text-[var(--chat-text-muted)] text-sm">
             {searching ? 'Buscando…' : 'Nenhum lead encontrado'}
           </div>
         ) : (
@@ -268,7 +286,7 @@ export default function LeadList({
       {contextMenu.visible && (
         <div
           ref={menuRef}
-          className="fixed z-50 bg-[#233138] rounded-xl shadow-xl border border-[#2f3b44] py-1.5 min-w-[180px] animate-in fade-in zoom-in-95 duration-150"
+          className="fixed z-50 bg-[var(--chat-bg-menu)] rounded-xl shadow-xl border border-[var(--chat-border)] py-1.5 min-w-[180px] animate-in fade-in zoom-in-95 duration-150"
           style={{
             left: contextMenu.x,
             top: contextMenu.y,
@@ -276,9 +294,9 @@ export default function LeadList({
         >
           <button
             onClick={handleTogglePin}
-            className="w-full text-left px-4 py-2 text-sm text-[#e9edef] hover:bg-[#2a3942] flex items-center gap-2.5 transition-colors"
+            className="w-full text-left px-4 py-2 text-sm text-[var(--chat-text-primary)] hover:bg-[var(--chat-bg-hover)] flex items-center gap-2.5 transition-colors"
           >
-            <PushPin size={16} weight={contextMenu.lead?.is_pinned ? 'regular' : 'fill'} className={contextMenu.lead?.is_pinned ? 'text-[#8696a0]' : 'text-[#53bdeb] -rotate-45'} />
+            <PushPin size={16} weight={contextMenu.lead?.is_pinned ? 'regular' : 'fill'} className={contextMenu.lead?.is_pinned ? 'text-[var(--chat-text-muted)]' : 'text-[var(--chat-accent)] -rotate-45'} />
             {contextMenu.lead?.is_pinned ? 'Desafixar conversa' : 'Fixar conversa'}
           </button>
         </div>

@@ -46,9 +46,50 @@
 }
 
 /* ============================================
+   CHAT THEME TOKENS
+   O Chat era permanentemente escuro (clone visual do WhatsApp Web), sem
+   reagir ao toggle de tema do resto do app. Os valores de .dark abaixo são
+   idênticos aos hex hardcoded que o Chat já usava, então usuários que já
+   usam o app no escuro não veem nenhuma mudança visual — só o modo claro
+   (:root) é novo. --chat-accent fica igual nos dois temas de propósito: é a
+   cor de marca (links, foco, destaque), não uma cor de superfície.
+   ============================================ */
+:root {
+  --chat-bg-base: #f0f2f5;
+  --chat-bg-conversation: #efeae2;
+  --chat-bg-panel: #ffffff;
+  --chat-bg-field: #ffffff;
+  --chat-bg-menu: #ffffff;
+  --chat-bg-hover: #f5f6f6;
+  --chat-border: #e9edef;
+  --chat-text-primary: #111b21;
+  --chat-text-secondary: #3b4a54;
+  --chat-text-muted: #667781;
+  --chat-text-tertiary: #8696a0;
+  --chat-icon: #54656f;
+  --chat-accent: #53bdeb;
+  --chat-accent-hover: #1a91c9;
+}
+.dark {
+  --chat-bg-base: #111b21;
+  --chat-bg-conversation: #0b141a;
+  --chat-bg-panel: #182229;
+  --chat-bg-field: #202c33;
+  --chat-bg-menu: #233138;
+  --chat-bg-hover: #2a3942;
+  --chat-border: #2f3b44;
+  --chat-text-primary: #e9edef;
+  --chat-text-secondary: #d1d7db;
+  --chat-text-muted: #8696a0;
+  --chat-text-tertiary: #667781;
+  --chat-icon: #aebac1;
+  --chat-accent: #53bdeb;
+  --chat-accent-hover: #7cd0f5;
+}
+
+/* ============================================
    DARK MODE — Light-section overrides
    Affects Pipeline, Settings, Logística, Financeiro, Metrics etc.
-   Chat sections are already dark and use hardcoded colors, so they are unaffected.
    ============================================ */
 .dark nav.bg-white,
 .dark .dark-nav {
@@ -136,7 +177,7 @@
 /* Dark, subtle scrollbar used inside the chat (WhatsApp-style dark UI) */
 .chat-dark-scroll {
   scrollbar-width: thin;
-  scrollbar-color: #2f3b44 transparent;
+  scrollbar-color: var(--chat-border) transparent;
 }
 .chat-dark-scroll::-webkit-scrollbar {
   width: 8px;
@@ -146,11 +187,11 @@
   background: transparent;
 }
 .chat-dark-scroll::-webkit-scrollbar-thumb {
-  background-color: #2f3b44;
+  background-color: var(--chat-border);
   border-radius: 8px;
 }
 .chat-dark-scroll::-webkit-scrollbar-thumb:hover {
-  background-color: #3b4a54;
+  background-color: var(--chat-text-tertiary);
 }
 
 /* ============================================

@@ -161,6 +161,7 @@ export const leads = pgTable('leads', {
   lastActivityByMemberId: uuid('last_activity_by_member_id'),
   isGroup: boolean('is_group').default(false),
   isUnread: boolean('is_unread').default(false),
+  isPinned: boolean('is_pinned').default(false),
   value: numeric('value', { precision: 15, scale: 2 }),
   goals: jsonb('goals').default({}),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
@@ -198,6 +199,22 @@ export const leadActivities = pgTable('lead_activities', {
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow(),
 })
+
+// ── Mensagens Fixadas ─────────────────────────────────────────────────────────
+// Tabela separada (em vez de metadata da activity) para não concorrer com outros
+// escritores de metadata (reply, reações, status de envio) e para permitir
+// listar/paginar fixadas sem varrer a conversa inteira. Sem limite de quantidade.
+export const pinnedMessages = pgTable('pinned_messages', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  organizationId: uuid('organization_id').notNull().references(() => organizations.id),
+  leadId: uuid('lead_id').notNull().references(() => leads.id, { onDelete: 'cascade' }),
+  activityId: uuid('activity_id').notNull().references(() => leadActivities.id, { onDelete: 'cascade' }),
+  pinnedByMemberId: uuid('pinned_by_member_id'),
+  pinnedAt: timestamp('pinned_at', { withTimezone: true }).defaultNow(),
+}, (t) => ({
+  leadActivityUnique: uniqueIndex('pinned_messages_lead_activity_unique').on(t.leadId, t.activityId),
+  leadPinnedAtIdx: index('pinned_messages_lead_pinned_at_idx').on(t.leadId, t.pinnedAt),
+}))
 
 // ── Custom Fields ─────────────────────────────────────────────────────────────
 export const customFieldCategories = pgTable('custom_field_categories', {

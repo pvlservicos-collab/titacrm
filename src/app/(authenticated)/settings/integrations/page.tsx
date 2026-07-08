@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { WhatsappLogo, ArrowRight, DeviceMobile, HardDrives, NumberCircleTwo, WebhooksLogo } from '@phosphor-icons/react'
+import { WhatsappLogo, ArrowRight, DeviceMobile, HardDrives, NumberCircleTwo, WebhooksLogo, InstagramLogo } from '@phosphor-icons/react'
 
 export default function IntegrationsSettingsPage() {
     return (
@@ -95,6 +95,29 @@ export default function IntegrationsSettingsPage() {
                             Segundo número via QR Code usando a Evolution API. Ideal para alto volume de atendimento sem restrições de template.
                         </p>
                         <div className="flex items-center text-purple-600 font-medium text-sm mt-6 group-hover:text-purple-700">
+                            Configurar <ArrowRight size={16} className="ml-1 transition-transform group-hover:translate-x-1" />
+                        </div>
+                    </div>
+                </Link>
+                {/* Instagram Direct Card */}
+                <Link href="/settings/integrations/instagram" className="block group">
+                    <div className="bg-white border hover:border-fuchsia-500 border-gray-200 rounded-xl p-6 shadow-sm transition-all h-full flex flex-col cursor-pointer min-h-[340px]">
+                        <div className="relative mb-6">
+                            <div className="w-12 h-12 rounded-lg bg-fuchsia-50 flex items-center justify-center">
+                                <InstagramLogo size={28} weight="fill" className="text-fuchsia-600" />
+                            </div>
+                            <div className="absolute -top-3 -left-2 bg-fuchsia-600 text-white text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider shadow-sm">
+                                Meta
+                            </div>
+                        </div>
+                        <h2 className="text-lg font-semibold text-gray-900 mb-2 flex items-center gap-2">
+                            <InstagramLogo size={20} className="text-gray-500" />
+                            Instagram Direct
+                        </h2>
+                        <p className="text-gray-500 text-sm mb-auto">
+                            Traga as mensagens do Instagram Direct para o mesmo inbox do WhatsApp. Requer aprovação da Meta (App Review).
+                        </p>
+                        <div className="flex items-center text-fuchsia-600 font-medium text-sm mt-6 group-hover:text-fuchsia-700">
                             Configurar <ArrowRight size={16} className="ml-1 transition-transform group-hover:translate-x-1" />
                         </div>
                     </div>

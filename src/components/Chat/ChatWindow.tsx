@@ -2,9 +2,11 @@
 
 import { useState } from 'react'
 import { useLeadActivities, useAuth, useChatButtonSettings } from '@/hooks'
+import { usePinnedMessages } from '@/hooks/usePinnedMessages'
 import { LeadWithOwner, LeadActivityWithActor } from '@/lib/types'
 import ActivityTimeline from './ActivityTimeline'
 import ActivityComposer from './ActivityComposer'
+import PinnedMessagesBar from './PinnedMessagesBar'
 
 import { ChatButtonKey } from '@/hooks/useChatButtonSettings'
 
@@ -12,7 +14,6 @@ interface ChatWindowProps {
   lead: LeadWithOwner
   organizationId: string
   onMessageSent?: (content: string) => void
-  isDark?: boolean
 }
 
 export interface ReplyContext {
@@ -21,8 +22,9 @@ export interface ReplyContext {
   sender: string
 }
 
-export default function ChatWindow({ lead, organizationId, onMessageSent, isDark }: ChatWindowProps) {
+export default function ChatWindow({ lead, organizationId, onMessageSent }: ChatWindowProps) {
   const { activities, loading, sendHumanMessage, sendMediaMessage } = useLeadActivities(organizationId, lead.id)
+  const { pinned, pinnedActivityIds, togglePin } = usePinnedMessages(lead.id)
   const { currentOrganization } = useAuth()
   const { settings: chatButtonSettings, fireWebhook } = useChatButtonSettings()
   const [replyContext, setReplyContext] = useState<ReplyContext | null>(null)
@@ -113,31 +115,41 @@ export default function ChatWindow({ lead, organizationId, onMessageSent, isDark
     setReplyContext({ messageId, text, sender })
   }
 
+  const handleUnpin = (activityId: string) => {
+    const pin = pinned.find((p) => p.activity_id === activityId)
+    if (pin) togglePin(pin.activity)
+  }
+
   return (
     <div
       className="flex flex-col h-full relative overflow-x-hidden"
       style={{
-        backgroundColor: isDark ? '#070e13' : '#0b141a',
+        backgroundColor: 'var(--chat-bg-conversation)',
         backgroundImage: `url('/chat-bg.svg')`,
         backgroundRepeat: 'repeat',
         backgroundSize: 'auto',
       }}
     >
+      {/* Pinned Messages */}
+      <PinnedMessagesBar pinned={pinned} onUnpin={handleUnpin} />
+
       {/* Timeline */}
       <ActivityTimeline
         activities={activities}
         loading={loading}
         lead={lead}
         onReply={handleReply}
+        onTogglePin={togglePin}
+        pinnedActivityIds={pinnedActivityIds}
       />
 
       {/* Send Error Banner */}
       {sendError && (
         <div className="mx-4 mb-2 px-4 py-2.5 bg-red-500/10 border border-red-500/30 rounded-xl flex items-center justify-between">
-          <span className="text-sm text-red-300">{sendError}</span>
+          <span className="text-sm text-red-700 dark:text-red-300">{sendError}</span>
           <button
             onClick={() => setSendError(null)}
-            className="text-red-400/70 hover:text-red-300 text-xs font-bold ml-3"
+            className="text-red-600/70 dark:text-red-400/70 hover:text-red-700 dark:hover:text-red-300 text-xs font-bold ml-3"
           >
             ✕
           </button>

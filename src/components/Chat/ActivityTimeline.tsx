@@ -1,7 +1,7 @@
 'use client'
 
 import { useRef, useEffect, useState } from 'react'
-import { Sparkle, X, MagnifyingGlassPlus, Play, Pause, Microphone, ArrowBendUpLeft, Check, WarningCircle, Lightning } from '@phosphor-icons/react'
+import { Sparkle, X, MagnifyingGlassPlus, Play, Pause, Microphone, ArrowBendUpLeft, Check, WarningCircle, Lightning, PushPin } from '@phosphor-icons/react'
 import { LeadActivityWithActor, LeadWithOwner } from '@/lib/types'
 import { formatTime } from '@/lib/utils'
 import LoadingSpinner from '@/components/Shared/LoadingSpinner'
@@ -11,6 +11,8 @@ interface ActivityTimelineProps {
   loading: boolean
   lead: LeadWithOwner
   onReply?: (activity: LeadActivityWithActor) => void
+  onTogglePin?: (activity: LeadActivityWithActor) => void
+  pinnedActivityIds?: Set<string>
 }
 
 // ── Date helpers ──
@@ -65,7 +67,7 @@ function isOutgoing(senderType: SenderType): boolean {
 function DateDivider({ label }: { label: string }) {
   return (
     <div className="flex justify-center py-3">
-      <span className="text-[11px] font-semibold text-[#8696a0] bg-[#182229]/90 backdrop-blur-sm px-4 py-1.5 rounded-full shadow-sm border border-white/5">
+      <span className="text-[11px] font-semibold text-[var(--chat-text-muted)] bg-[var(--chat-bg-panel)]/90 backdrop-blur-sm px-4 py-1.5 rounded-full shadow-sm border border-white/5">
         {label}
       </span>
     </div>
@@ -121,7 +123,7 @@ function CustomAudioPlayer({ url, isOutgoing, senderAvatar }: { url: string; isO
         onEnded={() => setIsPlaying(false)}
       />
 
-      <button onClick={togglePlay} className={`${isOutgoing ? 'text-white' : 'text-[#aebac1]'} hover:opacity-80 flex-shrink-0 transition-opacity`}>
+      <button onClick={togglePlay} className={`${isOutgoing ? 'text-white' : 'text-[var(--chat-icon)]'} hover:opacity-80 flex-shrink-0 transition-opacity`}>
         {isPlaying ? <Pause size={28} weight="fill" /> : <Play size={28} weight="fill" />}
       </button>
 
@@ -140,10 +142,10 @@ function CustomAudioPlayer({ url, isOutgoing, senderAvatar }: { url: string; isO
             }}
             className="absolute z-10 w-full h-full opacity-0 cursor-pointer"
           />
-          <div className="w-full h-1.5 rounded-full overflow-hidden" style={{ backgroundColor: isOutgoing ? 'rgba(255,255,255,0.3)' : '#3b4a54' }}>
+          <div className="w-full h-1.5 rounded-full overflow-hidden" style={{ backgroundColor: isOutgoing ? 'rgba(255,255,255,0.3)' : 'var(--chat-border)' }}>
             <div
               className="h-full"
-              style={{ width: `${progressPercent}%`, backgroundColor: isOutgoing ? '#fff' : '#53bdeb' }}
+              style={{ width: `${progressPercent}%`, backgroundColor: isOutgoing ? '#fff' : 'var(--chat-accent)' }}
             />
           </div>
           <div
@@ -152,30 +154,30 @@ function CustomAudioPlayer({ url, isOutgoing, senderAvatar }: { url: string; isO
               left: `calc(${progressPercent}% - 6px)`,
               width: '12px',
               height: '12px',
-              backgroundColor: isOutgoing ? '#fff' : '#53bdeb',
+              backgroundColor: isOutgoing ? '#fff' : 'var(--chat-accent)',
               boxShadow: '0 1px 3px rgba(0,0,0,0.2)'
             }}
           />
         </div>
         <div className="flex justify-start -mt-1.5">
-          <span className={`text-[11px] font-medium ${isOutgoing ? 'text-white/80' : 'text-[#8696a0]'}`}>
+          <span className={`text-[11px] font-medium ${isOutgoing ? 'text-white/80' : 'text-[var(--chat-text-muted)]'}`}>
             {formatAudioTime(currentTime || duration)}
           </span>
         </div>
       </div>
 
       <div className="relative flex-shrink-0">
-        <div className="w-11 h-11 rounded-full overflow-hidden flex items-center justify-center border border-black/5 bg-[#2a3942]">
+        <div className="w-11 h-11 rounded-full overflow-hidden flex items-center justify-center border border-black/5 bg-[var(--chat-bg-hover)]">
           {senderAvatar ? (
             <img src={senderAvatar} alt="Avatar" className="w-full h-full object-cover" />
           ) : (
-            <div className={`w-full h-full flex items-center justify-center ${isOutgoing ? 'bg-blue-100' : 'bg-[#2a3942]'}`}>
-              <span className={`text-[10px] font-bold ${isOutgoing ? 'text-blue-500' : 'text-[#8696a0]'}`}>👤</span>
+            <div className={`w-full h-full flex items-center justify-center ${isOutgoing ? 'bg-blue-100' : 'bg-[var(--chat-bg-hover)]'}`}>
+              <span className={`text-[10px] font-bold ${isOutgoing ? 'text-blue-500' : 'text-[var(--chat-text-muted)]'}`}>👤</span>
             </div>
           )}
         </div>
-        <div className="absolute -bottom-1 -left-1 rounded-full p-0.5 shadow-sm" style={{ backgroundColor: isOutgoing ? '#21BCED' : '#2a3942' }}>
-          <Microphone size={12} weight="fill" className={isOutgoing ? "text-white" : "text-[#53bdeb]"} />
+        <div className="absolute -bottom-1 -left-1 rounded-full p-0.5 shadow-sm" style={{ backgroundColor: isOutgoing ? '#21BCED' : 'var(--chat-bg-hover)' }}>
+          <Microphone size={12} weight="fill" className={isOutgoing ? "text-white" : "text-[var(--chat-accent)]"} />
         </div>
       </div>
     </div>
@@ -248,16 +250,16 @@ function MediaRenderer({ metadata, isOutgoing, onImageClick, senderAvatar }: { m
         href={url}
         target="_blank"
         rel="noopener noreferrer"
-        className={`mt-1 mb-1 flex items-center gap-3 p-3 rounded-lg border ${isOutgoing ? 'bg-black/10 border-white/20 hover:bg-black/20 text-white' : 'bg-[#2a3942] border-[#3b4a54] hover:bg-[#33444f] text-[#e9edef]'
+        className={`mt-1 mb-1 flex items-center gap-3 p-3 rounded-lg border ${isOutgoing ? 'bg-black/10 border-white/20 hover:bg-black/20 text-white' : 'bg-[var(--chat-bg-hover)] border-[var(--chat-border)] hover:bg-[var(--chat-bg-hover)] text-[var(--chat-text-primary)]'
           } transition-colors max-w-[240px]`}
         title="Baixar Documento"
       >
-        <div className={`p-2 rounded ${isOutgoing ? 'bg-white/20' : 'bg-[#1f2c33] shadow-sm'}`}>
+        <div className={`p-2 rounded ${isOutgoing ? 'bg-white/20' : 'bg-[var(--chat-bg-hover)] shadow-sm'}`}>
           <span className="text-lg">📄</span>
         </div>
         <div className="flex-1 min-w-0">
           <p className="text-sm font-medium truncate">{metadata.media_filename || 'Documento'}</p>
-          <p className={`text-[10px] ${isOutgoing ? 'text-white/70' : 'text-[#8696a0]'} uppercase mt-0.5 tracking-wider`}>
+          <p className={`text-[10px] ${isOutgoing ? 'text-white/70' : 'text-[var(--chat-text-muted)]'} uppercase mt-0.5 tracking-wider`}>
             {metadata.media_mimetype?.split('/')[1] || 'FILE'}
           </p>
         </div>
@@ -282,10 +284,10 @@ function QuotedMessageBar({ metadata, isOutgoing }: { metadata: any; isOutgoing:
   if (!quotedText && !quotedMediaType) return null;
 
   // Color for the left bar: blue accent for lead replies, white-ish for outgoing
-  const barColor = isOutgoing ? 'rgba(255,255,255,0.5)' : '#53bdeb';
+  const barColor = isOutgoing ? 'rgba(255,255,255,0.5)' : 'var(--chat-accent)';
   const bgColor = isOutgoing ? 'rgba(0,0,0,0.12)' : 'rgba(255,255,255,0.06)';
-  const textColor = isOutgoing ? 'text-white/90' : 'text-[#d1d7db]';
-  const senderColor = isOutgoing ? 'text-white font-semibold' : 'text-[#53bdeb] font-semibold';
+  const textColor = isOutgoing ? 'text-white/90' : 'text-[var(--chat-text-secondary)]';
+  const senderColor = isOutgoing ? 'text-white font-semibold' : 'text-[var(--chat-accent)] font-semibold';
 
   return (
     <div
@@ -331,7 +333,9 @@ function MessageBubble({
   lead,
   reactions,
   onImageClick,
-  onReply
+  onReply,
+  onTogglePin,
+  isPinned
 }: {
   activity: LeadActivityWithActor
   senderType: SenderType | 'system_other'
@@ -340,6 +344,8 @@ function MessageBubble({
   reactions?: LeadActivityWithActor[]
   onImageClick?: (url: string) => void
   onReply?: (activity: LeadActivityWithActor) => void
+  onTogglePin?: (activity: LeadActivityWithActor) => void
+  isPinned?: boolean
 }) {
   if (senderType === 'system_other') {
     // Other types, we handled in main loop
@@ -393,15 +399,28 @@ function MessageBubble({
           </div>
         )}
         <div className="relative">
-          {/* Reply button — outgoing (appears on left) */}
-          {onReply && (
-            <button
-              onClick={() => onReply(activity)}
-              className="absolute -left-9 top-1/2 -translate-y-1/2 w-7 h-7 rounded-full bg-[#233138] border border-[#2f3b44] shadow-sm flex items-center justify-center opacity-0 group-hover/msg:opacity-100 transition-opacity hover:bg-[#2a3942] z-20"
-              title="Responder"
-            >
-              <ArrowBendUpLeft size={14} weight="bold" className="text-[#aebac1]" />
-            </button>
+          {/* Reply/Pin buttons — outgoing (appear on left) */}
+          {(onTogglePin || onReply) && (
+            <div className="absolute -left-9 top-1/2 -translate-y-1/2 flex items-center gap-1 opacity-0 group-hover/msg:opacity-100 transition-opacity z-20">
+              {onTogglePin && (
+                <button
+                  onClick={() => onTogglePin(activity)}
+                  className="w-7 h-7 rounded-full bg-[var(--chat-bg-menu)] border border-[var(--chat-border)] shadow-sm flex items-center justify-center hover:bg-[var(--chat-bg-hover)]"
+                  title={isPinned ? 'Desafixar mensagem' : 'Fixar mensagem'}
+                >
+                  <PushPin size={14} weight={isPinned ? 'fill' : 'bold'} className={isPinned ? 'text-[var(--chat-accent)] -rotate-45' : 'text-[var(--chat-icon)]'} />
+                </button>
+              )}
+              {onReply && (
+                <button
+                  onClick={() => onReply(activity)}
+                  className="w-7 h-7 rounded-full bg-[var(--chat-bg-menu)] border border-[var(--chat-border)] shadow-sm flex items-center justify-center hover:bg-[var(--chat-bg-hover)]"
+                  title="Responder"
+                >
+                  <ArrowBendUpLeft size={14} weight="bold" className="text-[var(--chat-icon)]" />
+                </button>
+              )}
+            </div>
           )}
           <div
             className={`relative rounded-2xl px-3 pt-2 pb-1.5 min-w-[80px] ${showHeader ? 'rounded-tr-[2px]' : ''}`}
@@ -432,13 +451,13 @@ function MessageBubble({
           {/* Reaction Pill Outgoing */}
           {reactions && reactions.length > 0 && (
             <div
-              className="absolute -bottom-2 right-2 bg-[#233138] border border-[#2f3b44] shadow-sm rounded-full px-1.5 py-0.5 flex items-center gap-0.5 z-10"
+              className="absolute -bottom-2 right-2 bg-[var(--chat-bg-menu)] border border-[var(--chat-border)] shadow-sm rounded-full px-1.5 py-0.5 flex items-center gap-0.5 z-10"
               title={reactions.map(r => `${r.metadata?.sender_name || 'Desconhecido'}: ${r.content}`).join('\n')}
             >
               {Array.from(new Set(reactions.map(r => r.content))).map((emoji, idx) => (
                 <span key={idx} className="text-[12px] leading-none">{emoji}</span>
               ))}
-              {reactions.length > 1 && <span className="text-[#8696a0] font-medium text-[10px] ml-0.5">{reactions.length}</span>}
+              {reactions.length > 1 && <span className="text-[var(--chat-text-muted)] font-medium text-[10px] ml-0.5">{reactions.length}</span>}
             </div>
           )}
         </div>
@@ -455,11 +474,11 @@ function MessageBubble({
     <div className="flex items-start gap-2.5 group/msg">
       <div className="w-7 flex-shrink-0 mt-0.5">
         {showHeader && (
-          <div className="w-7 h-7 rounded-full bg-[#2a3942] flex items-center justify-center shadow-inner overflow-hidden border border-[#1f2c33]">
+          <div className="w-7 h-7 rounded-full bg-[var(--chat-bg-hover)] flex items-center justify-center shadow-inner overflow-hidden border border-[var(--chat-bg-hover)]">
             {lead.avatar_url ? (
               <img src={lead.avatar_url} alt={lead.title} className="w-full h-full object-cover" />
             ) : (
-              <span className="text-[10px] font-bold text-[#53bdeb]">{initials}</span>
+              <span className="text-[10px] font-bold text-[var(--chat-accent)]">{initials}</span>
             )}
           </div>
         )}
@@ -467,7 +486,7 @@ function MessageBubble({
       <div className="max-w-[65%] w-fit">
         {showHeader && (
           <div className="flex items-center gap-1.5 mb-1 ml-1">
-            <span className="text-xs font-semibold text-[#8696a0]">{senderName}</span>
+            <span className="text-xs font-semibold text-[var(--chat-text-muted)]">{senderName}</span>
             {isEvolution && (
               <span className="text-[9px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded-full" style={{ backgroundColor: 'rgba(139,92,246,0.2)', color: '#a78bfa' }}>
                 Nº 2
@@ -476,21 +495,34 @@ function MessageBubble({
           </div>
         )}
         <div className="relative">
-          {/* Reply button — inbound (appears on right) */}
-          {onReply && (
-            <button
-              onClick={() => onReply(activity)}
-              className="absolute -right-9 top-1/2 -translate-y-1/2 w-7 h-7 rounded-full bg-[#233138] border border-[#2f3b44] shadow-sm flex items-center justify-center opacity-0 group-hover/msg:opacity-100 transition-opacity hover:bg-[#2a3942] z-20"
-              title="Responder"
-            >
-              <ArrowBendUpLeft size={14} weight="bold" className="text-[#aebac1]" />
-            </button>
+          {/* Reply/Pin buttons — inbound (appear on right) */}
+          {(onTogglePin || onReply) && (
+            <div className="absolute -right-9 top-1/2 -translate-y-1/2 flex items-center gap-1 opacity-0 group-hover/msg:opacity-100 transition-opacity z-20">
+              {onTogglePin && (
+                <button
+                  onClick={() => onTogglePin(activity)}
+                  className="w-7 h-7 rounded-full bg-[var(--chat-bg-menu)] border border-[var(--chat-border)] shadow-sm flex items-center justify-center hover:bg-[var(--chat-bg-hover)]"
+                  title={isPinned ? 'Desafixar mensagem' : 'Fixar mensagem'}
+                >
+                  <PushPin size={14} weight={isPinned ? 'fill' : 'bold'} className={isPinned ? 'text-[var(--chat-accent)] -rotate-45' : 'text-[var(--chat-icon)]'} />
+                </button>
+              )}
+              {onReply && (
+                <button
+                  onClick={() => onReply(activity)}
+                  className="w-7 h-7 rounded-full bg-[var(--chat-bg-menu)] border border-[var(--chat-border)] shadow-sm flex items-center justify-center hover:bg-[var(--chat-bg-hover)]"
+                  title="Responder"
+                >
+                  <ArrowBendUpLeft size={14} weight="bold" className="text-[var(--chat-icon)]" />
+                </button>
+              )}
+            </div>
           )}
           <div
             className={`relative rounded-2xl px-3 pt-2 pb-1.5 border shadow-sm min-w-[80px] ${showHeader ? 'rounded-tl-[2px]' : ''}`}
             style={isEvolution
               ? { backgroundColor: '#1e1a2e', borderColor: 'rgba(139,92,246,0.2)' }
-              : { backgroundColor: '#202c33', borderColor: 'rgba(255,255,255,0.05)' }
+              : { backgroundColor: 'var(--chat-bg-field)', borderColor: 'rgba(255,255,255,0.05)' }
             }
           >
             <QuotedMessageBar metadata={activity.metadata} isOutgoing={false} />
@@ -498,12 +530,12 @@ function MessageBubble({
               <MediaRenderer metadata={activity.metadata} isOutgoing={false} onImageClick={onImageClick} senderAvatar={lead.avatar_url} />
             )}
             {(!activity.metadata?.media_url || !['📷 Imagem', '🎥 Vídeo', '🎵 Áudio', '📄 Documento', '✨ Figurinha'].includes(activity.content)) && (
-              <p className={`text-sm text-[#e9edef] leading-relaxed whitespace-pre-wrap break-words ${activity.metadata?.media_url ? 'mt-1' : ''}`}>
+              <p className={`text-sm text-[var(--chat-text-primary)] leading-relaxed whitespace-pre-wrap break-words ${activity.metadata?.media_url ? 'mt-1' : ''}`}>
                 {activity.content}
                 <span className="inline-block w-[2.5rem]" />
               </p>
             )}
-            <span className="absolute bottom-1 right-2.5 text-[10px] text-[#8696a0] whitespace-nowrap">
+            <span className="absolute bottom-1 right-2.5 text-[10px] text-[var(--chat-text-muted)] whitespace-nowrap">
               {formatTime(activity.created_at)}
             </span>
           </div>
@@ -511,13 +543,13 @@ function MessageBubble({
           {/* Reaction Pill Inbound */}
           {reactions && reactions.length > 0 && (
             <div
-              className="absolute -bottom-2 right-2 bg-[#233138] border border-[#2f3b44] shadow-sm rounded-full px-1.5 py-0.5 flex items-center gap-0.5 z-10"
+              className="absolute -bottom-2 right-2 bg-[var(--chat-bg-menu)] border border-[var(--chat-border)] shadow-sm rounded-full px-1.5 py-0.5 flex items-center gap-0.5 z-10"
               title={reactions.map(r => `${r.metadata?.sender_name || 'Desconhecido'}: ${r.content}`).join('\n')}
             >
               {Array.from(new Set(reactions.map(r => r.content))).map((emoji, idx) => (
                 <span key={idx} className="text-[12px] leading-none">{emoji}</span>
               ))}
-              {reactions.length > 1 && <span className="text-[#8696a0] font-medium text-[10px] ml-0.5">{reactions.length}</span>}
+              {reactions.length > 1 && <span className="text-[var(--chat-text-muted)] font-medium text-[10px] ml-0.5">{reactions.length}</span>}
             </div>
           )}
         </div>
@@ -532,6 +564,8 @@ export default function ActivityTimeline({
   loading,
   lead,
   onReply,
+  onTogglePin,
+  pinnedActivityIds,
 }: ActivityTimelineProps) {
   const [selectedImage, setSelectedImage] = useState<string | null>(null)
   const endRef = useRef<HTMLDivElement>(null)
@@ -551,7 +585,7 @@ export default function ActivityTimeline({
   if (activities.length === 0) {
     return (
       <div className="flex-1 flex items-center justify-center bg-transparent z-10 relative">
-        <div className="bg-[#182229] border border-white/5 rounded-full px-6 py-2.5 text-[13px] text-[#8696a0] shadow-sm">
+        <div className="bg-[var(--chat-bg-panel)] border border-white/5 rounded-full px-6 py-2.5 text-[13px] text-[var(--chat-text-muted)] shadow-sm">
           Nenhuma mensagem ainda. Inicie a conversa!
         </div>
       </div>
@@ -600,10 +634,10 @@ export default function ActivityTimeline({
       }
       elements.push(
         <div key={activity.id} className="mt-4 flex justify-center">
-          <div className="bg-[#3a2e12] border border-[#5a4720] rounded-2xl p-3 max-w-sm w-full shadow-sm">
-            <p className="text-sm font-semibold text-amber-200">📝 Nota</p>
-            <p className="text-sm text-amber-100/90 mt-1 whitespace-pre-wrap">{activity.content}</p>
-            <p className="text-[10px] text-amber-400/80 mt-2 text-right uppercase font-semibold tracking-wider">
+          <div className="bg-amber-50 dark:bg-[#3a2e12] border border-amber-200 dark:border-[#5a4720] rounded-2xl p-3 max-w-sm w-full shadow-sm">
+            <p className="text-sm font-semibold text-amber-800 dark:text-amber-200">📝 Nota</p>
+            <p className="text-sm text-amber-900/90 dark:text-amber-100/90 mt-1 whitespace-pre-wrap">{activity.content}</p>
+            <p className="text-[10px] text-amber-700/80 dark:text-amber-400/80 mt-2 text-right uppercase font-semibold tracking-wider">
               {activity.actor?.profiles?.full_name || 'Desconhecido'} • {formatTime(activity.created_at)}
             </p>
           </div>
@@ -628,9 +662,9 @@ export default function ActivityTimeline({
         : ''
       elements.push(
         <div key={activity.id} className="mt-4 flex justify-center mb-1">
-          <div className="bg-[#202c33] border border-[#2f3b44] shadow-sm rounded-full py-2 px-5 inline-block">
-            <p className="text-xs font-semibold text-[#d1d7db] uppercase tracking-widest">
-              📞 Ligação{durationStr ? ` • ${durationStr}` : ''} • <span className="text-[#8696a0] font-normal">{formatTime(activity.created_at)}</span>
+          <div className="bg-[var(--chat-bg-field)] border border-[var(--chat-border)] shadow-sm rounded-full py-2 px-5 inline-block">
+            <p className="text-xs font-semibold text-[var(--chat-text-secondary)] uppercase tracking-widest">
+              📞 Ligação{durationStr ? ` • ${durationStr}` : ''} • <span className="text-[var(--chat-text-muted)] font-normal">{formatTime(activity.created_at)}</span>
             </p>
           </div>
         </div>
@@ -650,10 +684,10 @@ export default function ActivityTimeline({
       }
       elements.push(
         <div key={activity.id} className="mt-4 flex justify-center">
-          <div className="bg-[#0f2733] border border-[#1e4356] rounded-2xl p-4 max-w-md w-full shadow-sm">
-            <p className="text-sm font-semibold text-blue-200">📧 Email</p>
-            <p className="text-sm text-blue-100 mt-2 whitespace-pre-wrap bg-black/15 p-3 rounded-xl border border-blue-900/40">{activity.content}</p>
-            <p className="text-[10px] text-blue-300 mt-2 text-right uppercase font-semibold tracking-wide">
+          <div className="bg-blue-50 dark:bg-[#0f2733] border border-blue-200 dark:border-[#1e4356] rounded-2xl p-4 max-w-md w-full shadow-sm">
+            <p className="text-sm font-semibold text-blue-800 dark:text-blue-200">📧 Email</p>
+            <p className="text-sm text-blue-900 dark:text-blue-100 mt-2 whitespace-pre-wrap bg-black/5 dark:bg-black/15 p-3 rounded-xl border border-blue-200 dark:border-blue-900/40">{activity.content}</p>
+            <p className="text-[10px] text-blue-700 dark:text-blue-300 mt-2 text-right uppercase font-semibold tracking-wide">
               {formatTime(activity.created_at)}
             </p>
           </div>
@@ -686,7 +720,7 @@ export default function ActivityTimeline({
       : undefined
 
     elements.push(
-      <div key={activity.id} className={needsGap ? 'mt-4' : 'mt-1'}>
+      <div key={activity.id} id={`activity-${activity.id}`} className={needsGap ? 'mt-4' : 'mt-1'}>
         <MessageBubble
           activity={activity}
           senderType={senderType as SenderType}
@@ -695,6 +729,8 @@ export default function ActivityTimeline({
           reactions={reactionsForThisMessage}
           onImageClick={setSelectedImage}
           onReply={onReply}
+          onTogglePin={onTogglePin}
+          isPinned={pinnedActivityIds?.has(activity.id)}
         />
       </div>
     )

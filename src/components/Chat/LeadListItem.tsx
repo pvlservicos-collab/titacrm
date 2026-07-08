@@ -57,9 +57,9 @@ const LeadListItem = ({ lead, isSelected, onClick, onContextMenu, timeStr, hit, 
             <button
                 onClick={() => onClick(lead)}
                 onContextMenu={(e) => onContextMenu(e, lead)}
-                className={`w-full text-left px-4 py-3 border-b border-[#1f2c33] transition-colors ${isSelected
-                    ? 'bg-[#2a3942] border-l-[3px] border-l-[#53bdeb]'
-                    : 'hover:bg-[#182229] border-l-[3px] border-l-transparent'
+                className={`w-full text-left px-4 py-3 border-b border-[var(--chat-bg-hover)] transition-colors ${isSelected
+                    ? 'bg-[var(--chat-bg-hover)] border-l-[3px] border-l-[var(--chat-accent)]'
+                    : 'hover:bg-[var(--chat-bg-panel)] border-l-[3px] border-l-transparent'
                     }`}
                 style={unreadGradient ? { background: unreadGradient } : undefined}
             >
@@ -67,15 +67,15 @@ const LeadListItem = ({ lead, isSelected, onClick, onContextMenu, timeStr, hit, 
                     {/* Avatar */}
                     <div className="relative flex-shrink-0">
                         {lead.is_pinned && (
-                            <div className="absolute -top-1 -left-1 z-10 bg-[#111b21] rounded-full p-[1px]">
-                                <PushPin size={12} weight="fill" className="text-[#53bdeb] -rotate-45" />
+                            <div className="absolute -top-1 -left-1 z-10 bg-[var(--chat-bg-base)] rounded-full p-[1px]">
+                                <PushPin size={12} weight="fill" className="text-[var(--chat-accent)] -rotate-45" />
                             </div>
                         )}
-                        <div className="w-10 h-10 rounded-full bg-[#2a3942] flex items-center justify-center overflow-hidden border border-[#1f2c33]">
+                        <div className="w-10 h-10 rounded-full bg-[var(--chat-bg-hover)] flex items-center justify-center overflow-hidden border border-[var(--chat-bg-hover)]">
                             {lead.avatar_url ? (
                                 <img src={lead.avatar_url} alt={lead.title} className="w-full h-full object-cover" />
                             ) : (
-                                <span className="text-sm font-bold text-[#53bdeb]">{getInitials(lead.title)}</span>
+                                <span className="text-sm font-bold text-[var(--chat-accent)]">{getInitials(lead.title)}</span>
                             )}
                         </div>
                         <IntegrationBadge lead={lead} size="sm" />
@@ -84,14 +84,14 @@ const LeadListItem = ({ lead, isSelected, onClick, onContextMenu, timeStr, hit, 
                     {/* Text Content */}
                     <div className="flex-1 min-w-0 overflow-hidden">
                         <div className="flex items-start justify-between mb-[2px] w-full">
-                            <h3 className={`text-[15px] leading-tight truncate ${lead.is_unread ? 'font-bold text-[#e9edef]' : 'font-medium text-[#d1d7db]'}`}>
+                            <h3 className={`text-[15px] leading-tight truncate ${lead.is_unread ? 'font-bold text-[var(--chat-text-primary)]' : 'font-medium text-[var(--chat-text-secondary)]'}`}>
                                 {formatPhone(lead.title)}
                             </h3>
                             <div className="flex items-center gap-2 pl-2">
                                 {lead.is_unread && (
-                                    <div className="w-2 h-2 rounded-full bg-[#53bdeb] flex-shrink-0" />
+                                    <div className="w-2 h-2 rounded-full bg-[var(--chat-accent)] flex-shrink-0" />
                                 )}
-                                <span className={`text-[11px] flex-shrink-0 ${lead.is_unread ? 'text-[#53bdeb] font-bold' : 'text-[#667781] font-medium'}`}>
+                                <span className={`text-[11px] flex-shrink-0 ${lead.is_unread ? 'text-[var(--chat-accent)] font-bold' : 'text-[var(--chat-text-tertiary)] font-medium'}`}>
                                     {timeStr}
                                 </span>
                             </div>
@@ -99,14 +99,14 @@ const LeadListItem = ({ lead, isSelected, onClick, onContextMenu, timeStr, hit, 
 
                         <div className="flex items-center gap-1.5 overflow-hidden w-full">
                             {SenderIcon && <SenderIcon weight="fill" className={`flex-shrink-0 ${iconColor} w-3.5 h-3.5`} />}
-                            <p className={`text-[13px] truncate ${lead.is_unread ? 'text-[#d1d7db] font-medium' : (lastMsg ? 'text-[#8696a0]' : 'text-[#667781] italic')}`}>
+                            <p className={`text-[13px] truncate ${lead.is_unread ? 'text-[var(--chat-text-secondary)] font-medium' : (lastMsg ? 'text-[var(--chat-text-muted)]' : 'text-[var(--chat-text-tertiary)] italic')}`}>
                                 {lastMsg}
                             </p>
                         </div>
 
                         {hit?.matchType === 'message' && hit.snippet && (
-                            <div className="text-xs text-[#8696a0] italic mt-0.5 line-clamp-1">
-                                <span className="text-[#53bdeb] mr-1">↩</span>
+                            <div className="text-xs text-[var(--chat-text-muted)] italic mt-0.5 line-clamp-1">
+                                <span className="text-[var(--chat-accent)] mr-1">↩</span>
                                 <span dangerouslySetInnerHTML={{ __html: renderSnippet(hit.snippet, query ?? '') }} />
                             </div>
                         )}

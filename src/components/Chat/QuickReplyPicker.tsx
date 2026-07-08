@@ -41,7 +41,7 @@ export function filterAndGroupQuickReplies(shared: QuickReply[], personal: Quick
 
 function MediaGlyph({ mediaType }: { mediaType: string | null }) {
   if (!mediaType) return null
-  const props = { size: 13, className: 'text-[#8696a0] flex-shrink-0' }
+  const props = { size: 13, className: 'text-[var(--chat-text-muted)] flex-shrink-0' }
   if (mediaType === 'image' || mediaType === 'sticker') return <Image {...props} />
   if (mediaType === 'video') return <VideoCamera {...props} />
   if (mediaType === 'audio') return <FileAudio {...props} />
@@ -78,9 +78,9 @@ export default function QuickReplyPicker({
   let runningIndex = -1
 
   return (
-    <div className="w-[340px] max-h-[320px] overflow-y-auto bg-[#233138] border border-[#2f3b44] rounded-xl shadow-lg py-2">
+    <div className="w-[340px] max-h-[320px] overflow-y-auto bg-[var(--chat-bg-menu)] border border-[var(--chat-border)] rounded-xl shadow-lg py-2">
       {flat.length === 0 ? (
-        <div className="px-4 py-6 text-center text-xs text-[#8696a0]">
+        <div className="px-4 py-6 text-center text-xs text-[var(--chat-text-muted)]">
           {shared.length === 0 && personal.length === 0 ? (
             <>Nenhuma resposta rápida cadastrada ainda.<br />Configure em Ajustes → Respostas Rápidas.</>
           ) : (
@@ -90,7 +90,7 @@ export default function QuickReplyPicker({
       ) : (
         groups.map((group) => (
           <div key={group.label} className="mb-1 last:mb-0">
-            <p className="px-3 pt-2 pb-1 text-[10px] font-bold uppercase tracking-wider text-[#667781]">
+            <p className="px-3 pt-2 pb-1 text-[10px] font-bold uppercase tracking-wider text-[var(--chat-text-tertiary)]">
               {group.label}
             </p>
             {group.items.map((qr) => {
@@ -105,17 +105,17 @@ export default function QuickReplyPicker({
                   onMouseEnter={() => onHighlightIndex(index)}
                   onClick={() => onSelect(qr)}
                   className={`w-full flex items-start gap-2 px-3 py-2 text-left transition-colors ${
-                    isHighlighted ? 'bg-[#2a3942]' : 'hover:bg-[#2a3942]/60'
+                    isHighlighted ? 'bg-[var(--chat-bg-hover)]' : 'hover:bg-[var(--chat-bg-hover)]/60'
                   }`}
                 >
                   <Lightning size={13} weight="fill" className="text-[#00B8D9] flex-shrink-0 mt-0.5" />
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-1.5">
-                      <span className="text-[12px] font-semibold text-[#e9edef]">/{qr.shortcut}</span>
+                      <span className="text-[12px] font-semibold text-[var(--chat-text-primary)]">/{qr.shortcut}</span>
                       <MediaGlyph mediaType={qr.mediaType} />
                     </div>
                     {qr.content && (
-                      <p className="text-[11px] text-[#8696a0] truncate">{qr.content}</p>
+                      <p className="text-[11px] text-[var(--chat-text-muted)] truncate">{qr.content}</p>
                     )}
                   </div>
                 </button>

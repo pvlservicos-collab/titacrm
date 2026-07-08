@@ -3,6 +3,10 @@
     {
       "path": "/api/funnels/tick",
       "schedule": "*/15 * * * *"
+    },
+    {
+      "path": "/api/integrations/instagram/check-tokens",
+      "schedule": "0 9 * * *"
     }
   ]
 }

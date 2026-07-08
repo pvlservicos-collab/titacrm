@@ -129,6 +129,15 @@ export interface LeadActivityWithActor extends LeadActivity {
   }
 }
 
+// Pinned messages
+export interface PinnedMessage {
+  id: string
+  activity_id: string
+  pinned_by_member_id: string | null
+  pinned_at: string
+  activity: LeadActivityWithActor
+}
+
 // Tags
 export interface Tag {
   id: string

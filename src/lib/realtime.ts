@@ -75,4 +75,6 @@ export const events = {
   LEAD_UPDATED: 'lead.updated',
   LEAD_DELETED: 'lead.deleted',
   MEMBER_UPDATED: 'member.updated',
+  PIN_CREATED: 'pin.created',
+  PIN_DELETED: 'pin.deleted',
 }

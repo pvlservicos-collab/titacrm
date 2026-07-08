@@ -11,8 +11,8 @@
  */
 import { NextRequest } from 'next/server'
 import { db } from '@/lib/db'
-import { leads, leadActivities, pipelineStages, integrationMessageLogs } from '@/lib/schema'
-import { eq, and, isNull, ilike, asc } from 'drizzle-orm'
+import { leads, leadActivities, pipelineStages, integrationMessageLogs, integrations } from '@/lib/schema'
+import { eq, and, isNull, ilike, asc, sql } from 'drizzle-orm'
 import { publishEvent, channels, events } from '@/lib/realtime'
 import { dispatchOutboundWebhook } from '@/lib/outbound-webhook'
 import { ORGANIZATION_ID } from '@/lib/automated-message'
@@ -92,11 +92,172 @@ const MEDIA_LABELS: Record<string, string> = {
   sticker: '✨ Figurinha',
 }
 
+// ── Instagram Direct ────────────────────────────────────────────────────────
+// entry.id em eventos de Instagram Messaging é o ID do objeto assinado no
+// webhook (IG Business Account ou a Page conectada, dependendo de como a
+// assinatura foi configurada) — testamos os dois campos salvos na integração.
+async function findInstagramIntegration(entryId: string) {
+  const [integration] = await db.select({ id: integrations.id, organizationId: integrations.organizationId })
+    .from(integrations)
+    .where(and(
+      eq(integrations.type, 'instagram_direct'),
+      isNull(integrations.deletedAt),
+      sql`(${integrations.config}->>'instagram_business_account_id' = ${entryId} OR ${integrations.config}->>'connected_page_id' = ${entryId})`
+    ))
+    .limit(1)
+  return integration
+}
+
+async function downloadInstagramMedia(orgId: string, url: string, mediaType: string): Promise<string | null> {
+  try {
+    const fileRes = await fetch(url)
+    if (!fileRes.ok) return null
+    const buffer = Buffer.from(await fileRes.arrayBuffer())
+    const contentType = fileRes.headers.get('content-type') || 'application/octet-stream'
+    const ext = contentType.split('/')[1]?.split(';')[0] || 'bin'
+
+    const { put } = await import('@vercel/blob')
+    const blob = await put(`instagram-media/${orgId}/${mediaType}-${Date.now()}.${ext}`, buffer, {
+      access: 'public',
+      contentType,
+    })
+    return blob.url
+  } catch (err) {
+    console.error('[Instagram Webhook] media download failed', err)
+    return null
+  }
+}
+
+const IG_MEDIA_LABELS: Record<string, string> = {
+  image: '📷 Imagem',
+  video: '🎥 Vídeo',
+  audio: '🎵 Áudio',
+  file: '📄 Documento',
+  share: '🔗 Compartilhado',
+}
+
+/**
+ * Instagram Messaging entrega eventos no formato `entry.messaging[]` (padrão
+ * Messenger Platform) — diferente do `entry.changes[].value.messages[]` do
+ * WhatsApp Cloud API. Não testado ainda contra payload real (sem app Meta
+ * aprovado); validar no console de teste de webhooks do App Dashboard assim
+ * que houver credenciais e ajustar o parsing se o formato divergir.
+ */
+async function handleInstagramEntry(entry: any) {
+  const integration = await findInstagramIntegration(entry.id)
+  if (!integration) return Response.json({ status: 'ignored: instagram integration not found' })
+
+  const orgId = integration.organizationId
+
+  for (const evt of entry.messaging || []) {
+    const message = evt.message
+    if (!message) continue
+
+    // Mensagens ecoadas (enviadas pela própria Page — seja pela nossa API, seja
+    // manualmente pelo app do Instagram) são ignoradas aqui: o envio pela nossa
+    // API já grava a activity no momento do envio, então tratar o echo duplicaria
+    // a mensagem. Consequência: mensagem enviada manualmente fora do CRM não
+    // sincroniza automaticamente nesta v1.
+    if (message.is_echo) continue
+
+    const senderId = evt.sender?.id
+    if (!senderId) continue
+
+    let content = message.text || ''
+    let mediaUrl: string | undefined
+    let mediaType: string | undefined
+
+    const attachment = message.attachments?.[0]
+    if (attachment?.type) {
+      mediaType = attachment.type === 'file' ? 'document' : attachment.type
+      const rawUrl = attachment.payload?.url
+      if (rawUrl) {
+        const hosted = await downloadInstagramMedia(orgId, rawUrl, mediaType || 'file')
+        if (hosted) mediaUrl = hosted
+      }
+      if (!content) content = IG_MEDIA_LABELS[attachment.type] || '[Mídia recebida]'
+    } else if (!content) {
+      content = '[Mensagem recebida]'
+    }
+
+    // Instagram não tem telefone — lead é resolvido por external_id (IGSID) +
+    // integração, não por phone como no WhatsApp.
+    const [existing] = await db.select({ id: leads.id }).from(leads)
+      .where(and(
+        eq(leads.organizationId, orgId),
+        eq(leads.integrationId, integration.id),
+        eq(leads.externalId, senderId),
+        isNull(leads.deletedAt)
+      ))
+      .limit(1)
+
+    let leadId = existing?.id
+    if (!leadId) {
+      const [firstStage] = await db.select({ id: pipelineStages.id }).from(pipelineStages)
+        .where(and(eq(pipelineStages.organizationId, orgId), isNull(pipelineStages.deletedAt)))
+        .orderBy(asc(pipelineStages.rank)).limit(1)
+
+      const [newLead] = await db.insert(leads).values({
+        organizationId: orgId,
+        integrationId: integration.id,
+        title: senderId,
+        externalId: senderId,
+        stageId: firstStage?.id || null,
+        lastActivityAt: new Date(),
+      }).returning({ id: leads.id })
+      leadId = newLead.id
+    }
+
+    const [activity] = await db.insert(leadActivities).values({
+      organizationId: orgId,
+      leadId,
+      type: 'whatsapp',
+      content,
+      metadata: {
+        direction: 'inbound',
+        source: 'instagram',
+        channel: 'instagram_direct',
+        instagram_message_id: message.mid,
+        ...(mediaUrl ? { media_url: mediaUrl, media_type: mediaType } : {}),
+      },
+    }).returning({ id: leadActivities.id })
+
+    await db.update(leads).set({
+      lastMessageContent: content,
+      lastMessageSenderType: 'lead',
+      lastActivityAt: new Date(),
+      isUnread: true,
+    }).where(eq(leads.id, leadId))
+
+    await publishEvent(channels.leadActivities(leadId), events.ACTIVITY_CREATED, { id: activity.id })
+    await publishEvent(channels.orgLeads(orgId), events.LEAD_UPDATED, { id: leadId })
+
+    await db.insert(integrationMessageLogs).values({
+      organizationId: orgId,
+      source: 'instagram',
+      direction: 'inbound',
+      content,
+      leadId,
+      status: 'success',
+      payload: evt,
+    })
+  }
+
+  return Response.json({ status: 'ok' })
+}
+
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json()
 
     const entry = body.entry?.[0]
+
+    // Instagram Messaging usa `entry.messaging[]`, ausente nos payloads do
+    // WhatsApp Cloud API — discrimina os dois formatos antes de seguir.
+    if (entry?.messaging?.length) {
+      return await handleInstagramEntry(entry)
+    }
+
     const changes = entry?.changes?.[0]
     const value = changes?.value
     const message = value?.messages?.[0]

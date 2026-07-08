@@ -229,20 +229,20 @@ export default function ChatPage() {
         {mobileView === 'conversation' && (
           displayedLead ? (
             <div className="flex flex-col h-full min-h-0">
-              <div className="flex items-center gap-3 h-14 px-2 border-b border-[#2f3b44] bg-[#202c33] flex-shrink-0">
-                <button onClick={() => setMobileView('list')} className="w-9 h-9 flex items-center justify-center rounded-lg text-[#e9edef]" aria-label="Voltar">
+              <div className="flex items-center gap-3 h-14 px-2 border-b border-[var(--chat-border)] bg-[var(--chat-bg-field)] flex-shrink-0">
+                <button onClick={() => setMobileView('list')} className="w-9 h-9 flex items-center justify-center rounded-lg text-[var(--chat-text-primary)]" aria-label="Voltar">
                   <CaretLeft size={20} />
                 </button>
-                <div className="w-8 h-8 rounded-full bg-[#2a3942] flex items-center justify-center overflow-hidden flex-shrink-0">
+                <div className="w-8 h-8 rounded-full bg-[var(--chat-bg-hover)] flex items-center justify-center overflow-hidden flex-shrink-0">
                   {displayedLead.avatar_url ? (
                     <img src={displayedLead.avatar_url} alt={displayedLead.title} className="w-full h-full object-cover" />
                   ) : (
-                    <span className="text-xs font-bold text-[#53bdeb]">{getInitials(displayedLead.title)}</span>
+                    <span className="text-xs font-bold text-[var(--chat-accent)]">{getInitials(displayedLead.title)}</span>
                   )}
                 </div>
-                <span className="flex-1 min-w-0 truncate text-sm font-medium text-[#e9edef]">{displayedLead.title}</span>
+                <span className="flex-1 min-w-0 truncate text-sm font-medium text-[var(--chat-text-primary)]">{displayedLead.title}</span>
                 <LeadOrderStatusBadges leadId={displayedLead.id} />
-                <button onClick={() => setShowMobileDetails(true)} className="w-9 h-9 flex items-center justify-center rounded-lg text-[#8696a0]" aria-label="Detalhes do contato">
+                <button onClick={() => setShowMobileDetails(true)} className="w-9 h-9 flex items-center justify-center rounded-lg text-[var(--chat-text-muted)]" aria-label="Detalhes do contato">
                   <Info size={20} />
                 </button>
               </div>
@@ -255,14 +255,14 @@ export default function ChatPage() {
               </div>
             </div>
           ) : (
-            <div className="flex items-center justify-center h-full bg-[#0b141a] text-[#8696a0]">
+            <div className="flex items-center justify-center h-full bg-[var(--chat-bg-conversation)] text-[var(--chat-text-muted)]">
               Integre alguma fonte de conversas
             </div>
           )
         )}
 
         {showMobileDetails && displayedLead && (
-          <div className="fixed inset-0 z-50 bg-[#111b21]">
+          <div className="fixed inset-0 z-50 bg-[var(--chat-bg-base)]">
             <LeadDetailsSidebar
               lead={displayedLead}
               stages={leadStages}
@@ -285,7 +285,7 @@ export default function ChatPage() {
   return (
     <div className="flex h-full gap-0">
       {/* Left — Lead List */}
-      <div className="w-[340px] border-r border-[#2f3b44] flex-shrink-0">
+      <div className="w-[340px] border-r border-[var(--chat-border)] flex-shrink-0">
         <LeadList
           leads={allLeads}
           selectedLeadId={displayedLead?.id}
@@ -304,7 +304,7 @@ export default function ChatPage() {
             onMessageSent={handleChatMessageSent}
           />
         ) : (
-          <div className="flex items-center justify-center h-full bg-[#0b141a] text-[#8696a0]">
+          <div className="flex items-center justify-center h-full bg-[var(--chat-bg-conversation)] text-[var(--chat-text-muted)]">
             Integre alguma fonte de conversas
           </div>
         )}

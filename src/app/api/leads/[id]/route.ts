@@ -65,7 +65,7 @@ export async function PATCH(req: NextRequest, { params }: Params) {
     }
 
     const updates: any = {}
-    const allowedFields = ['title', 'email', 'phone', 'stage_id', 'owner_member_id', 'custom_attributes', 'ai_interest_level', 'ai_next_action_short', 'is_unread', 'value', 'avatar_url']
+    const allowedFields = ['title', 'email', 'phone', 'stage_id', 'owner_member_id', 'custom_attributes', 'ai_interest_level', 'ai_next_action_short', 'is_unread', 'is_pinned', 'value', 'avatar_url']
     for (const field of allowedFields) {
       if (body[field] !== undefined) {
         // Convert snake_case to camelCase

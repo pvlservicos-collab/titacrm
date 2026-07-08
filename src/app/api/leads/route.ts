@@ -3,10 +3,11 @@ import { authenticateRequest, apiError, validateRequired, validateSource } from 
 import { db } from '@/lib/db'
 import { publishEvent, channels, events } from '@/lib/realtime'
 import {
-  leads, leadTags, tags, organizationMembers, profiles, pipelineStages,
+  leads, leadTags, tags, organizationMembers, profiles, pipelineStages, integrations,
 } from '@/lib/schema'
 import { eq, and, isNull, desc, asc, ilike, or, sql, count } from 'drizzle-orm'
 import { mapLead } from '@/lib/mappers'
+import type { Integration } from '@/lib/types'
 
 /**
  * GET /api/leads
@@ -42,12 +43,14 @@ export async function GET(req: NextRequest) {
     const offset = (page - 1) * limit
 
     const query = db
-      .select()
+      .select({ lead: leads, integrationType: integrations.type })
       .from(leads)
+      .leftJoin(integrations, eq(integrations.id, leads.integrationId))
       .where(and(...conditions))
       .orderBy(desc(sql`coalesce(${leads.lastActivityAt}, ${leads.createdAt})`))
 
-    const data = returnAll ? await query : await query.limit(limit).offset(offset)
+    const rows = returnAll ? await query : await query.limit(limit).offset(offset)
+    const data = rows.map((r) => r.lead)
 
     // Buscar tags para cada lead
     const leadIds = data.map((l) => l.id)
@@ -70,9 +73,10 @@ export async function GET(req: NextRequest) {
       }
     }
 
-    const result = data.map((l) => ({
-      ...mapLead(l),
-      lead_tags: tagsMap[l.id] || [],
+    const result = rows.map((r) => ({
+      ...mapLead(r.lead),
+      lead_tags: tagsMap[r.lead.id] || [],
+      integration: r.integrationType ? ({ type: r.integrationType } as Integration) : undefined,
     }))
 
     return Response.json({ data: result, page, limit })

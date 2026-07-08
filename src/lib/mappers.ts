@@ -24,6 +24,7 @@ export function mapLead(l: DrizzleLead) {
     last_activity_by_member_id: l.lastActivityByMemberId,
     is_group: l.isGroup,
     is_unread: l.isUnread,
+    is_pinned: l.isPinned,
     value: l.value,
     goals: l.goals,
     cep: l.cep,

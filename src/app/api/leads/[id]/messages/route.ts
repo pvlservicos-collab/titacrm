@@ -6,9 +6,14 @@ import {
   leads, leadActivities, pipelineStages, organizationMembers, profiles, notifications,
 } from '@/lib/schema'
 import { eq, and, isNull, desc, asc, ilike, sql } from 'drizzle-orm'
-import { sendWhatsAppMessage, sendWhatsAppMedia } from '@/lib/whatsapp'
-import { sendEvolutionMessage, sendEvolutionMedia } from '@/lib/evolution'
+import { getChannelAdapter } from '@/lib/channels/registry'
 import { integrations } from '@/lib/schema'
+
+const CHANNEL_LABELS: Record<string, string> = {
+  whatsapp_evolution: 'Nº 2 (Evolution)',
+  whatsapp_cloud_official: 'API Oficial',
+  instagram_direct: 'Instagram',
+}
 
 /**
  * GET /api/leads/[id]/messages
@@ -99,7 +104,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     let decodedPhone = ''
 
     let leadQuery = db
-      .select({ id: leads.id, title: leads.title, phone: leads.phone, isGroup: leads.isGroup })
+      .select({ id: leads.id, title: leads.title, phone: leads.phone, isGroup: leads.isGroup, externalId: leads.externalId })
       .from(leads)
       .where(
         and(
@@ -178,10 +183,18 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       metadata.channel = integrationTyp
 
       try {
-        // A API Oficial do WhatsApp (Meta Cloud API) não suporta grupos — evita uma
-        // chamada fadada ao fracasso e devolve um erro claro em vez de algo confuso.
-        if (lead?.isGroup && integrationTyp !== 'whatsapp_evolution') {
-          throw new Error('Grupos só podem ser respondidos pela Evolution API — a API Oficial do WhatsApp não suporta grupos.')
+        const adapter = getChannelAdapter(integrationTyp)
+
+        // Grupos só existem no WhatsApp (via Evolution) — outros canais (Cloud API,
+        // Instagram) não suportam; evita uma chamada fadada ao fracasso.
+        if (lead?.isGroup && !adapter.supportsGroups) {
+          throw new Error('Grupos só podem ser respondidos pela Evolution API — este canal não suporta grupos.')
+        }
+
+        // Instagram não tem telefone — o destinatário é o IGSID (external_id do lead).
+        const recipient = integrationTyp === 'instagram_direct' ? (lead?.externalId || '') : phone
+        if (integrationTyp === 'instagram_direct' && !recipient) {
+          throw new Error('Lead do Instagram sem external_id (IGSID) — não é possível enviar.')
         }
 
         // Legenda real de mídia (só existe se alguém escreveu de verdade) — nunca usar
@@ -189,19 +202,12 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
         // (ex: "📷 Imagem") que nunca deveria virar legenda de verdade no WhatsApp.
         const mediaCaption = typeof body.caption === 'string' ? body.caption : ''
 
-        if (integrationTyp === 'whatsapp_evolution') {
-          const result = body.media_url
-            ? await sendEvolutionMedia(auth.organizationId, phone, body.media_type, body.media_url, mediaCaption, body.media_filename, lead?.isGroup ?? false)
-            : await sendEvolutionMessage(auth.organizationId, phone, body.content, lead?.isGroup ?? false)
-          metadata.send_status = 'sent'
-          metadata.evolution_message_id = result?.key?.id
-        } else {
-          const result = body.media_url
-            ? await sendWhatsAppMedia(auth.organizationId, phone, body.media_type, body.media_url, mediaCaption, body.media_filename)
-            : await sendWhatsAppMessage(auth.organizationId, phone, body.content)
-          metadata.whatsapp_message_id = result?.messages?.[0]?.id
-          metadata.send_status = 'sent'
-        }
+        const result = body.media_url
+          ? await adapter.sendMedia(auth.organizationId, recipient, body.media_type, body.media_url, mediaCaption, body.media_filename, lead?.isGroup ?? false)
+          : await adapter.sendText(auth.organizationId, recipient, body.content, lead?.isGroup ?? false)
+
+        metadata.send_status = 'sent'
+        if (result.externalId) metadata[adapter.metadataIdKey] = result.externalId
       } catch (err: any) {
         metadata.send_status = 'failed'
         metadata.send_error = err.message || 'Erro ao enviar mensagem.'
@@ -209,7 +215,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
         // Notificação persistente (sino) — best-effort, não deve derrubar a resposta
         // se o próprio insert de notificação falhar.
         if (auth.memberId) {
-          const channelLabel = integrationTyp === 'whatsapp_evolution' ? 'Nº 2 (Evolution)' : 'API Oficial'
+          const channelLabel = CHANNEL_LABELS[integrationTyp] || 'API Oficial'
           db.insert(notifications).values({
             organizationId: auth.organizationId,
             recipientMemberId: auth.memberId,

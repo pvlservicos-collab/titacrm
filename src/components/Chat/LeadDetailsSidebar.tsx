@@ -104,9 +104,9 @@ export default function LeadDetailsSidebar({
 
     if (status === 'success') return `${base} bg-sky-500/10 border-sky-500/30 shadow-sm ring-1 ring-sky-500/10`
     if (status === 'error') return `${base} bg-red-500/10 border-red-500/30 shadow-sm ring-1 ring-red-500/10`
-    if (status === 'sending') return `${base} bg-[#202c33] border-[#2f3b44] opacity-80 cursor-wait`
+    if (status === 'sending') return `${base} bg-[var(--chat-bg-field)] border-[var(--chat-border)] opacity-80 cursor-wait`
 
-    return `${base} bg-[#202c33] border-[#2f3b44] hover:${hoverClass}`
+    return `${base} bg-[var(--chat-bg-field)] border-[var(--chat-border)] hover:${hoverClass}`
   }
 
   const renderSidebarButtonIcon = (key: ChatButtonKey, DefaultIcon: any, colorClass: string) => {
@@ -116,7 +116,7 @@ export default function LeadDetailsSidebar({
     if (status === 'success') return <Check size={24} weight="bold" className="text-sky-400 animate-in zoom-in duration-200" />
     if (status === 'error') return <X size={24} weight="bold" className="text-red-400 animate-in zoom-in duration-200" />
     if (status === 'sending') return (
-      <svg className="animate-spin h-5 w-5 text-[#667781]" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+      <svg className="animate-spin h-5 w-5 text-[var(--chat-text-tertiary)]" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
         <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
         <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
       </svg>
@@ -131,7 +131,7 @@ export default function LeadDetailsSidebar({
 
     if (status === 'success') return 'text-sky-400'
     if (status === 'error') return 'text-red-400'
-    return 'text-[#d1d7db]'
+    return 'text-[var(--chat-text-secondary)]'
   }
 
   useEffect(() => {
@@ -200,11 +200,11 @@ export default function LeadDetailsSidebar({
 
   return (
     <>
-    <div className="w-full md:w-72 border-l border-[#2f3b44] flex flex-col flex-shrink-0 overflow-y-auto bg-[#111b21] chat-dark-scroll">
+    <div className="w-full md:w-72 border-l border-[var(--chat-border)] flex flex-col flex-shrink-0 overflow-y-auto bg-[var(--chat-bg-base)] chat-dark-scroll">
       {onClose && (
-        <div className="flex items-center justify-between px-4 h-14 border-b border-[#2f3b44] flex-shrink-0 md:hidden">
-          <span className="text-sm font-semibold text-[#e9edef]">Detalhes do contato</span>
-          <button onClick={onClose} className="w-8 h-8 flex items-center justify-center rounded-lg text-[#8696a0] hover:text-[#e9edef] hover:bg-[#202c33] transition-colors">
+        <div className="flex items-center justify-between px-4 h-14 border-b border-[var(--chat-border)] flex-shrink-0 md:hidden">
+          <span className="text-sm font-semibold text-[var(--chat-text-primary)]">Detalhes do contato</span>
+          <button onClick={onClose} className="w-8 h-8 flex items-center justify-center rounded-lg text-[var(--chat-text-muted)] hover:text-[var(--chat-text-primary)] hover:bg-[var(--chat-bg-field)] transition-colors">
             <X size={20} />
           </button>
         </div>
@@ -213,11 +213,11 @@ export default function LeadDetailsSidebar({
         {/* Lead Avatar + Name + Tags */}
         <div className="text-center flex flex-col items-center">
           <div className="relative inline-block mb-3">
-            <div className="w-16 h-16 rounded-full bg-[#2a3942] flex items-center justify-center overflow-hidden border-2 border-[#111b21] shadow-sm">
+            <div className="w-16 h-16 rounded-full bg-[var(--chat-bg-hover)] flex items-center justify-center overflow-hidden border-2 border-[var(--chat-bg-base)] shadow-sm">
               {lead.avatar_url ? (
                 <img src={lead.avatar_url} alt={lead.title} className="w-full h-full object-cover" />
               ) : (
-                <span className="text-xl font-bold text-[#53bdeb]">{getInitials(lead.title)}</span>
+                <span className="text-xl font-bold text-[var(--chat-accent)]">{getInitials(lead.title)}</span>
               )}
             </div>
             <IntegrationBadge lead={lead} size="lg" />
@@ -239,22 +239,22 @@ export default function LeadDetailsSidebar({
                     }
                   }}
                   onBlur={handleSaveName}
-                  className="w-full text-center font-display font-bold text-xl text-[#e9edef] focus:outline-none px-1 py-0.5 bg-transparent border-b-2 border-[#2f3b44] focus:border-[#53bdeb] min-w-0 transition-colors"
+                  className="w-full text-center font-display font-bold text-xl text-[var(--chat-text-primary)] focus:outline-none px-1 py-0.5 bg-transparent border-b-2 border-[var(--chat-border)] focus:border-[var(--chat-accent)] min-w-0 transition-colors"
                 />
                 <button
                   onMouseDown={(e) => { e.preventDefault(); handleSaveName(); }}
-                  className="bg-[#2a3942] hover:bg-[#53bdeb] hover:text-[#0b141a] text-[#53bdeb] p-1 rounded transition-colors flex-shrink-0"
+                  className="bg-[var(--chat-bg-hover)] hover:bg-[var(--chat-accent)] hover:text-[var(--chat-bg-conversation)] text-[var(--chat-accent)] p-1 rounded transition-colors flex-shrink-0"
                   title="Salvar (Enter)"
                 >
                   <Check weight="bold" size={16} />
                 </button>
               </div>
             ) : (
-              <h2 className="font-display font-bold text-xl text-[#e9edef] group-hover:text-[#d1d7db] transition-colors relative inline-flex items-center max-w-[85%]">
+              <h2 className="font-display font-bold text-xl text-[var(--chat-text-primary)] group-hover:text-[var(--chat-text-secondary)] transition-colors relative inline-flex items-center max-w-[85%]">
                 <span className="truncate" title={lead.title}>{formatPhone(lead.title)}</span>
                 <button
                   onClick={() => setIsEditingName(true)}
-                  className="p-1 text-[#8696a0] hover:text-[#53bdeb] hover:bg-[#2a3942] rounded-full transition-all opacity-0 group-hover:opacity-100 absolute left-full ml-1"
+                  className="p-1 text-[var(--chat-text-muted)] hover:text-[var(--chat-accent)] hover:bg-[var(--chat-bg-hover)] rounded-full transition-all opacity-0 group-hover:opacity-100 absolute left-full ml-1"
                   title="Renomear"
                 >
                   <PencilSimple weight="bold" size={16} />
@@ -282,7 +282,7 @@ export default function LeadDetailsSidebar({
               {displayTags.map((lt: any) => {
                 const tag = lt.tag || allTags.find(t => t.id === lt.tag_id)
                 if (!tag) return null
-                const tagColor = tag.color?.startsWith('#') ? tag.color : '#53bdeb'
+                const tagColor = tag.color?.startsWith('#') ? tag.color : 'var(--chat-accent)'
 
                 return (
                   <span
@@ -319,7 +319,7 @@ export default function LeadDetailsSidebar({
                 onClick={() => setShowTagMenu(!showTagMenu)}
                 className="text-[11px] font-bold px-4 py-2.5 rounded-full border transition-colors hover:opacity-80"
                 style={{
-                  color: '#53bdeb',
+                  color: 'var(--chat-accent)',
                   borderColor: 'rgba(83,189,235,0.3)',
                   backgroundColor: 'rgba(83,189,235,0.1)',
                 }}
@@ -331,9 +331,9 @@ export default function LeadDetailsSidebar({
                 const assignedIds = new Set(displayTags.map((lt: any) => lt.tag_id))
                 const availableTags = allTags.filter(t => !assignedIds.has(t.id))
                 return (
-                  <div className="absolute top-full mt-1 left-1/2 -translate-x-1/2 w-48 bg-[#233138] rounded-lg shadow-lg border border-[#2f3b44] py-2 z-10 text-left">
+                  <div className="absolute top-full mt-1 left-1/2 -translate-x-1/2 w-48 bg-[var(--chat-bg-menu)] rounded-lg shadow-lg border border-[var(--chat-border)] py-2 z-10 text-left">
                     {availableTags.length === 0 ? (
-                      <div className="px-4 py-2 text-xs text-[#8696a0]">
+                      <div className="px-4 py-2 text-xs text-[var(--chat-text-muted)]">
                         {allTags.length === 0 ? 'Nenhuma tag disponível' : 'Todas as tags já atribuídas'}
                       </div>
                     ) : (
@@ -344,7 +344,7 @@ export default function LeadDetailsSidebar({
                             addTagToLead(tag.id)
                             if (onTagsChange) onTagsChange(lead.id, tag.id, 'add', tag)
                           }}
-                          className="w-full text-left px-4 py-1.5 hover:bg-[#2a3942] flex items-center"
+                          className="w-full text-left px-4 py-1.5 hover:bg-[var(--chat-bg-hover)] flex items-center"
                         >
                           <span
                             className="text-[9px] uppercase font-bold tracking-wide px-2 py-0.5 rounded-full"
@@ -374,34 +374,34 @@ export default function LeadDetailsSidebar({
           Marcar venda concluída
         </button>
 
-        <div className="border-t border-[#2f3b44]" />
+        <div className="border-t border-[var(--chat-border)]" />
 
         {/* Responsável */}
         <div>
-          <p className="text-[10px] font-bold uppercase tracking-wider text-[#8696a0] mb-2">
+          <p className="text-[10px] font-bold uppercase tracking-wider text-[var(--chat-text-muted)] mb-2">
             Responsável
           </p>
           {ownerName ? (
             <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-full bg-[#2a3942] flex items-center justify-center overflow-hidden">
+              <div className="w-8 h-8 rounded-full bg-[var(--chat-bg-hover)] flex items-center justify-center overflow-hidden">
                 {lead.owner?.profiles?.avatar_url ? (
                   <img src={lead.owner.profiles.avatar_url} alt={ownerName} className="w-full h-full object-cover" />
                 ) : (
-                  <span className="text-xs font-bold text-[#53bdeb]">
+                  <span className="text-xs font-bold text-[var(--chat-accent)]">
                     {ownerInitials}
                   </span>
                 )}
               </div>
-              <span className="text-sm font-medium text-[#d1d7db]">
+              <span className="text-sm font-medium text-[var(--chat-text-secondary)]">
                 {ownerName}
               </span>
             </div>
           ) : (
             <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-full bg-[#2a3942] flex items-center justify-center">
-                <User size={16} className="text-[#8696a0]" />
+              <div className="w-8 h-8 rounded-full bg-[var(--chat-bg-hover)] flex items-center justify-center">
+                <User size={16} className="text-[var(--chat-text-muted)]" />
               </div>
-              <span className="text-sm text-[#8696a0]">Sem responsável</span>
+              <span className="text-sm text-[var(--chat-text-muted)]">Sem responsável</span>
             </div>
           )}
         </div>
@@ -420,7 +420,7 @@ export default function LeadDetailsSidebar({
           return (
             <div className="grid grid-cols-2 gap-2">
               {pauseEnabled && (
-                <button disabled={webhookStatus?.key === 'pausar_ia' && webhookStatus.status === 'sending'} onClick={() => handleSidebarWebhook('pausar_ia')} className={getSidebarButtonStyles('pausar_ia', 'bg-[#2a3942]')}>
+                <button disabled={webhookStatus?.key === 'pausar_ia' && webhookStatus.status === 'sending'} onClick={() => handleSidebarWebhook('pausar_ia')} className={getSidebarButtonStyles('pausar_ia', 'bg-[var(--chat-bg-hover)]')}>
                   {renderSidebarButtonIcon('pausar_ia', Pause, 'text-purple-400')}
                   <span className={`text-[11px] font-bold flex items-center text-center leading-tight ${getSidebarButtonTextClass('pausar_ia')}`}>
                     Pausar IA
@@ -428,15 +428,15 @@ export default function LeadDetailsSidebar({
                 </button>
               )}
               {suggestEnabled && (
-                <button disabled={webhookStatus?.key === 'sugerir_passos' && webhookStatus.status === 'sending'} onClick={() => handleSidebarWebhook('sugerir_passos')} className={getSidebarButtonStyles('sugerir_passos', 'bg-[#2a3942]')}>
-                  {renderSidebarButtonIcon('sugerir_passos', Sparkle, 'text-[#aebac1]')}
+                <button disabled={webhookStatus?.key === 'sugerir_passos' && webhookStatus.status === 'sending'} onClick={() => handleSidebarWebhook('sugerir_passos')} className={getSidebarButtonStyles('sugerir_passos', 'bg-[var(--chat-bg-hover)]')}>
+                  {renderSidebarButtonIcon('sugerir_passos', Sparkle, 'text-[var(--chat-icon)]')}
                   <span className={`text-[11px] font-bold flex items-center text-center leading-tight ${getSidebarButtonTextClass('sugerir_passos')}`}>
                     Sugerir<br />Passos
                   </span>
                 </button>
               )}
               {flagEnabled && (
-                <button disabled={webhookStatus?.key === 'sinalizar_ajuste' && webhookStatus.status === 'sending'} onClick={() => handleSidebarWebhook('sinalizar_ajuste')} className={getSidebarButtonStyles('sinalizar_ajuste', 'bg-[#2a3942]')}>
+                <button disabled={webhookStatus?.key === 'sinalizar_ajuste' && webhookStatus.status === 'sending'} onClick={() => handleSidebarWebhook('sinalizar_ajuste')} className={getSidebarButtonStyles('sinalizar_ajuste', 'bg-[var(--chat-bg-hover)]')}>
                   {renderSidebarButtonIcon('sinalizar_ajuste', Flag, 'text-orange-400')}
                   <span className={`text-[11px] font-bold flex items-center text-center leading-tight ${getSidebarButtonTextClass('sinalizar_ajuste')}`}>
                     Sinalizar<br />Ajuste
@@ -444,7 +444,7 @@ export default function LeadDetailsSidebar({
                 </button>
               )}
               {summarizeEnabled && (
-                <button disabled={webhookStatus?.key === 'resumir_conversa' && webhookStatus.status === 'sending'} onClick={() => handleSidebarWebhook('resumir_conversa')} className={getSidebarButtonStyles('resumir_conversa', 'bg-[#2a3942]')}>
+                <button disabled={webhookStatus?.key === 'resumir_conversa' && webhookStatus.status === 'sending'} onClick={() => handleSidebarWebhook('resumir_conversa')} className={getSidebarButtonStyles('resumir_conversa', 'bg-[var(--chat-bg-hover)]')}>
                   {renderSidebarButtonIcon('resumir_conversa', ChatText, 'text-sky-400')}
                   <span className={`text-[11px] font-bold flex items-center text-center leading-tight ${getSidebarButtonTextClass('resumir_conversa')}`}>
                     Resumir<br />Conversa
@@ -455,11 +455,11 @@ export default function LeadDetailsSidebar({
           )
         })()}
 
-        <div className="border-t border-[#2f3b44]" />
+        <div className="border-t border-[var(--chat-border)]" />
 
         {/* Informações de Contato */}
         <div>
-          <p className="text-[10px] font-bold uppercase tracking-wider text-[#8696a0] mb-3">
+          <p className="text-[10px] font-bold uppercase tracking-wider text-[var(--chat-text-muted)] mb-3">
             Informações de Contato
           </p>
           <div className="space-y-3">
@@ -467,41 +467,41 @@ export default function LeadDetailsSidebar({
               <div className="flex items-center gap-2.5">
                 <EnvelopeSimple
                   size={16}
-                  className="text-[#8696a0] flex-shrink-0"
+                  className="text-[var(--chat-text-muted)] flex-shrink-0"
                 />
                 <div>
-                  <p className="text-[10px] font-bold uppercase tracking-wider text-[#8696a0]">
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-[var(--chat-text-muted)]">
                     E-mail
                   </p>
-                  <p className="text-sm text-[#d1d7db] break-all">{lead.email}</p>
+                  <p className="text-sm text-[var(--chat-text-secondary)] break-all">{lead.email}</p>
                 </div>
               </div>
             )}
             {lead.phone && (
               <div className="flex items-center gap-2.5">
-                <Phone size={16} className="text-[#8696a0] flex-shrink-0" />
+                <Phone size={16} className="text-[var(--chat-text-muted)] flex-shrink-0" />
                 <div>
-                  <p className="text-[10px] font-bold uppercase tracking-wider text-[#8696a0]">
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-[var(--chat-text-muted)]">
                     Telefone
                   </p>
-                  <p className="text-sm text-[#d1d7db]">{formatPhone(lead.phone)}</p>
+                  <p className="text-sm text-[var(--chat-text-secondary)]">{formatPhone(lead.phone)}</p>
                 </div>
               </div>
             )}
             {!lead.email && !lead.phone && (
-              <p className="text-sm text-[#8696a0]">
+              <p className="text-sm text-[var(--chat-text-muted)]">
                 Sem informações de contato
               </p>
             )}
           </div>
         </div>
 
-        <div className="border-t border-[#2f3b44]" />
+        <div className="border-t border-[var(--chat-border)]" />
 
         {/* Campos Customizados */}
         <div>
           {definitions.length === 0 ? (
-            <p className="text-sm text-[#8696a0]">
+            <p className="text-sm text-[var(--chat-text-muted)]">
               Nenhum campo configurado na conta.
             </p>
           ) : (
@@ -547,10 +547,10 @@ export default function LeadDetailsSidebar({
                         className="flex items-center gap-1.5 cursor-pointer group mb-3"
                         onClick={toggleCollapse}
                       >
-                        <p className="text-[10px] font-bold text-[#8696a0] uppercase tracking-wider group-hover:text-[#d1d7db] transition-colors">
+                        <p className="text-[10px] font-bold text-[var(--chat-text-muted)] uppercase tracking-wider group-hover:text-[var(--chat-text-secondary)] transition-colors">
                           {categoryName}
                         </p>
-                        <span className="text-[#8696a0] group-hover:text-[#d1d7db] transition-colors">
+                        <span className="text-[var(--chat-text-muted)] group-hover:text-[var(--chat-text-secondary)] transition-colors">
                           {isCollapsed ? <CaretRight size={12} weight="bold" /> : <CaretDown size={12} weight="bold" />}
                         </span>
                       </div>
@@ -577,7 +577,7 @@ export default function LeadDetailsSidebar({
 
                             return (
                               <div key={def.id}>
-                                <p className="text-[10px] font-semibold uppercase tracking-wider text-[#8696a0] mb-1">
+                                <p className="text-[10px] font-semibold uppercase tracking-wider text-[var(--chat-text-muted)] mb-1">
                                   {def.name}
                                 </p>
                                 {def.field_type === 'select' ? (
@@ -595,7 +595,7 @@ export default function LeadDetailsSidebar({
                                 ) : (
                                   <DebouncedInput
                                     type={def.field_type === 'number' ? 'number' : def.field_type === 'date' ? 'date' : def.field_type === 'datetime' ? 'datetime-local' : 'text'}
-                                    className="w-full text-[13px] font-medium border-b border-[#2f3b44] pb-1 focus:outline-none focus:border-[#53bdeb] bg-transparent text-[#d1d7db] placeholder-[#667781]"
+                                    className="w-full text-[13px] font-medium border-b border-[var(--chat-border)] pb-1 focus:outline-none focus:border-[var(--chat-accent)] bg-transparent text-[var(--chat-text-secondary)] placeholder-[var(--chat-text-tertiary)]"
                                     placeholder="Adicionar..."
                                     value={displayVal || ''}
                                     onChange={(val) => updateFieldValue(def.id, def.field_type, val)}
@@ -615,7 +615,7 @@ export default function LeadDetailsSidebar({
           )}
         </div>
 
-        <div className="border-t border-[#2f3b44]" />
+        <div className="border-t border-[var(--chat-border)]" />
 
         {/* Funil de Vendas — FunnelMiniMap */}
         {stages.length > 0 && lead.stage_id && (
@@ -631,7 +631,7 @@ export default function LeadDetailsSidebar({
           />
         )}
 
-        <div className="border-t border-[#2f3b44]" />
+        <div className="border-t border-[var(--chat-border)]" />
 
         {/* Histórico */}
         <LeadHistoryTimeline

@@ -4,6 +4,7 @@ import { db } from '@/lib/db'
 import { leads, leadActivities } from '@/lib/schema'
 import { eq, and, isNull, ilike, or, desc } from 'drizzle-orm'
 import type { LeadWithOwner, SearchHit } from '@/lib/types'
+import { mapLead } from '@/lib/mappers'
 
 export const dynamic = 'force-dynamic'
 
@@ -38,7 +39,7 @@ export async function POST(req: NextRequest) {
 
     const hits: SearchHit[] = [
       ...leadResults.map(lead => ({
-        lead: lead as unknown as LeadWithOwner,
+        lead: mapLead(lead) as unknown as LeadWithOwner,
         matchType: 'title' as const,
         snippet: undefined,
         matchedAt: lead.lastActivityAt?.toString(),
@@ -52,7 +53,7 @@ export async function POST(req: NextRequest) {
         const lead = leadMap.get(act.leadId)
         if (lead) {
           hits.push({
-            lead: lead as unknown as LeadWithOwner,
+            lead: mapLead(lead) as unknown as LeadWithOwner,
             matchType: 'message' as const,
             snippet: act.content?.slice(0, 120) || undefined,
             matchedAt: act.createdAt?.toString(),

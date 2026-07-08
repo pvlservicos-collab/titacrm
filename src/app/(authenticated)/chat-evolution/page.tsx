@@ -151,7 +151,7 @@ export default function ChatEvolutionPage() {
 
   if (loading || leadsLoading || evolutionIntegrationId === undefined || (!isAdmin && !permissions)) {
     return (
-      <div className="flex items-center justify-center h-full" style={{ backgroundColor: '#070e13' }}>
+      <div className="flex items-center justify-center h-full" style={{ backgroundColor: 'var(--chat-bg-conversation)' }}>
         <LoadingSpinner text="Carregando Número 2..." size="lg" />
       </div>
     )
@@ -159,7 +159,7 @@ export default function ChatEvolutionPage() {
 
   if (!organizationId) {
     return (
-      <div className="flex items-center justify-center h-full" style={{ backgroundColor: '#070e13' }}>
+      <div className="flex items-center justify-center h-full" style={{ backgroundColor: 'var(--chat-bg-conversation)' }}>
         <p className="text-gray-500">Nenhuma organização encontrada.</p>
       </div>
     )
@@ -167,14 +167,13 @@ export default function ChatEvolutionPage() {
 
   return (
     <div className="flex h-full gap-0">
-      <div className="w-[340px] border-r border-[#2f3b44] flex-shrink-0">
+      <div className="w-[340px] border-r border-[var(--chat-border)] flex-shrink-0">
         <LeadList
           leads={allLeads}
           selectedLeadId={displayedLead?.id}
           onSelectLead={setSelectedLead}
           onUpdateLead={handleUpdateLead}
           loading={false}
-          isDark
         />
       </div>
 
@@ -184,12 +183,11 @@ export default function ChatEvolutionPage() {
             lead={displayedLead}
             organizationId={organizationId}
             onMessageSent={handleChatMessageSent}
-            isDark
           />
         ) : (
-          <div className="flex flex-col items-center justify-center h-full gap-3" style={{ backgroundColor: '#070e13' }}>
-            <p className="text-[#8696a0]">Nenhuma conversa no Número 2 ainda.</p>
-            <p className="text-[#667781] text-sm">Configure a Evolution API em Configurações → Integrações → Número 2.</p>
+          <div className="flex flex-col items-center justify-center h-full gap-3" style={{ backgroundColor: 'var(--chat-bg-conversation)' }}>
+            <p className="text-[var(--chat-text-muted)]">Nenhuma conversa no Número 2 ainda.</p>
+            <p className="text-[var(--chat-text-tertiary)] text-sm">Configure a Evolution API em Configurações → Integrações → Número 2.</p>
           </div>
         )}
       </div>

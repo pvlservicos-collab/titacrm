@@ -271,9 +271,9 @@ export default function ActivityComposer({
   const getButtonStateClass = (key: ChatButtonKey, baseClasses: string) => {
     const isThisButton = webhookStatus?.key === key
     const status = isThisButton ? webhookStatus?.status : null
-    if (status === 'success') return 'bg-sky-500/10 border-sky-500/30 text-sky-300'
-    if (status === 'error') return 'bg-red-500/10 border-red-500/30 text-red-300'
-    if (status === 'sending') return 'bg-[#202c33] border-[#2f3b44] text-[#667781] cursor-wait'
+    if (status === 'success') return 'bg-sky-500/10 border-sky-500/30 text-sky-700 dark:text-sky-300'
+    if (status === 'error') return 'bg-red-500/10 border-red-500/30 text-red-700 dark:text-red-300'
+    if (status === 'sending') return 'bg-[var(--chat-bg-field)] border-[var(--chat-border)] text-[var(--chat-text-tertiary)] cursor-wait'
     return baseClasses
   }
 
@@ -323,14 +323,14 @@ export default function ActivityComposer({
   }
 
   return (
-    <div className="px-6 pb-4 pt-2 space-y-3 relative z-10 bg-gradient-to-t from-[#0b141a] to-transparent">
+    <div className="px-6 pb-4 pt-2 space-y-3 relative z-10 bg-gradient-to-t from-[var(--chat-bg-conversation)] to-transparent">
       {/* Action Buttons */}
       <div className="flex gap-2 items-center mb-1 flex-wrap">
         {chatButtonSettings?.pausar_ia?.enabled && (!chatButtonSettings.pausar_ia.position || chatButtonSettings.pausar_ia.position === 'chat') && (
           <button
             onClick={() => handleChatButtonClick('pausar_ia')}
             disabled={webhookStatus?.key === 'pausar_ia' && webhookStatus.status === 'sending'}
-            className={`flex items-center gap-1.5 px-4 py-1.5 border rounded-full text-[11px] font-bold transition-colors ${getButtonStateClass('pausar_ia', 'text-purple-300 border-purple-500/30 bg-purple-500/10 hover:bg-purple-500/20')}`}
+            className={`flex items-center gap-1.5 px-4 py-1.5 border rounded-full text-[11px] font-bold transition-colors ${getButtonStateClass('pausar_ia', 'text-purple-700 dark:text-purple-300 border-purple-500/30 bg-purple-500/10 hover:bg-purple-500/20')}`}
           >
             <Pause size={14} weight="bold" />
             Pausar IA
@@ -341,7 +341,7 @@ export default function ActivityComposer({
           <button
             onClick={() => handleChatButtonClick('sugerir_passos')}
             disabled={webhookStatus?.key === 'sugerir_passos' && webhookStatus.status === 'sending'}
-            className={`flex items-center gap-1.5 px-4 py-1.5 border rounded-full text-[11px] font-bold transition-colors ${getButtonStateClass('sugerir_passos', 'border-[#2f3b44] text-[#aebac1] bg-[#202c33] hover:bg-[#2a3942]')}`}
+            className={`flex items-center gap-1.5 px-4 py-1.5 border rounded-full text-[11px] font-bold transition-colors ${getButtonStateClass('sugerir_passos', 'border-[var(--chat-border)] text-[var(--chat-icon)] bg-[var(--chat-bg-field)] hover:bg-[var(--chat-bg-hover)]')}`}
           >
             <Sparkle size={14} weight="bold" />
             Sugerir próximos passos
@@ -352,7 +352,7 @@ export default function ActivityComposer({
           <button
             onClick={() => handleChatButtonClick('sinalizar_ajuste')}
             disabled={webhookStatus?.key === 'sinalizar_ajuste' && webhookStatus.status === 'sending'}
-            className={`flex items-center gap-1.5 px-4 py-1.5 border rounded-full text-[11px] font-bold transition-colors ${getButtonStateClass('sinalizar_ajuste', 'border-orange-500/30 text-orange-300 bg-orange-500/10 hover:bg-orange-500/20')}`}
+            className={`flex items-center gap-1.5 px-4 py-1.5 border rounded-full text-[11px] font-bold transition-colors ${getButtonStateClass('sinalizar_ajuste', 'border-orange-500/30 text-orange-700 dark:text-orange-300 bg-orange-500/10 hover:bg-orange-500/20')}`}
           >
             <Flag size={14} weight="bold" />
             Sinalizar ajuste
@@ -363,7 +363,7 @@ export default function ActivityComposer({
           <button
             onClick={() => handleChatButtonClick('resumir_conversa')}
             disabled={webhookStatus?.key === 'resumir_conversa' && webhookStatus.status === 'sending'}
-            className={`flex items-center gap-1.5 px-4 py-1.5 border rounded-full text-[11px] font-bold transition-colors ${getButtonStateClass('resumir_conversa', 'border-sky-500/30 text-sky-300 bg-sky-500/10 hover:bg-sky-500/20')}`}
+            className={`flex items-center gap-1.5 px-4 py-1.5 border rounded-full text-[11px] font-bold transition-colors ${getButtonStateClass('resumir_conversa', 'border-sky-500/30 text-sky-700 dark:text-sky-300 bg-sky-500/10 hover:bg-sky-500/20')}`}
           >
             <ChatText size={14} weight="bold" />
             Resumir conversa
@@ -374,18 +374,18 @@ export default function ActivityComposer({
 
       {/* Reply Preview Bar */}
       {replyContext && (
-        <div className="flex items-center bg-[#202c33] border border-[#2f3b44] rounded-xl px-3 py-2 shadow-sm animate-in slide-in-from-bottom-2 duration-200">
+        <div className="flex items-center bg-[var(--chat-bg-field)] border border-[var(--chat-border)] rounded-xl px-3 py-2 shadow-sm animate-in slide-in-from-bottom-2 duration-200">
           <div className="flex items-center gap-2 flex-1 min-w-0">
-            <div className="w-1 h-8 rounded-full bg-[#53bdeb] flex-shrink-0" />
-            <ArrowBendUpLeft size={14} weight="bold" className="text-[#53bdeb] flex-shrink-0" />
+            <div className="w-1 h-8 rounded-full bg-[var(--chat-accent)] flex-shrink-0" />
+            <ArrowBendUpLeft size={14} weight="bold" className="text-[var(--chat-accent)] flex-shrink-0" />
             <div className="min-w-0">
-              <p className="text-[11px] font-semibold text-[#53bdeb] truncate">{replyContext.sender}</p>
-              <p className="text-[12px] text-[#8696a0] truncate">{replyContext.text}</p>
+              <p className="text-[11px] font-semibold text-[var(--chat-accent)] truncate">{replyContext.sender}</p>
+              <p className="text-[12px] text-[var(--chat-text-muted)] truncate">{replyContext.text}</p>
             </div>
           </div>
           <button
             onClick={onCancelReply}
-            className="ml-2 p-1 rounded-full hover:bg-[#2a3942] text-[#8696a0] hover:text-[#d1d7db] transition-colors flex-shrink-0"
+            className="ml-2 p-1 rounded-full hover:bg-[var(--chat-bg-hover)] text-[var(--chat-text-muted)] hover:text-[var(--chat-text-secondary)] transition-colors flex-shrink-0"
           >
             <X size={16} weight="bold" />
           </button>
@@ -393,24 +393,24 @@ export default function ActivityComposer({
       )}
 
       {recordingError && (
-        <div className="px-3 py-2 bg-red-500/10 border border-red-500/30 rounded-xl text-xs text-red-300">
+        <div className="px-3 py-2 bg-red-500/10 border border-red-500/30 rounded-xl text-xs text-red-700 dark:text-red-300">
           {recordingError}
         </div>
       )}
 
       {/* Input Area */}
-      <div className="relative flex items-end gap-2 bg-[#202c33] border border-[#2f3b44] rounded-xl px-4 py-2.5 shadow-sm focus-within:ring-2 focus-within:ring-[#2a3942] focus-within:border-[#53bdeb]/50 transition-all">
+      <div className="relative flex items-end gap-2 bg-[var(--chat-bg-field)] border border-[var(--chat-border)] rounded-xl px-4 py-2.5 shadow-sm focus-within:ring-2 focus-within:ring-[var(--chat-bg-hover)] focus-within:border-[var(--chat-accent)]/50 transition-all">
         {recorder.isRecording ? (
           <>
             <div className="flex items-center gap-3 flex-1 py-1">
               <span className="w-2.5 h-2.5 rounded-full bg-red-500 animate-pulse flex-shrink-0" />
-              <span className="text-sm text-[#e9edef] tabular-nums">{formatDuration(recorder.durationMs)}</span>
-              <span className="text-xs text-[#8696a0]">Gravando áudio...</span>
+              <span className="text-sm text-[var(--chat-text-primary)] tabular-nums">{formatDuration(recorder.durationMs)}</span>
+              <span className="text-xs text-[var(--chat-text-muted)]">Gravando áudio...</span>
             </div>
             <button
               type="button"
               onClick={() => recorder.cancel()}
-              className="p-1 text-[#8696a0] hover:text-red-400 transition-colors flex-shrink-0"
+              className="p-1 text-[var(--chat-text-muted)] hover:text-red-400 transition-colors flex-shrink-0"
               title="Cancelar gravação"
             >
               <X size={18} weight="bold" />
@@ -439,7 +439,7 @@ export default function ActivityComposer({
                 type="button"
                 onClick={() => fileInputRef.current?.click()}
                 disabled={uploadingMedia || !onSendMedia}
-                className="text-[#8696a0] hover:text-[#aebac1] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                className="text-[var(--chat-text-muted)] hover:text-[var(--chat-icon)] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 title="Enviar mídia"
               >
                 {uploadingMedia ? (
@@ -452,7 +452,7 @@ export default function ActivityComposer({
                 type="button"
                 onClick={handleMicClick}
                 disabled={uploadingMedia || !onSendMedia}
-                className="text-[#8696a0] hover:text-[#aebac1] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                className="text-[var(--chat-text-muted)] hover:text-[var(--chat-icon)] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 title="Gravar áudio"
               >
                 <Microphone size={20} />
@@ -465,7 +465,7 @@ export default function ActivityComposer({
                   setManualSearchQuery('')
                   setShowQuickReplyPicker((prev) => !prev)
                 }}
-                className={`transition-colors ${quickReplyPickerOpen ? 'text-[#00B8D9]' : 'text-[#8696a0] hover:text-[#aebac1]'}`}
+                className={`transition-colors ${quickReplyPickerOpen ? 'text-[#00B8D9]' : 'text-[var(--chat-text-muted)] hover:text-[var(--chat-icon)]'}`}
                 title="Respostas rápidas"
               >
                 <Lightning size={20} />
@@ -474,8 +474,8 @@ export default function ActivityComposer({
                 ref={emojiButtonRef}
                 onClick={() => setShowEmojiPicker((prev) => !prev)}
                 className={`transition-colors ${showEmojiPicker
-                  ? 'text-[#53bdeb]'
-                  : 'text-[#8696a0] hover:text-[#aebac1]'
+                  ? 'text-[var(--chat-accent)]'
+                  : 'text-[var(--chat-text-muted)] hover:text-[var(--chat-icon)]'
                   }`}
               >
                 <Smiley size={20} />
@@ -515,7 +515,7 @@ export default function ActivityComposer({
                     onChange={(e) => setManualSearchQuery(e.target.value)}
                     onKeyDown={handleComposerKeyDown}
                     placeholder="Buscar resposta rápida..."
-                    className="w-[340px] mb-1.5 px-3 py-2 text-sm rounded-lg bg-[#2a3942] border border-[#2f3b44] text-[#e9edef] placeholder-[#8696a0] focus:outline-none focus:border-[#53bdeb]/50"
+                    className="w-[340px] mb-1.5 px-3 py-2 text-sm rounded-lg bg-[var(--chat-bg-hover)] border border-[var(--chat-border)] text-[var(--chat-text-primary)] placeholder-[var(--chat-text-muted)] focus:outline-none focus:border-[var(--chat-accent)]/50"
                   />
                 )}
                 <QuickReplyPicker
@@ -535,7 +535,7 @@ export default function ActivityComposer({
               onChange={(e) => setContent(e.target.value)}
               onKeyDown={handleComposerKeyDown}
               placeholder={replyContext ? 'Digite sua resposta...' : "Digite sua mensagem ou digite '/' para respostas rápidas..."}
-              className="flex-1 text-sm focus:outline-none text-[#e9edef] placeholder-[#8696a0] bg-transparent resize-none overflow-y-auto leading-[1.5] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+              className="flex-1 text-sm focus:outline-none text-[var(--chat-text-primary)] placeholder-[var(--chat-text-muted)] bg-transparent resize-none overflow-y-auto leading-[1.5] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
               rows={1}
               style={{ maxHeight: '160px' }}
             />
@@ -552,7 +552,7 @@ export default function ActivityComposer({
       </div>
 
       {/* Hint */}
-      <p className="text-center text-[10px] font-bold uppercase tracking-wider text-[#667781]">
+      <p className="text-center text-[10px] font-bold uppercase tracking-wider text-[var(--chat-text-tertiary)]">
         Enter para enviar · Shift+Enter para nova linha{replyContext ? ' · Esc para cancelar reply' : ''}
       </p>
     </div>

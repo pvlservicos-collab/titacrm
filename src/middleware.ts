@@ -5,7 +5,7 @@ export function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl
 
   const publicPaths = [
-    '/login', '/api/auth', '/api/webhooks', '/api/funnels/tick',
+    '/login', '/api/auth', '/api/webhooks', '/api/funnels/tick', '/api/integrations/instagram/check-tokens',
     // Manifest/service worker/ícones do PWA: o navegador busca isso sem sessão
     // (checagem de instalabilidade), então não pode cair no redirect de login.
     '/manifest.webmanifest', '/sw.js', '/icons/',
