@@ -8,7 +8,7 @@ import { useAuth } from '@/hooks'
 const FAQS = [
     {
         question: "Preciso de aprovação da Meta para usar isso?",
-        answer: "Sim. É preciso um App no Meta for Developers com a permissão instagram_business_manage_messages aprovada em App Review — esse processo pode levar dias ou semanas. Recomendamos iniciar a submissão o quanto antes."
+        answer: "Não, se as contas conectadas forem apenas da sua própria empresa: basta adicioná-las com papel de Admin/Desenvolvedor/Tester no App do Meta for Developers (é assim que já funciona aqui). App Review (permissão instagram_business_manage_messages) só é necessário se você quiser oferecer essa integração para outras empresas/clientes."
     },
     {
         question: "Que tipo de conta Instagram funciona?",
@@ -187,11 +187,11 @@ export default function InstagramDirectPage() {
                 </span>
             </div>
 
-            {/* App Review notice */}
-            <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 mb-8 flex items-start gap-3">
-                <WarningCircle size={20} weight="fill" className="text-amber-500 flex-shrink-0 mt-0.5" />
-                <p className="text-sm text-amber-800">
-                    Esta integração só funciona depois que a Meta aprovar seu App com a permissão <code className="bg-amber-100 px-1 rounded">instagram_business_manage_messages</code> em App Review — inicie esse processo o quanto antes, pode levar dias ou semanas.
+            {/* Own-business access notice */}
+            <div className="bg-sky-50 border border-sky-200 rounded-xl p-4 mb-8 flex items-start gap-3">
+                <Info size={20} weight="fill" className="text-sky-500 flex-shrink-0 mt-0.5" />
+                <p className="text-sm text-sky-800">
+                    Contas conectadas aqui funcionam sem App Review, desde que tenham papel de Admin/Desenvolvedor/Tester no App do Meta for Developers — suficiente para uso na sua própria empresa. App Review só é necessário se for oferecer isso para clientes/empresas de terceiros.
                 </p>
             </div>
 

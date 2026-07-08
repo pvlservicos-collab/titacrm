@@ -46,7 +46,10 @@ async function getInstagramCredentials(organizationId: string, integrationId: st
 export async function sendInstagramMessage(organizationId: string, integrationId: string, recipientId: string, content: string) {
   const { apiVersion, igUserId, token } = await getInstagramCredentials(organizationId, integrationId)
 
-  const res = await fetch(`https://graph.facebook.com/${apiVersion}/${igUserId}/messages`, {
+  // Tokens gerados via "API do Instagram com login do Instagram" (não Facebook Login)
+  // só são reconhecidos em graph.instagram.com — graph.facebook.com responde
+  // "Cannot parse access token" para esse tipo de token.
+  const res = await fetch(`https://graph.instagram.com/${apiVersion}/${igUserId}/messages`, {
     method: 'POST',
     headers: {
       Authorization: `Bearer ${token}`,
@@ -86,7 +89,7 @@ export async function sendInstagramMedia(
 
   const attachmentType = mediaType === 'document' ? 'file' : mediaType === 'sticker' ? 'image' : mediaType
 
-  const res = await fetch(`https://graph.facebook.com/${apiVersion}/${igUserId}/messages`, {
+  const res = await fetch(`https://graph.instagram.com/${apiVersion}/${igUserId}/messages`, {
     method: 'POST',
     headers: {
       Authorization: `Bearer ${token}`,
