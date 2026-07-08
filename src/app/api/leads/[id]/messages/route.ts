@@ -165,6 +165,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
       // Lookup lead's integration type
       let integrationTyp = 'whatsapp_cloud_official'
+      let leadIntegrationId: string | null = null
       if (lead) {
         const [fullLead] = await db
           .select({ integrationId: leads.integrationId })
@@ -172,6 +173,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
           .where(eq(leads.id, actualLeadId!))
           .limit(1)
         if (fullLead?.integrationId) {
+          leadIntegrationId = fullLead.integrationId
           const [integ] = await db
             .select({ type: integrations.type })
             .from(integrations)
@@ -203,8 +205,8 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
         const mediaCaption = typeof body.caption === 'string' ? body.caption : ''
 
         const result = body.media_url
-          ? await adapter.sendMedia(auth.organizationId, recipient, body.media_type, body.media_url, mediaCaption, body.media_filename, lead?.isGroup ?? false)
-          : await adapter.sendText(auth.organizationId, recipient, body.content, lead?.isGroup ?? false)
+          ? await adapter.sendMedia(auth.organizationId, leadIntegrationId, recipient, body.media_type, body.media_url, mediaCaption, body.media_filename, lead?.isGroup ?? false)
+          : await adapter.sendText(auth.organizationId, leadIntegrationId, recipient, body.content, lead?.isGroup ?? false)
 
         metadata.send_status = 'sent'
         if (result.externalId) metadata[adapter.metadataIdKey] = result.externalId

@@ -2,17 +2,23 @@ import { db } from '@/lib/db'
 import { integrations, integrationSecrets } from '@/lib/schema'
 import { eq, and, isNull } from 'drizzle-orm'
 
-async function getInstagramCredentials(organizationId: string) {
+/**
+ * Uma organização pode ter várias contas do Instagram conectadas — por isso
+ * a busca é sempre pela integração específica (integrationId), nunca só por
+ * organizationId+type como no WhatsApp Cloud (que é singleton por org).
+ */
+async function getInstagramCredentials(organizationId: string, integrationId: string) {
   const [integration] = await db.select({ id: integrations.id, config: integrations.config })
     .from(integrations)
     .where(and(
+      eq(integrations.id, integrationId),
       eq(integrations.organizationId, organizationId),
       eq(integrations.type, 'instagram_direct'),
       isNull(integrations.deletedAt),
     ))
     .limit(1)
 
-  if (!integration) throw { status: 400, message: 'Integração com Instagram não configurada.' }
+  if (!integration) throw { status: 400, message: 'Integração com Instagram não encontrada ou desconectada.' }
 
   const [secretRow] = await db.select({ secret: integrationSecrets.secret })
     .from(integrationSecrets)
@@ -37,8 +43,8 @@ async function getInstagramCredentials(organizationId: string) {
  * recipientId é o IGSID (Instagram-scoped ID) do usuário, não um telefone —
  * Instagram Direct não tem conceito de telefone.
  */
-export async function sendInstagramMessage(organizationId: string, recipientId: string, content: string) {
-  const { apiVersion, igUserId, token } = await getInstagramCredentials(organizationId)
+export async function sendInstagramMessage(organizationId: string, integrationId: string, recipientId: string, content: string) {
+  const { apiVersion, igUserId, token } = await getInstagramCredentials(organizationId, integrationId)
 
   const res = await fetch(`https://graph.facebook.com/${apiVersion}/${igUserId}/messages`, {
     method: 'POST',
@@ -71,11 +77,12 @@ export async function sendInstagramMessage(organizationId: string, recipientId: 
  */
 export async function sendInstagramMedia(
   organizationId: string,
+  integrationId: string,
   recipientId: string,
   mediaType: 'image' | 'video' | 'audio' | 'document' | 'sticker',
   mediaUrl: string
 ) {
-  const { apiVersion, igUserId, token } = await getInstagramCredentials(organizationId)
+  const { apiVersion, igUserId, token } = await getInstagramCredentials(organizationId, integrationId)
 
   const attachmentType = mediaType === 'document' ? 'file' : mediaType === 'sticker' ? 'image' : mediaType
 
