@@ -28,6 +28,7 @@ import { getInitials, formatPhone } from '@/lib/utils'
 import FunnelMiniMap from './FunnelMiniMap'
 import LeadHistoryTimeline from './LeadHistoryTimeline'
 import { useTags, useCustomFields, useChatButtonSettings, useAuth } from '@/hooks'
+import { useOrganizationMembers } from '@/hooks/useOrganizationMembers'
 import { useNotification } from '@/contexts/NotificationContext'
 import { ChatButtonKey } from '@/hooks/useChatButtonSettings'
 import DebouncedInput from '@/components/Shared/DebouncedInput'
@@ -80,8 +81,12 @@ export default function LeadDetailsSidebar({
   const { allTags, leadTags, addTagToLead, removeTagFromLead, loading: tagsLoading } = useTags(lead.organization_id, lead.id)
   const { categories, definitions, values, updateFieldValue } = useCustomFields(lead.organization_id, lead.id)
   const { settings: chatButtonSettings, fireWebhook } = useChatButtonSettings()
+  const { members: orgMembers } = useOrganizationMembers(lead.organization_id)
   const [showTagMenu, setShowTagMenu] = useState(false)
   const tagMenuRef = useRef<HTMLDivElement>(null)
+  const [showOwnerMenu, setShowOwnerMenu] = useState(false)
+  const [savingOwner, setSavingOwner] = useState(false)
+  const ownerMenuRef = useRef<HTMLDivElement>(null)
 
   const [collapsedCategories, setCollapsedCategories] = useState<Set<string>>(new Set())
 
@@ -162,6 +167,47 @@ export default function LeadDetailsSidebar({
     document.addEventListener('mousedown', handleClickOutside)
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [showTagMenu])
+
+  // Close owner menu on click outside
+  useEffect(() => {
+    if (!showOwnerMenu) return
+    function handleClickOutside(e: MouseEvent) {
+      if (ownerMenuRef.current && !ownerMenuRef.current.contains(e.target as Node)) {
+        setShowOwnerMenu(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [showOwnerMenu])
+
+  const handleAssignOwner = async (memberId: string | null) => {
+    setShowOwnerMenu(false)
+    if (memberId === (lead.owner_member_id || null)) return
+    setSavingOwner(true)
+    try {
+      const res = await fetch(`/api/leads/${lead.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ owner_member_id: memberId }),
+      })
+      if (!res.ok) { const d = await res.json().catch(() => ({})); throw new Error(d.error || 'Falha ao atribuir responsável') }
+      const member = memberId ? orgMembers.find((m) => m.id === memberId) : null
+      if (onUpdateLead) {
+        onUpdateLead(lead.id, {
+          owner_member_id: memberId || undefined,
+          owner: member ? { id: member.id, profiles: { full_name: member.profiles?.full_name || '', avatar_url: member.profiles?.avatar_url } } : undefined,
+        })
+      }
+    } catch (err) {
+      addNotification({
+        type: 'error',
+        title: 'Falha ao atribuir responsável',
+        message: err instanceof Error ? err.message : 'Erro desconhecido.',
+      })
+    } finally {
+      setSavingOwner(false)
+    }
+  }
 
   const handleSaveName = async () => {
     const trimmed = editingNameValue.trim()
@@ -416,31 +462,70 @@ export default function LeadDetailsSidebar({
         <div className="border-t border-[var(--chat-border)]" />
 
         {/* Responsável */}
-        <div>
+        <div className="relative" ref={ownerMenuRef}>
           <p className="text-[10px] font-bold uppercase tracking-wider text-[var(--chat-text-muted)] mb-2">
             Responsável
           </p>
-          {ownerName ? (
-            <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-full bg-[var(--chat-bg-hover)] flex items-center justify-center overflow-hidden">
-                {lead.owner?.profiles?.avatar_url ? (
-                  <img src={lead.owner.profiles.avatar_url} alt={ownerName} className="w-full h-full object-cover" />
-                ) : (
-                  <span className="text-xs font-bold text-[var(--chat-accent)]">
-                    {ownerInitials}
-                  </span>
-                )}
-              </div>
-              <span className="text-sm font-medium text-[var(--chat-text-secondary)]">
-                {ownerName}
-              </span>
-            </div>
-          ) : (
-            <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-full bg-[var(--chat-bg-hover)] flex items-center justify-center">
-                <User size={16} className="text-[var(--chat-text-muted)]" />
-              </div>
-              <span className="text-sm text-[var(--chat-text-muted)]">Sem responsável</span>
+          <button
+            type="button"
+            onClick={() => setShowOwnerMenu((v) => !v)}
+            disabled={savingOwner}
+            className="w-full flex items-center gap-2 group/owner rounded-lg -mx-1 px-1 py-1 hover:bg-[var(--chat-bg-hover)] transition-colors disabled:opacity-60"
+          >
+            {ownerName ? (
+              <>
+                <div className="w-8 h-8 rounded-full bg-[var(--chat-bg-hover)] flex items-center justify-center overflow-hidden flex-shrink-0">
+                  {lead.owner?.profiles?.avatar_url ? (
+                    <img src={lead.owner.profiles.avatar_url} alt={ownerName} className="w-full h-full object-cover" />
+                  ) : (
+                    <span className="text-xs font-bold text-[var(--chat-accent)]">
+                      {ownerInitials}
+                    </span>
+                  )}
+                </div>
+                <span className="text-sm font-medium text-[var(--chat-text-secondary)]">
+                  {ownerName}
+                </span>
+              </>
+            ) : (
+              <>
+                <div className="w-8 h-8 rounded-full bg-[var(--chat-bg-hover)] flex items-center justify-center flex-shrink-0">
+                  <User size={16} className="text-[var(--chat-text-muted)]" />
+                </div>
+                <span className="text-sm text-[var(--chat-text-muted)]">Sem responsável</span>
+              </>
+            )}
+            <CaretDown size={12} weight="bold" className="text-[var(--chat-text-tertiary)] opacity-0 group-hover/owner:opacity-100 transition-opacity ml-auto flex-shrink-0" />
+          </button>
+
+          {showOwnerMenu && (
+            <div className="absolute top-full mt-1 left-0 right-0 bg-[var(--chat-bg-menu)] rounded-lg shadow-lg border border-[var(--chat-border)] py-2 z-10 max-h-56 overflow-y-auto">
+              <button
+                onClick={() => handleAssignOwner(null)}
+                className="w-full text-left px-4 py-1.5 hover:bg-[var(--chat-bg-hover)] flex items-center gap-2 text-sm text-[var(--chat-text-muted)]"
+              >
+                <User size={14} /> Sem responsável
+                {!lead.owner_member_id && <Check size={14} weight="bold" className="ml-auto text-[var(--chat-accent)]" />}
+              </button>
+              {orgMembers.map((m) => (
+                <button
+                  key={m.id}
+                  onClick={() => handleAssignOwner(m.id)}
+                  className="w-full text-left px-4 py-1.5 hover:bg-[var(--chat-bg-hover)] flex items-center gap-2 text-sm text-[var(--chat-text-secondary)]"
+                >
+                  <div className="w-5 h-5 rounded-full bg-[var(--chat-bg-hover)] flex items-center justify-center overflow-hidden flex-shrink-0">
+                    {m.profiles?.avatar_url ? (
+                      <img src={m.profiles.avatar_url} alt={m.profiles?.full_name} className="w-full h-full object-cover" />
+                    ) : (
+                      <span className="text-[9px] font-bold text-[var(--chat-accent)]">
+                        {(m.profiles?.full_name || '?').charAt(0).toUpperCase()}
+                      </span>
+                    )}
+                  </div>
+                  <span className="truncate">{m.profiles?.full_name || 'Sem nome'}</span>
+                  {lead.owner_member_id === m.id && <Check size={14} weight="bold" className="ml-auto text-[var(--chat-accent)] flex-shrink-0" />}
+                </button>
+              ))}
             </div>
           )}
         </div>

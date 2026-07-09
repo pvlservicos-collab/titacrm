@@ -2,7 +2,7 @@ import { NextRequest } from 'next/server'
 import { authenticateRequest, apiError, validateRequired } from '@/lib/api-auth'
 import { db } from '@/lib/db'
 import { publishEvent, channels, events } from '@/lib/realtime'
-import { leads, leadTags, tags, leadStageHistory } from '@/lib/schema'
+import { leads, leadTags, tags, leadStageHistory, organizationMembers, profiles } from '@/lib/schema'
 import { eq, and, isNull, asc } from 'drizzle-orm'
 import { mapLead } from '@/lib/mappers'
 
@@ -29,7 +29,18 @@ export async function GET(req: NextRequest, { params }: Params) {
       .leftJoin(tags, eq(tags.id, leadTags.tagId))
       .where(eq(leadTags.leadId, lead.id))
 
-    return Response.json({ data: { ...mapLead(lead), lead_tags: leadTagsData.map(t => ({ tag_id: t.tagId, tag: t })) } })
+    let owner: { id: string; profiles: { full_name: string; avatar_url?: string } } | undefined
+    if (lead.ownerMemberId) {
+      const [ownerRow] = await db
+        .select({ id: organizationMembers.id, fullName: profiles.fullName, avatarUrl: profiles.avatarUrl })
+        .from(organizationMembers)
+        .leftJoin(profiles, eq(profiles.id, organizationMembers.userId))
+        .where(eq(organizationMembers.id, lead.ownerMemberId))
+        .limit(1)
+      if (ownerRow) owner = { id: ownerRow.id, profiles: { full_name: ownerRow.fullName || '', avatar_url: ownerRow.avatarUrl || undefined } }
+    }
+
+    return Response.json({ data: { ...mapLead(lead), lead_tags: leadTagsData.map(t => ({ tag_id: t.tagId, tag: t })), owner } })
   } catch (err: any) {
     return apiError(err.status || 500, err.message || 'Erro interno.')
   }

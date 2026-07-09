@@ -43,9 +43,17 @@ export async function GET(req: NextRequest) {
     const offset = (page - 1) * limit
 
     const query = db
-      .select({ lead: leads, integrationType: integrations.type })
+      .select({
+        lead: leads,
+        integrationType: integrations.type,
+        ownerMemberIdJoin: organizationMembers.id,
+        ownerFullName: profiles.fullName,
+        ownerAvatarUrl: profiles.avatarUrl,
+      })
       .from(leads)
       .leftJoin(integrations, eq(integrations.id, leads.integrationId))
+      .leftJoin(organizationMembers, eq(organizationMembers.id, leads.ownerMemberId))
+      .leftJoin(profiles, eq(profiles.id, organizationMembers.userId))
       .where(and(...conditions))
       .orderBy(desc(sql`coalesce(${leads.lastActivityAt}, ${leads.createdAt})`))
 
@@ -77,6 +85,9 @@ export async function GET(req: NextRequest) {
       ...mapLead(r.lead),
       lead_tags: tagsMap[r.lead.id] || [],
       integration: r.integrationType ? ({ type: r.integrationType } as Integration) : undefined,
+      owner: r.ownerMemberIdJoin
+        ? { id: r.ownerMemberIdJoin, profiles: { full_name: r.ownerFullName || '', avatar_url: r.ownerAvatarUrl || undefined } }
+        : undefined,
     }))
 
     return Response.json({ data: result, page, limit })

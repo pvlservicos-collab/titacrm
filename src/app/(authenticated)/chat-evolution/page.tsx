@@ -119,26 +119,46 @@ export default function ChatEvolutionPage() {
   const handleChatMessageSent = useCallback((content: string) => {
     const memberId = currentOrganization?.id || ''
     const fullName = profileName || user?.name || user?.email || ''
+    const leadId = displayedLead?.id
+    // Só assume automaticamente quem respondeu se o lead ainda não tem responsável —
+    // nunca sobrescreve uma atribuição manual feita por outra pessoa.
+    const alreadyHasOwner = !!displayedLead?.owner_member_id
+
     setLeads(prev => prev.map(l => {
-      if (l.id !== displayedLead?.id) return l
+      if (l.id !== leadId) return l
+      const shouldAssign = !l.owner_member_id && memberId
       return {
         ...l,
         last_message_content: content,
         last_message_sender_type: 'human' as const,
         last_activity_at: new Date().toISOString(),
-        owner_member_id: memberId || l.owner_member_id,
-        owner: memberId ? { id: memberId, profiles: { full_name: fullName, avatar_url: user?.image || undefined } } : l.owner,
+        owner_member_id: shouldAssign ? memberId : l.owner_member_id,
+        owner: shouldAssign ? { id: memberId, profiles: { full_name: fullName, avatar_url: user?.image || undefined } } : l.owner,
       }
     }))
-    if (selectedLead?.id === displayedLead?.id) {
-      setSelectedLead(prev => prev ? {
-        ...prev,
-        last_message_content: content,
-        last_message_sender_type: 'human' as const,
-        last_activity_at: new Date().toISOString(),
-      } : prev)
+    if (selectedLead?.id === leadId) {
+      setSelectedLead(prev => {
+        if (!prev) return prev
+        const shouldAssign = !prev.owner_member_id && memberId
+        return {
+          ...prev,
+          last_message_content: content,
+          last_message_sender_type: 'human' as const,
+          last_activity_at: new Date().toISOString(),
+          owner_member_id: shouldAssign ? memberId : prev.owner_member_id,
+          owner: shouldAssign ? { id: memberId, profiles: { full_name: fullName, avatar_url: user?.image || undefined } } : prev.owner,
+        }
+      })
     }
-  }, [displayedLead, selectedLead, setLeads, currentOrganization, user])
+
+    if (leadId && memberId && !alreadyHasOwner) {
+      fetch(`/api/leads/${leadId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ owner_member_id: memberId }),
+      }).catch((err) => console.error('Failed to auto-assign owner:', err))
+    }
+  }, [displayedLead, selectedLead, setLeads, currentOrganization, user, profileName])
 
   const handleUpdateLead = useCallback((leadId: string, updates: Partial<LeadWithOwner>) => {
     setLeads(prev => prev.map(l => l.id === leadId ? { ...l, ...updates } : l))
