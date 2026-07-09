@@ -22,15 +22,20 @@ const FOLDER_LIMITS: Record<string, { maxSize: number; allowedContentTypes?: str
 
 export async function POST(req: NextRequest) {
   try {
-    const session = await auth()
-    if (!session?.user) return apiError(401, 'Não autenticado.')
-
     const body = (await req.json()) as HandleUploadBody
 
     const jsonResponse = await handleUpload({
       body,
       request: req,
       onBeforeGenerateToken: async (pathname) => {
+        // Só o pedido de token (feito pelo navegador do usuário) tem cookie de sessão —
+        // o callback abaixo (onUploadCompleted) é o servidor da própria Vercel chamando
+        // de volta depois do upload, sem sessão de usuário; exigir auth() ali quebraria
+        // esse callback sempre. A autenticidade da chamada da Vercel já é validada pela
+        // assinatura interna do handleUpload, não precisa de checagem extra aqui.
+        const session = await auth()
+        if (!session?.user) throw new Error('Não autenticado.')
+
         const folder = pathname.split('/')[0]
         const limits = FOLDER_LIMITS[folder]
         if (!limits) throw new Error('Pasta inválida. Use: avatars, org-logos ou chat-media')

@@ -1,6 +1,7 @@
 import { db } from '@/lib/db'
 import { integrations, integrationSecrets } from '@/lib/schema'
 import { eq, and, isNull } from 'drizzle-orm'
+import { convertAudioForMeta } from '@/lib/audioConvert'
 
 async function getWhatsAppCredentials(organizationId: string) {
   const [integration] = await db.select({ id: integrations.id, config: integrations.config })
@@ -75,7 +76,12 @@ export async function sendWhatsAppMedia(
   const { apiVersion, phoneNumberId, token } = await getWhatsAppCredentials(organizationId)
   const to = phone.replace(/\D/g, '')
 
-  const mediaPayload: Record<string, any> = { link: mediaUrl }
+  // A Cloud API só aceita áudio em AAC/AMR/MP3/MP4 ou Ogg com codec Opus puro; o
+  // navegador grava em webm (ou mp4/aac no Safari) — remuxa pra Ogg/Opus antes de
+  // enviar, senão a Meta rejeita com "Unsupported MIME type" (ver audioConvert.ts).
+  const effectiveMediaUrl = mediaType === 'audio' ? await convertAudioForMeta(mediaUrl) : mediaUrl
+
+  const mediaPayload: Record<string, any> = { link: effectiveMediaUrl }
   if (caption && mediaType !== 'audio' && mediaType !== 'sticker') mediaPayload.caption = caption
   if (filename && mediaType === 'document') mediaPayload.filename = filename
 
