@@ -171,7 +171,8 @@ export default function OrderModal({ lead, organizationId, onClose, onSuccess }:
     if (cleanCep.length !== 8) return
     setCepLoading(true)
     try {
-      const res = await fetch(`https://viacep.com.br/ws/${cleanCep}/json/`)
+      // Sem timeout, uma rede móvel instável deixa "Buscando..." pendurado indefinidamente
+      const res = await fetch(`https://viacep.com.br/ws/${cleanCep}/json/`, { signal: AbortSignal.timeout(8000) })
       const data = await res.json()
       if (!data.erro) {
         setAddress(data.logradouro || '')
@@ -182,6 +183,14 @@ export default function OrderModal({ lead, organizationId, onClose, onSuccess }:
     } catch {}
     setCepLoading(false)
   }
+
+  // Trava o scroll do body enquanto o modal está aberto — no iOS, sem isso o fundo da
+  // conversa pode "roubar" o toque por trás do overlay fixo.
+  useEffect(() => {
+    const prev = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    return () => { document.body.style.overflow = prev }
+  }, [])
 
   const handleCepBlur = () => resolveCep(cep.replace(/\D/g, ''))
 
@@ -284,7 +293,7 @@ export default function OrderModal({ lead, organizationId, onClose, onSuccess }:
 
   const modal = (
     <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4" style={{ backgroundColor: 'rgba(0,0,0,0.75)' }}>
-      <div className="bg-[#1a2730] border border-[var(--chat-border)] rounded-2xl w-full max-w-2xl max-h-[90vh] flex flex-col shadow-2xl">
+      <div className="bg-[#1a2730] border border-[var(--chat-border)] rounded-2xl w-full max-w-2xl max-h-[90dvh] flex flex-col shadow-2xl">
         {/* Header */}
         <div className="flex items-center justify-between p-5 border-b border-[var(--chat-border)]">
           <h2 className="text-lg font-bold text-[var(--chat-text-primary)]">Registrar Venda</h2>
