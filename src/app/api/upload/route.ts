@@ -1,31 +1,23 @@
 /**
  * POST /api/upload
- * Substitui Supabase Storage (buckets 'avatars' e 'org-logos')
- * Usa Vercel Blob para armazenar arquivos
+ * Emite tokens de upload direto-pro-Blob (fluxo `handleUpload` do @vercel/blob/client).
+ *
+ * O arquivo NÃO passa mais por essa function — o navegador envia os bytes direto pro
+ * Vercel Blob usando o token que essa rota autoriza. Isso existe porque Vercel Functions
+ * têm um limite rígido de 4.5MB no corpo da requisição (plataforma, não configurável):
+ * qualquer vídeo ou foto de celular um pouco maior era rejeitado (413) antes mesmo do
+ * nosso código rodar. Ver src/lib/blobClient.ts para o lado cliente e o motivo completo.
  */
 import { NextRequest } from 'next/server'
-import sharp from 'sharp'
+import { handleUpload, type HandleUploadBody } from '@vercel/blob/client'
 import { auth } from '@/lib/auth'
-import { uploadFile } from '@/lib/blob'
 import { apiError } from '@/lib/api-auth'
 
-// Corrige o "grava deitado, mostra em pé" clássico de foto de celular: a câmera
-// grava a tag EXIF de orientação em vez de rotacionar os pixels, e o navegador
-// aplica essa tag ao exibir — mas serviços que baixam a imagem depois (Evolution
-// API, WhatsApp) podem não respeitar essa tag. Rotacionar os pixels de verdade
-// aqui garante que a imagem apareça correta em qualquer lugar, sempre.
-const ROTATABLE_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp']
-
-async function normalizeImageOrientation(file: File): Promise<File> {
-  if (!ROTATABLE_IMAGE_TYPES.includes(file.type)) return file
-  try {
-    const buffer = Buffer.from(await file.arrayBuffer())
-    const rotated = await sharp(buffer).rotate().toBuffer()
-    return new File([rotated], file.name, { type: file.type })
-  } catch (err) {
-    console.error('[/api/upload] Falha ao normalizar orientação EXIF, enviando arquivo original:', err)
-    return file
-  }
+const FOLDER_LIMITS: Record<string, { maxSize: number; allowedContentTypes?: string[] }> = {
+  avatars: { maxSize: 5 * 1024 * 1024, allowedContentTypes: ['image/jpeg', 'image/png', 'image/webp', 'image/gif'] },
+  'org-logos': { maxSize: 5 * 1024 * 1024, allowedContentTypes: ['image/jpeg', 'image/png', 'image/webp', 'image/gif'] },
+  // 16MB — limite de mídia do WhatsApp; sem restrição de tipo (imagem, vídeo, áudio, documento)
+  'chat-media': { maxSize: 16 * 1024 * 1024 },
 }
 
 export async function POST(req: NextRequest) {
@@ -33,45 +25,32 @@ export async function POST(req: NextRequest) {
     const session = await auth()
     if (!session?.user) return apiError(401, 'Não autenticado.')
 
-    const formData = await req.formData()
-    const file = formData.get('file') as File | null
-    const folder = formData.get('folder') as string | null
-    const identifier = formData.get('identifier') as string | null
+    const body = (await req.json()) as HandleUploadBody
 
-    if (!file) return apiError(400, 'Arquivo não enviado.')
-    if (!folder || !['avatars', 'org-logos', 'chat-media'].includes(folder)) {
-      return apiError(400, 'Pasta inválida. Use: avatars, org-logos ou chat-media')
-    }
+    const jsonResponse = await handleUpload({
+      body,
+      request: req,
+      onBeforeGenerateToken: async (pathname) => {
+        const folder = pathname.split('/')[0]
+        const limits = FOLDER_LIMITS[folder]
+        if (!limits) throw new Error('Pasta inválida. Use: avatars, org-logos ou chat-media')
 
-    if (folder === 'chat-media') {
-      // Validar tamanho (16MB máx — limite do WhatsApp para mídia)
-      if (file.size > 16 * 1024 * 1024) {
-        return apiError(400, 'Arquivo muito grande. Máximo: 16MB.')
-      }
-    } else {
-      // Validar tamanho (5MB máx)
-      if (file.size > 5 * 1024 * 1024) {
-        return apiError(400, 'Arquivo muito grande. Máximo: 5MB.')
-      }
+        return {
+          allowedContentTypes: limits.allowedContentTypes,
+          maximumSizeInBytes: limits.maxSize,
+          addRandomSuffix: true,
+        }
+      },
+      onUploadCompleted: async () => {
+        // Nada a fazer — o cliente já recebe a URL final na resposta do upload().
+        // (Em dev local, a Vercel não consegue chamar esse callback de volta pro
+        // localhost; isso é esperado e não afeta o upload em si.)
+      },
+    })
 
-      // Validar tipo
-      const allowedTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/gif']
-      if (!allowedTypes.includes(file.type)) {
-        return apiError(400, 'Tipo de arquivo inválido. Use: JPEG, PNG, WebP ou GIF.')
-      }
-    }
-
-    const normalizedFile = await normalizeImageOrientation(file)
-
-    const url = await uploadFile(
-      normalizedFile,
-      folder as 'avatars' | 'org-logos' | 'chat-media',
-      identifier || session.user.id!
-    )
-
-    return Response.json({ url })
+    return Response.json(jsonResponse)
   } catch (err: any) {
     console.error('[/api/upload]', err)
-    return apiError(500, err.message || 'Erro ao fazer upload.')
+    return apiError(400, err.message || 'Erro ao autorizar upload.')
   }
 }

@@ -1,9 +1,10 @@
 'use client'
 
 import { useRef, useEffect, useState } from 'react'
-import { Sparkle, X, MagnifyingGlassPlus, Play, Pause, Microphone, ArrowBendUpLeft, Check, WarningCircle, Lightning, PushPin } from '@phosphor-icons/react'
+import { Sparkle, X, MagnifyingGlassPlus, Play, Pause, Microphone, ArrowBendUpLeft, Check, WarningCircle, Lightning, PushPin, Trash, Prohibit } from '@phosphor-icons/react'
 import { LeadActivityWithActor, LeadWithOwner } from '@/lib/types'
 import { formatTime } from '@/lib/utils'
+import { useAuth } from '@/hooks'
 import LoadingSpinner from '@/components/Shared/LoadingSpinner'
 
 interface ActivityTimelineProps {
@@ -12,6 +13,7 @@ interface ActivityTimelineProps {
   lead: LeadWithOwner
   onReply?: (activity: LeadActivityWithActor) => void
   onTogglePin?: (activity: LeadActivityWithActor) => void
+  onDelete?: (activity: LeadActivityWithActor) => void
   pinnedActivityIds?: Set<string>
 }
 
@@ -335,6 +337,8 @@ function MessageBubble({
   onImageClick,
   onReply,
   onTogglePin,
+  onDelete,
+  canDelete,
   isPinned
 }: {
   activity: LeadActivityWithActor
@@ -345,6 +349,8 @@ function MessageBubble({
   onImageClick?: (url: string) => void
   onReply?: (activity: LeadActivityWithActor) => void
   onTogglePin?: (activity: LeadActivityWithActor) => void
+  onDelete?: (activity: LeadActivityWithActor) => void
+  canDelete?: boolean
   isPinned?: boolean
 }) {
   if (senderType === 'system_other') {
@@ -353,6 +359,7 @@ function MessageBubble({
   }
 
   const outgoing = isOutgoing(senderType)
+  const isDeleted = !!activity.metadata?.deleted
 
   if (outgoing) {
     const isAI = senderType === 'ai'
@@ -399,9 +406,18 @@ function MessageBubble({
           </div>
         )}
         <div className="relative">
-          {/* Reply/Pin buttons — outgoing (appear on left) */}
-          {(onTogglePin || onReply) && (
+          {/* Reply/Pin/Delete buttons — outgoing (appear on left) */}
+          {!isDeleted && (onTogglePin || onReply || (onDelete && canDelete)) && (
             <div className="absolute -left-9 top-1/2 -translate-y-1/2 flex items-center gap-1 opacity-0 group-hover/msg:opacity-100 transition-opacity z-20">
+              {onDelete && canDelete && (
+                <button
+                  onClick={() => onDelete(activity)}
+                  className="w-7 h-7 rounded-full bg-[var(--chat-bg-menu)] border border-[var(--chat-border)] shadow-sm flex items-center justify-center hover:bg-red-500/10 hover:border-red-500/30"
+                  title="Apagar mensagem"
+                >
+                  <Trash size={14} weight="bold" className="text-[var(--chat-icon)] hover:text-red-500" />
+                </button>
+              )}
               {onTogglePin && (
                 <button
                   onClick={() => onTogglePin(activity)}
@@ -422,6 +438,21 @@ function MessageBubble({
               )}
             </div>
           )}
+          {isDeleted ? (
+            <div
+              className={`relative rounded-2xl px-3 py-2 min-w-[80px] border border-dashed ${showHeader ? 'rounded-tr-[2px]' : ''}`}
+              style={{ backgroundColor: 'var(--chat-bg-field)', borderColor: 'var(--chat-border)' }}
+            >
+              <p className="text-sm italic text-[var(--chat-text-muted)] flex items-center gap-1.5">
+                <Prohibit size={14} weight="bold" />
+                Mensagem apagada
+                <span className="inline-block w-[2.5rem]" />
+              </p>
+              <span className="absolute bottom-1 right-2.5 text-[10px] text-[var(--chat-text-muted)] whitespace-nowrap">
+                {formatTime(activity.created_at)}
+              </span>
+            </div>
+          ) : (
           <div
             className={`relative rounded-2xl px-3 pt-2 pb-1.5 min-w-[80px] ${showHeader ? 'rounded-tr-[2px]' : ''}`}
             style={{ backgroundColor: bubbleColor }}
@@ -447,6 +478,7 @@ function MessageBubble({
               ) : null}
             </span>
           </div>
+          )}
 
           {/* Reaction Pill Outgoing */}
           {reactions && reactions.length > 0 && (
@@ -565,10 +597,19 @@ export default function ActivityTimeline({
   lead,
   onReply,
   onTogglePin,
+  onDelete,
   pinnedActivityIds,
 }: ActivityTimelineProps) {
   const [selectedImage, setSelectedImage] = useState<string | null>(null)
   const endRef = useRef<HTMLDivElement>(null)
+  const { currentOrganization, isMaster, roleName } = useAuth()
+  const isOrgAdminUser = isMaster || roleName?.toLowerCase() === 'administrador' || roleName?.toLowerCase() === 'owner'
+
+  // Só quem enviou a mensagem (ou um admin) pode apagá-la — mesma regra aplicada no
+  // servidor em /api/leads/[id]/messages/[activityId]; aqui só decide se o botão aparece.
+  const canDeleteActivity = (activity: LeadActivityWithActor) =>
+    activity.metadata?.source === 'human' &&
+    (isOrgAdminUser || (!!currentOrganization?.id && activity.actor_member_id === currentOrganization.id))
 
   useEffect(() => {
     endRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -730,6 +771,8 @@ export default function ActivityTimeline({
           onImageClick={setSelectedImage}
           onReply={onReply}
           onTogglePin={onTogglePin}
+          onDelete={onDelete}
+          canDelete={canDeleteActivity(activity)}
           isPinned={pinnedActivityIds?.has(activity.id)}
         />
       </div>

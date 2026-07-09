@@ -210,5 +210,28 @@ export function useLeadActivities(organizationId: string, leadId: string) {
     }
   }
 
-  return { activities, loading, error, sendHumanMessage, sendMediaMessage, refresh: fetchActivities }
+  const deleteMessage = async (activityId: string) => {
+    // Optimistic: já mostra o balão "Mensagem apagada" antes da resposta do servidor
+    const prevActivities = activities
+    setActivities((prev) =>
+      prev.map((a) => (a.id === activityId ? { ...a, metadata: { ...a.metadata, deleted: true } } : a))
+    )
+
+    try {
+      const res = await fetch(`/api/leads/${leadId}/messages/${activityId}`, { method: 'DELETE' })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(data.error || 'Falha ao apagar mensagem')
+      return data as {
+        success: true
+        deleted_for_everyone: boolean
+        channel_supports_delete: boolean
+        delete_error: string | null
+      }
+    } catch (err) {
+      setActivities(prevActivities)
+      throw err
+    }
+  }
+
+  return { activities, loading, error, sendHumanMessage, sendMediaMessage, deleteMessage, refresh: fetchActivities }
 }

@@ -1,4 +1,4 @@
-import { sendEvolutionMessage, sendEvolutionMedia } from '@/lib/evolution'
+import { sendEvolutionMessage, sendEvolutionMedia, deleteEvolutionMessage } from '@/lib/evolution'
 import type { ChannelAdapter } from './types'
 
 export const evolutionAdapter: ChannelAdapter = {
@@ -13,5 +13,9 @@ export const evolutionAdapter: ChannelAdapter = {
   async sendMedia(organizationId, _integrationId, recipient, mediaType, mediaUrl, caption, filename, isGroup) {
     const result = await sendEvolutionMedia(organizationId, recipient, mediaType, mediaUrl, caption, filename, isGroup)
     return { externalId: result?.key?.id, raw: result }
+  },
+
+  async deleteMessage(organizationId, _integrationId, recipient, externalMessageId, isGroup) {
+    await deleteEvolutionMessage(organizationId, recipient, externalMessageId, isGroup)
   },
 }

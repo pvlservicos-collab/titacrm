@@ -24,4 +24,16 @@ export interface ChannelAdapter {
     filename?: string,
     isGroup?: boolean
   ): Promise<ChannelSendResult>
+  /**
+   * Apaga a mensagem "para todos" no canal (revoke), quando o canal suporta. Ausente =
+   * canal não suporta apagar mensagem já enviada (ex: WhatsApp Cloud API oficial e
+   * Instagram — restrição da própria Meta, não é possível revogar mensagem de negócio).
+   */
+  deleteMessage?(
+    organizationId: string,
+    integrationId: string | null,
+    recipient: string,
+    externalMessageId: string,
+    isGroup?: boolean
+  ): Promise<void>
 }

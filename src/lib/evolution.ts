@@ -148,3 +148,32 @@ export async function sendEvolutionMedia(
   if (!res.ok) throw new Error(data.message || 'Falha ao enviar mídia via Evolution')
   return data
 }
+
+/**
+ * Apaga a mensagem "para todos" (revoke) — só existe pra Evolution porque ela fala o
+ * protocolo real do WhatsApp (Baileys); a Cloud API oficial da Meta não expõe essa
+ * operação pra mensagens enviadas por negócios (ver ChannelAdapter.deleteMessage).
+ */
+export async function deleteEvolutionMessage(
+  organizationId: string,
+  phone: string,
+  messageId: string,
+  isGroup?: boolean
+) {
+  const { instanceName, apiKey, server } = await getEvolutionCredentials(organizationId)
+  const formattedPhone = formatRecipient(phone, isGroup)
+
+  const res = await fetch(`${server}/chat/deleteMessageForEveryone/${instanceName}`, {
+    method: 'DELETE',
+    headers: { 'Content-Type': 'application/json', apikey: apiKey },
+    body: JSON.stringify({
+      id: messageId,
+      remoteJid: formattedPhone,
+      fromMe: true,
+    }),
+  })
+
+  const data = await res.json().catch(() => ({}))
+  if (!res.ok) throw new Error(data.message || 'Falha ao apagar mensagem via Evolution')
+  return data
+}

@@ -1,6 +1,4 @@
-import { db } from '@/lib/db'
-import { organizationRoles } from '@/lib/schema'
-import { eq } from 'drizzle-orm'
+import { getOrgRole, isOrgAdmin } from '@/lib/admin-auth'
 
 /**
  * Segue a mesma heurística de admin usada em RolePermissionsPanel.tsx / financeiro/layout.tsx
@@ -8,18 +6,8 @@ import { eq } from 'drizzle-orm'
  * granular settings.manage_quick_replies).
  */
 export async function canManageSharedQuickReplies(roleId: string | null): Promise<boolean> {
-  if (!roleId) return false
+  if (await isOrgAdmin({ roleId })) return true
 
-  const [role] = await db
-    .select({ name: organizationRoles.name, permissions: organizationRoles.permissions })
-    .from(organizationRoles)
-    .where(eq(organizationRoles.id, roleId))
-    .limit(1)
-
-  if (!role) return false
-
-  const name = role.name?.toLowerCase()
-  if (name === 'administrador' || name === 'owner' || name === 'master') return true
-
-  return !!(role.permissions as any)?.settings?.manage_quick_replies
+  const role = await getOrgRole(roleId)
+  return !!(role?.permissions as any)?.settings?.manage_quick_replies
 }

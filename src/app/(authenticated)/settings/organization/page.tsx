@@ -4,6 +4,7 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import { PencilSimple, SpinnerGap, UploadSimple, Key, Copy, Eye, EyeSlash, Trash, Plus } from '@phosphor-icons/react'
 import { useAuth } from '@/hooks'
 import { useSession } from 'next-auth/react'
+import { uploadClientFile } from '@/lib/blobClient'
 
 interface ApiToken {
     id: string
@@ -26,7 +27,7 @@ async function hashToken(token: string): Promise<string> {
 export default function ProfileSettingsPage() {
     const { organizationId, roleName, isMaster, currentOrganization } = useAuth()
     const fileInputRef = useRef<HTMLInputElement>(null)
-    const isAdmin = isMaster || roleName === 'Administrador'
+    const isAdmin = isMaster || roleName?.toLowerCase() === 'administrador' || roleName?.toLowerCase() === 'owner'
 
     // API Token state
     const [tokens, setTokens] = useState<ApiToken[]>([])
@@ -172,18 +173,7 @@ export default function ProfileSettingsPage() {
         setMessage(null)
 
         try {
-            const fileExt = file.name.split('.').pop()
-            const fileName = `logo_${organizationId}_${Math.random()}.${fileExt}`
-            const filePath = `${organizationId}/${fileName}`
-
-            // Upload via Vercel Blob
-            const formData = new FormData()
-            formData.append('file', file)
-            formData.append('folder', 'org-logos')
-            formData.append('identifier', organizationId || 'org')
-            const uploadRes = await fetch('/api/upload', { method: 'POST', body: formData })
-            if (!uploadRes.ok) throw new Error('Falha no upload')
-            const { url: publicUrl } = await uploadRes.json()
+            const publicUrl = await uploadClientFile(file, 'org-logos', organizationId || 'org')
 
             // Update local state, actual DB save happens when "Salvar Alterações" is clicked
             setProfileData(prev => ({ ...prev, logo_url: publicUrl }))

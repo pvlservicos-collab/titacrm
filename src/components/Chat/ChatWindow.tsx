@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { useLeadActivities, useAuth, useChatButtonSettings } from '@/hooks'
 import { usePinnedMessages } from '@/hooks/usePinnedMessages'
+import { uploadClientFile } from '@/lib/blobClient'
 import { LeadWithOwner, LeadActivityWithActor } from '@/lib/types'
 import ActivityTimeline from './ActivityTimeline'
 import ActivityComposer from './ActivityComposer'
@@ -23,7 +24,7 @@ export interface ReplyContext {
 }
 
 export default function ChatWindow({ lead, organizationId, onMessageSent }: ChatWindowProps) {
-  const { activities, loading, sendHumanMessage, sendMediaMessage } = useLeadActivities(organizationId, lead.id)
+  const { activities, loading, sendHumanMessage, sendMediaMessage, deleteMessage } = useLeadActivities(organizationId, lead.id)
   const { pinned, pinnedActivityIds, togglePin } = usePinnedMessages(lead.id)
   const { currentOrganization } = useAuth()
   const { settings: chatButtonSettings, fireWebhook } = useChatButtonSettings()
@@ -64,17 +65,7 @@ export default function ChatWindow({ lead, organizationId, onMessageSent }: Chat
     else if (file.type.startsWith('audio/')) mediaType = 'audio'
 
     try {
-      const formData = new FormData()
-      formData.append('file', file)
-      formData.append('folder', 'chat-media')
-      formData.append('identifier', lead.id)
-
-      const res = await fetch('/api/upload', { method: 'POST', body: formData })
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}))
-        throw new Error(err.error || 'Falha ao enviar arquivo')
-      }
-      const { url } = await res.json()
+      const url = await uploadClientFile(file, 'chat-media', lead.id)
 
       if (onMessageSent) onMessageSent(`[${mediaType}]`)
       await sendMediaMessage(url, mediaType, '', file.name, file.type)
@@ -104,6 +95,26 @@ export default function ChatWindow({ lead, organizationId, onMessageSent }: Chat
     } catch (error) {
       console.error('Failed to send quick reply media:', error)
       setSendError('Falha ao enviar mídia. Verifique sua conexão e tente novamente.')
+    }
+  }
+
+  const handleDeleteMessage = async (activity: LeadActivityWithActor) => {
+    setSendError(null)
+
+    const isEvolution = activity.metadata?.channel === 'whatsapp_evolution'
+    const confirmMsg = isEvolution
+      ? 'Apagar esta mensagem? Ela também será apagada para o cliente no WhatsApp (Nº 2), se ainda estiver dentro do prazo permitido pelo WhatsApp.'
+      : 'Apagar esta mensagem do histórico do CRM? A API Oficial do WhatsApp não permite apagar mensagens já enviadas — ela vai continuar visível no celular do cliente.'
+    if (!confirm(confirmMsg)) return
+
+    try {
+      const result = await deleteMessage(activity.id)
+      if (result.channel_supports_delete && !result.deleted_for_everyone) {
+        setSendError(`Mensagem removida do CRM, mas não foi possível apagar no WhatsApp do cliente: ${result.delete_error || 'erro desconhecido'}`)
+      }
+    } catch (error) {
+      console.error('Failed to delete message:', error)
+      setSendError(error instanceof Error ? error.message : 'Falha ao apagar mensagem.')
     }
   }
 
@@ -140,6 +151,7 @@ export default function ChatWindow({ lead, organizationId, onMessageSent }: Chat
         lead={lead}
         onReply={handleReply}
         onTogglePin={togglePin}
+        onDelete={handleDeleteMessage}
         pinnedActivityIds={pinnedActivityIds}
       />
 

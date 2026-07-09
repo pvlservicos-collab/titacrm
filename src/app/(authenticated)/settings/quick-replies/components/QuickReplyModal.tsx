@@ -4,6 +4,7 @@ import { useRef, useState } from 'react'
 import { X, Image as ImageIcon, VideoCamera, FileAudio, FileText, Trash } from '@phosphor-icons/react'
 import { QuickReply, QuickReplyInput } from '@/hooks/useQuickReplies'
 import { QUICK_REPLY_VARIABLES, interpolateQuickReply } from '@/lib/quickReplyVariables'
+import { uploadClientFile } from '@/lib/blobClient'
 
 interface QuickReplyModalProps {
   scope: 'shared' | 'personal'
@@ -73,16 +74,7 @@ export default function QuickReplyModal({ scope, quickReply, existingCategories,
     try {
       setUploading(true)
       setError(null)
-      const formData = new FormData()
-      formData.append('file', file)
-      formData.append('folder', 'chat-media')
-      formData.append('identifier', 'quick-reply')
-      const res = await fetch('/api/upload', { method: 'POST', body: formData })
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}))
-        throw new Error(err.error || 'Falha ao enviar arquivo')
-      }
-      const { url } = await res.json()
+      const url = await uploadClientFile(file, 'chat-media', 'quick-reply')
       setMediaUrl(url)
       setMediaType(mediaTypeFromFile(file))
       setMediaFilename(file.name)

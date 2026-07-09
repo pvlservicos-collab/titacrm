@@ -5,6 +5,7 @@ import { useAuth } from '@/hooks'
 import { useSession } from 'next-auth/react'
 import { SpinnerGap, ShieldCheck } from '@phosphor-icons/react'
 import { useNotification } from '@/contexts/NotificationContext'
+import { uploadClientFile } from '@/lib/blobClient'
 import Image from 'next/image'
 
 export default function UserProfileSettingsPage() {
@@ -54,18 +55,7 @@ export default function UserProfileSettingsPage() {
         setIsUploading(true)
 
         try {
-            const fileExt = file.name.split('.').pop()
-            const fileName = `avatar_${user.id}_${Date.now()}.${fileExt}`
-            const filePath = `${user.id}/${fileName}`
-
-            const formData = new FormData()
-            formData.append('file', file)
-            formData.append('folder', 'avatars')
-            formData.append('identifier', user.id)
-
-            const uploadRes = await fetch('/api/upload', { method: 'POST', body: formData })
-            if (!uploadRes.ok) throw new Error('Falha no upload')
-            const { url: publicUrl } = await uploadRes.json()
+            const publicUrl = await uploadClientFile(file, 'avatars', user.id)
 
             const updateRes = await fetch('/api/users/me', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ avatar_url: publicUrl }) })
             if (!updateRes.ok) throw new Error('Failed to update avatar')

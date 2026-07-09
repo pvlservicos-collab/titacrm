@@ -3,29 +3,17 @@ import { authenticateRequest, apiError, validateRequired, validateSource } from 
 import { db } from '@/lib/db'
 import { publishEvent, channels, events } from '@/lib/realtime'
 import {
-  leads, leadActivities, pipelineStages, organizationMembers, profiles, notifications, organizationRoles,
+  leads, leadActivities, pipelineStages, organizationMembers, profiles, notifications,
 } from '@/lib/schema'
 import { eq, and, isNull, desc, asc, ilike, sql } from 'drizzle-orm'
 import { getChannelAdapter } from '@/lib/channels/registry'
 import { integrations } from '@/lib/schema'
+import { isOrgAdmin } from '@/lib/admin-auth'
 
 const CHANNEL_LABELS: Record<string, string> = {
   whatsapp_evolution: 'Nº 2 (Evolution)',
   whatsapp_cloud_official: 'API Oficial',
   instagram_direct: 'Instagram',
-}
-
-// Mesma heurística de admin usada em quick-replies/permissions.ts / RolePermissionsPanel.tsx
-async function isAdminAuth(auth: { isSuperAdmin?: boolean; roleId: string | null }): Promise<boolean> {
-  if (auth.isSuperAdmin) return true
-  if (!auth.roleId) return false
-  const [role] = await db
-    .select({ name: organizationRoles.name })
-    .from(organizationRoles)
-    .where(eq(organizationRoles.id, auth.roleId))
-    .limit(1)
-  const name = role?.name?.toLowerCase()
-  return name === 'administrador' || name === 'owner' || name === 'master'
 }
 
 /**
@@ -77,15 +65,34 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
       )
       .orderBy(asc(leadActivities.createdAt))
 
-    const data = rows.map(r => ({
-      id: r.id,
-      type: r.type,
-      content: r.content,
-      metadata: r.metadata,
-      actor_member_id: r.actor_member_id,
-      created_at: r.created_at,
-      actor: r.actor_id ? { profiles: { full_name: r.actor_full_name || '', avatar_url: r.actor_avatar_url || undefined } } : undefined,
-    }))
+    // Mensagem apagada: não devolve mais o conteúdo/mídia originais na API (só o carimbo
+    // "apagada") — a UI já esconde isso, mas sem redigir aqui o texto/mídia original
+    // continuaria visível pra quem inspecionasse a resposta de rede, o que anula o
+    // propósito de "apagar por engano" pra conteúdo sensível.
+    const data = rows.map(r => {
+      const metadata = (r.metadata as Record<string, any>) || {}
+      if (metadata.deleted) {
+        const { media_url, media_type, media_mimetype, media_filename, quoted_media_url, ...rest } = metadata
+        return {
+          id: r.id,
+          type: r.type,
+          content: null,
+          metadata: rest,
+          actor_member_id: r.actor_member_id,
+          created_at: r.created_at,
+          actor: r.actor_id ? { profiles: { full_name: r.actor_full_name || '', avatar_url: r.actor_avatar_url || undefined } } : undefined,
+        }
+      }
+      return {
+        id: r.id,
+        type: r.type,
+        content: r.content,
+        metadata: r.metadata,
+        actor_member_id: r.actor_member_id,
+        created_at: r.created_at,
+        actor: r.actor_id ? { profiles: { full_name: r.actor_full_name || '', avatar_url: r.actor_avatar_url || undefined } } : undefined,
+      }
+    })
 
     return Response.json({ data })
   } catch (err: any) {
@@ -308,7 +315,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const auth = await authenticateRequest(req)
-    if (!(await isAdminAuth(auth))) {
+    if (!(await isOrgAdmin(auth))) {
       return apiError(403, 'Apenas administradores podem apagar o histórico de conversas.')
     }
 
