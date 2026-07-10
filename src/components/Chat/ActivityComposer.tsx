@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
+import { useState, useEffect, useRef, useCallback, useMemo, forwardRef, useImperativeHandle } from 'react'
 import dynamic from 'next/dynamic'
 import type { EmojiClickData, Theme } from 'emoji-picker-react'
 import {
@@ -56,7 +56,15 @@ function formatDuration(ms: number): string {
   return `${minutes}:${seconds.toString().padStart(2, '0')}`
 }
 
-export default function ActivityComposer({
+// A zona de arrastar-e-soltar cobre a conversa inteira (timeline + composer, ver
+// ChatWindow.tsx), mas quem sabe abrir a prévia de mídia é o composer — exposto via
+// ref pra quem recebe o drop no componente pai entregar o arquivo direto pra cá,
+// reaproveitando a mesma tela de prévia/legenda do clipe em vez de duplicar a lógica.
+export interface ActivityComposerHandle {
+  receiveDroppedFile: (file: File) => void
+}
+
+const ActivityComposer = forwardRef<ActivityComposerHandle, ActivityComposerProps>(function ActivityComposer({
   onSend,
   onSendMedia,
   onSendQuickReplyMedia,
@@ -66,7 +74,7 @@ export default function ActivityComposer({
   fireWebhook,
   organizationId,
   lead,
-}: ActivityComposerProps) {
+}, ref) {
   const [content, setContent] = useState('')
   const [sending, setSending] = useState(false)
   const [uploadingMedia, setUploadingMedia] = useState(false)
@@ -210,15 +218,27 @@ export default function ActivityComposer({
     }
   }
 
+  const setFileAsPendingMedia = useCallback((file: File) => {
+    if (!onSendMedia) return
+    setPendingMedia((prev) => {
+      if (prev) URL.revokeObjectURL(prev.previewUrl)
+      return { file, previewUrl: URL.createObjectURL(file) }
+    })
+    requestAnimationFrame(() => inputRef.current?.focus())
+  }, [onSendMedia])
+
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     e.target.value = ''
-    if (!file || !onSendMedia) return
-
-    if (pendingMedia) URL.revokeObjectURL(pendingMedia.previewUrl)
-    setPendingMedia({ file, previewUrl: URL.createObjectURL(file) })
-    requestAnimationFrame(() => inputRef.current?.focus())
+    if (!file) return
+    setFileAsPendingMedia(file)
   }
+
+  // Arquivo largado na conversa (drag-and-drop) chega aqui vindo do ChatWindow —
+  // mesmo destino do clipe, só muda como o arquivo foi escolhido.
+  useImperativeHandle(ref, () => ({
+    receiveDroppedFile: setFileAsPendingMedia,
+  }), [setFileAsPendingMedia])
 
   const handleCancelPendingMedia = () => {
     if (!pendingMedia) return
@@ -636,4 +656,6 @@ export default function ActivityComposer({
       </p>
     </div>
   )
-}
+})
+
+export default ActivityComposer

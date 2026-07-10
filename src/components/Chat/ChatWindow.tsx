@@ -1,12 +1,13 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useRef } from 'react'
+import { Image as ImageIcon } from '@phosphor-icons/react'
 import { useLeadActivities, useAuth, useChatButtonSettings } from '@/hooks'
 import { usePinnedMessages } from '@/hooks/usePinnedMessages'
 import { uploadClientFile } from '@/lib/blobClient'
 import { LeadWithOwner, LeadActivityWithActor } from '@/lib/types'
 import ActivityTimeline from './ActivityTimeline'
-import ActivityComposer from './ActivityComposer'
+import ActivityComposer, { ActivityComposerHandle } from './ActivityComposer'
 import PinnedMessagesBar from './PinnedMessagesBar'
 
 import { ChatButtonKey } from '@/hooks/useChatButtonSettings'
@@ -30,6 +31,36 @@ export default function ChatWindow({ lead, organizationId, onMessageSent }: Chat
   const { settings: chatButtonSettings, fireWebhook } = useChatButtonSettings()
   const [replyContext, setReplyContext] = useState<ReplyContext | null>(null)
   const [sendError, setSendError] = useState<string | null>(null)
+  const composerRef = useRef<ActivityComposerHandle>(null)
+
+  // Arrastar-e-soltar um arquivo em qualquer ponto da conversa (não só no clipe) —
+  // dragCounter conta enter/leave porque o navegador dispara esses eventos toda vez
+  // que o cursor cruza um elemento filho da timeline, não só na entrada/saída real
+  // da área inteira; sem contar, a sobreposição pisca ou nunca some.
+  const [isDraggingFile, setIsDraggingFile] = useState(false)
+  const dragCounter = useRef(0)
+
+  const handleDragEnter = (e: React.DragEvent) => {
+    e.preventDefault()
+    if (!e.dataTransfer.types.includes('Files')) return
+    dragCounter.current += 1
+    setIsDraggingFile(true)
+  }
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault() // necessário pro navegador permitir o drop
+  }
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault()
+    dragCounter.current = Math.max(0, dragCounter.current - 1)
+    if (dragCounter.current === 0) setIsDraggingFile(false)
+  }
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault()
+    dragCounter.current = 0
+    setIsDraggingFile(false)
+    const file = e.dataTransfer.files?.[0]
+    if (file) composerRef.current?.receiveDroppedFile(file)
+  }
 
   const handleSendActivity = async (content: string) => {
     if (!content.trim()) return
@@ -140,7 +171,21 @@ export default function ChatWindow({ lead, organizationId, onMessageSent }: Chat
         backgroundRepeat: 'repeat',
         backgroundSize: 'auto',
       }}
+      onDragEnter={handleDragEnter}
+      onDragOver={handleDragOver}
+      onDragLeave={handleDragLeave}
+      onDrop={handleDrop}
     >
+      {/* Overlay de arrastar-e-soltar — cobre a conversa inteira, não só o clipe */}
+      {isDraggingFile && (
+        <div className="absolute inset-0 z-40 flex items-center justify-center bg-black/50 backdrop-blur-sm pointer-events-none animate-in fade-in duration-150">
+          <div className="flex flex-col items-center gap-3 border-4 border-dashed border-[var(--chat-accent)] rounded-2xl px-12 py-10 bg-[var(--chat-bg-panel)]/90">
+            <ImageIcon size={40} weight="bold" className="text-[var(--chat-accent)]" />
+            <p className="text-sm font-bold text-[var(--chat-text-primary)]">Solte o arquivo para enviar</p>
+          </div>
+        </div>
+      )}
+
       {/* Pinned Messages */}
       <PinnedMessagesBar pinned={pinned} onUnpin={handleUnpin} />
 
@@ -170,6 +215,7 @@ export default function ChatWindow({ lead, organizationId, onMessageSent }: Chat
 
       {/* Composer Bottom */}
       <ActivityComposer
+        ref={composerRef}
         onSend={handleSendActivity}
         onSendMedia={handleSendMedia}
         onSendQuickReplyMedia={handleSendQuickReplyMedia}
