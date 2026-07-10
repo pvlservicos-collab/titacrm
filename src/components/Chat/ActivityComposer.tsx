@@ -171,7 +171,11 @@ export default function ActivityComposer({
   }, [content, autoResize])
 
   const handleSend = async () => {
-    if (!content.trim()) return
+    // Sem essa guarda, dois cliques rápidos (ou Enter segurado, ex: se a tela parecer
+    // travada por um instante) disparavam handleSend() duas vezes antes do primeiro
+    // setContent('') refletir no fechamento do segundo clique — cada chamada mandava a
+    // mesma mensagem de verdade pro WhatsApp, não só duplicava na tela.
+    if (sending || !content.trim()) return
 
     const msgToSend = content
     setContent('') // Clear instantly for optimal user perception
@@ -541,7 +545,7 @@ export default function ActivityComposer({
             />
             <button
               onClick={handleSend}
-              disabled={!content.trim()}
+              disabled={!content.trim() || sending}
               className="w-8 h-8 rounded-full flex items-center justify-center text-white transition-colors hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed flex-shrink-0 mb-0.5"
               style={{ backgroundColor: '#00B8D9' }}
             >
