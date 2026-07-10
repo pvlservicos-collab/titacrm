@@ -41,14 +41,22 @@ async function getEvolutionCredentials(organizationId: string) {
  * pra então re-hospedar num link estável no Blob — igual já fazemos com WhatsApp
  * Cloud API e Instagram.
  */
-export async function downloadEvolutionMedia(organizationId: string, messageId: string): Promise<{ url: string; mimetype?: string } | null> {
+export async function downloadEvolutionMedia(
+  organizationId: string,
+  key: { id: string; remoteJid: string; fromMe?: boolean }
+): Promise<{ url: string; mimetype?: string } | null> {
   try {
     const { instanceName, apiKey, server } = await getEvolutionCredentials(organizationId)
 
+    // A Evolution/Baileys indexa mensagens no armazenamento dela pela chave completa
+    // (remoteJid + fromMe + id), não só pelo id — mandar só o id fazia a busca falhar
+    // sistematicamente pra mensagens enviadas (fromMe: true), porque o registro sem
+    // fromMe explícito não batia com o que estava guardado. Sempre reenvia a key
+    // original recebida no próprio payload do webhook, não uma reconstrução parcial.
     const res = await fetch(`${server}/chat/getBase64FromMediaMessage/${instanceName}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', apikey: apiKey },
-      body: JSON.stringify({ message: { key: { id: messageId } }, convertToMp4: false }),
+      body: JSON.stringify({ message: { key }, convertToMp4: false }),
     })
     if (!res.ok) return null
 
@@ -61,7 +69,7 @@ export async function downloadEvolutionMedia(organizationId: string, messageId: 
 
     const { put } = await import('@vercel/blob')
     const ext = mimetype.split('/')[1]?.split(';')[0] || 'bin'
-    const blob = await put(`evolution-media/${organizationId}/${messageId}.${ext}`, buffer, {
+    const blob = await put(`evolution-media/${organizationId}/${key.id}.${ext}`, buffer, {
       access: 'public',
       contentType: mimetype,
     })

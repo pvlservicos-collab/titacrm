@@ -1,10 +1,20 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
-import { leads, leadActivities, integrations, pipelineStages } from '@/lib/schema'
+import { leads, leadActivities, integrations, pipelineStages, webhookLogs } from '@/lib/schema'
 import { eq, and, isNull, asc, ilike } from 'drizzle-orm'
 import { publishEvent, channels, events } from '@/lib/realtime'
 import { dispatchOutboundWebhook } from '@/lib/outbound-webhook'
 import { downloadEvolutionMedia } from '@/lib/evolution'
+
+// DIAGNÓSTICO TEMPORÁRIO (2026-07-10): mídia (foto/vídeo) enviada direto do celular
+// (fromMe) nunca aparece no CRM, nem como texto — nenhum rastro na tabela de
+// atividades. Duas hipóteses possíveis: (1) a Evolution nunca dispara messages.upsert
+// pra esse caso específico, ou (2) o payload chega com um formato de mensagem que
+// extractMessage() não reconhece. Loga o payload bruto nesses dois casos pra pegar um
+// exemplo real na próxima ocorrência — remover depois de diagnosticar com dados reais.
+function logDiagnostic(reason: string, orgId: string, body: any) {
+  db.insert(webhookLogs).values({ payload: { reason, org_id: orgId, body } }).catch((err) => console.error('[evolution webhook] diagnostic log failed', err))
+}
 
 function extractMessage(data: any): {
   text: string
@@ -37,6 +47,12 @@ export async function POST(req: NextRequest) {
 
     // Only handle messages.upsert
     if (body.event !== 'messages.upsert') {
+      // Eventos "message*" que não sejam upsert são o candidato nº1 pra explicar mídia
+      // fromMe sumida (ver nota de diagnóstico temporário acima) — os demais (presence,
+      // connection.update etc.) são ruído normal e não valem o registro.
+      if (typeof body.event === 'string' && body.event.toLowerCase().includes('message')) {
+        logDiagnostic('unhandled_message_event', orgId, body)
+      }
       return NextResponse.json({ ok: true, skipped: true })
     }
 
@@ -63,7 +79,10 @@ export async function POST(req: NextRequest) {
     if (!phone) return NextResponse.json({ ok: true, skipped: 'no phone' })
 
     const extracted = extractMessage(data)
-    if (!extracted) return NextResponse.json({ ok: true, skipped: 'no message content' })
+    if (!extracted) {
+      if (isFromMe) logDiagnostic('no_extractable_content_fromme', orgId, body)
+      return NextResponse.json({ ok: true, skipped: 'no message content' })
+    }
 
     const senderName = data?.pushName || phone
 
@@ -149,7 +168,7 @@ export async function POST(req: NextRequest) {
     let hostedMediaUrl: string | undefined
     let hostedMimetype: string | undefined
     if (extracted.mediaUrl && messageId) {
-      const hosted = await downloadEvolutionMedia(orgId, messageId)
+      const hosted = await downloadEvolutionMedia(orgId, { id: messageId, remoteJid, fromMe: isFromMe })
       if (hosted) {
         hostedMediaUrl = hosted.url
         hostedMimetype = hosted.mimetype || extracted.mediaMimetype
