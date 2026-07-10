@@ -46,11 +46,17 @@ export async function POST(req: NextRequest) {
 
     const body = await req.json()
 
-    // Only handle messages.upsert
-    if (body.event !== 'messages.upsert') {
-      // Eventos "message*" que não sejam upsert são o candidato nº1 pra explicar mídia
-      // fromMe sumida (ver nota de diagnóstico temporário acima) — os demais (presence,
-      // connection.update etc.) são ruído normal e não valem o registro.
+    // Mensagem enviada direto do WhatsApp (Web/celular, fora do CRM) chega num evento
+    // diferente — "send.message" — do que mensagem recebida ou sincronizada, que usa
+    // "messages.upsert". Confirmado com payload real capturado pelo log de diagnóstico
+    // (ver nota acima): o handler só tratava messages.upsert, então TODA mensagem
+    // (texto ou mídia) mandada direto do celular era descartada em silêncio — nunca
+    // aparecia no CRM. O formato de "data" dos dois eventos é o mesmo (key/message/
+    // messageTimestamp), então o resto do processamento abaixo funciona sem mudança.
+    if (body.event !== 'messages.upsert' && body.event !== 'send.message') {
+      // Eventos "message*" que não sejam esses dois já tratados são candidatos a mais
+      // algum formato desconhecido — os demais (presence, connection.update etc.) são
+      // ruído normal e não valem o registro.
       if (typeof body.event === 'string' && body.event.toLowerCase().includes('message')) {
         logDiagnostic('unhandled_message_event', orgId, body)
       }
