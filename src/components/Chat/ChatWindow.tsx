@@ -56,7 +56,7 @@ export default function ChatWindow({ lead, organizationId, onMessageSent }: Chat
     }
   }
 
-  const handleSendMedia = async (file: File) => {
+  const handleSendMedia = async (file: File, caption?: string) => {
     setSendError(null)
 
     let mediaType: 'image' | 'video' | 'audio' | 'document' = 'document'
@@ -67,8 +67,8 @@ export default function ChatWindow({ lead, organizationId, onMessageSent }: Chat
     try {
       const url = await uploadClientFile(file, 'chat-media', lead.id)
 
-      if (onMessageSent) onMessageSent(`[${mediaType}]`)
-      await sendMediaMessage(url, mediaType, '', file.name, file.type)
+      if (onMessageSent) onMessageSent(caption || `[${mediaType}]`)
+      await sendMediaMessage(url, mediaType, caption || '', file.name, file.type)
     } catch (error) {
       console.error('Failed to send media:', error)
       setSendError('Falha ao enviar mídia. Verifique o arquivo e tente novamente.')

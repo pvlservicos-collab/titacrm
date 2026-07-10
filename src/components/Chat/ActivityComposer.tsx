@@ -14,7 +14,9 @@ import {
   X,
   ArrowBendUpLeft,
   Flag,
-  ChatText
+  ChatText,
+  FileText,
+  Check
 } from '@phosphor-icons/react'
 import { ReplyContext } from './ChatWindow'
 import { ChatButtonSettings, ChatButtonKey } from '@/hooks/useChatButtonSettings'
@@ -37,7 +39,7 @@ interface QuickReplyMediaPayload {
 
 interface ActivityComposerProps {
   onSend: (content: string) => Promise<void>
-  onSendMedia?: (file: File) => Promise<void>
+  onSendMedia?: (file: File, caption?: string) => Promise<void>
   onSendQuickReplyMedia?: (payload: QuickReplyMediaPayload) => Promise<void>
   replyContext?: ReplyContext | null
   onCancelReply?: () => void
@@ -69,6 +71,10 @@ export default function ActivityComposer({
   const [sending, setSending] = useState(false)
   const [uploadingMedia, setUploadingMedia] = useState(false)
   const [showEmojiPicker, setShowEmojiPicker] = useState(false)
+  // Arquivo escolhido pelo clipe, aguardando confirmação — antes disso o clipe mandava
+  // a foto na hora, sem chance de digitar legenda. Reaproveita o mesmo campo de texto
+  // do composer como legenda (o que já estiver digitado vira a legenda, igual WhatsApp).
+  const [pendingMedia, setPendingMedia] = useState<{ file: File; previewUrl: string } | null>(null)
   const [webhookStatus, setWebhookStatus] = useState<{
     key: ChatButtonKey
     status: 'sending' | 'success' | 'error'
@@ -127,6 +133,15 @@ export default function ActivityComposer({
       inputRef.current?.focus()
     }
   }, [replyContext])
+
+  // Evita vazar a object URL do preview se o componente desmontar com mídia pendente
+  // (ex: trocou de conversa antes de confirmar o envio)
+  useEffect(() => {
+    return () => {
+      if (pendingMedia) URL.revokeObjectURL(pendingMedia.previewUrl)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   // Close emoji/quick-reply pickers on outside click (mas nunca ao clicar dentro do textarea,
   // senão digitar "/algo" fecharia o próprio menu que acabou de abrir)
@@ -195,16 +210,36 @@ export default function ActivityComposer({
     }
   }
 
-  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     e.target.value = ''
     if (!file || !onSendMedia) return
 
+    if (pendingMedia) URL.revokeObjectURL(pendingMedia.previewUrl)
+    setPendingMedia({ file, previewUrl: URL.createObjectURL(file) })
+    requestAnimationFrame(() => inputRef.current?.focus())
+  }
+
+  const handleCancelPendingMedia = () => {
+    if (!pendingMedia) return
+    URL.revokeObjectURL(pendingMedia.previewUrl)
+    setPendingMedia(null)
+  }
+
+  const handleConfirmSendMedia = async () => {
+    if (!pendingMedia || !onSendMedia || uploadingMedia) return
+    const { file, previewUrl } = pendingMedia
+    const caption = content.trim()
+    setContent('')
+    if (inputRef.current) inputRef.current.style.height = 'auto'
+    setPendingMedia(null)
+
     try {
       setUploadingMedia(true)
-      await onSendMedia(file)
+      await onSendMedia(file, caption || undefined)
     } finally {
       setUploadingMedia(false)
+      URL.revokeObjectURL(previewUrl)
     }
   }
 
@@ -316,7 +351,11 @@ export default function ActivityComposer({
 
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault()
-      handleSend()
+      if (pendingMedia) handleConfirmSendMedia()
+      else handleSend()
+    }
+    if (e.key === 'Escape' && pendingMedia) {
+      handleCancelPendingMedia()
     }
     if (e.key === 'Escape' && replyContext) {
       onCancelReply?.()
@@ -375,6 +414,42 @@ export default function ActivityComposer({
           </button>
         )}
       </div>
+
+      {/* Media Preview Bar — mídia escolhida no clipe, aguardando confirmação/legenda */}
+      {pendingMedia && (
+        <div className="flex items-center gap-3 bg-[var(--chat-bg-field)] border border-[var(--chat-border)] rounded-xl px-3 py-2 shadow-sm animate-in slide-in-from-bottom-2 duration-200">
+          <div className="w-14 h-14 rounded-lg overflow-hidden bg-[var(--chat-bg-hover)] flex items-center justify-center flex-shrink-0">
+            {pendingMedia.file.type.startsWith('image/') ? (
+              <img src={pendingMedia.previewUrl} alt="Prévia" className="w-full h-full object-cover" />
+            ) : pendingMedia.file.type.startsWith('video/') ? (
+              <video src={pendingMedia.previewUrl} className="w-full h-full object-cover" />
+            ) : (
+              <FileText size={24} className="text-[var(--chat-text-muted)]" />
+            )}
+          </div>
+          <div className="min-w-0 flex-1">
+            <p className="text-[12px] font-semibold text-[var(--chat-text-primary)] truncate">{pendingMedia.file.name}</p>
+            <p className="text-[11px] text-[var(--chat-text-muted)]">Digite uma legenda (opcional) e confirme o envio</p>
+          </div>
+          <button
+            onClick={handleConfirmSendMedia}
+            disabled={uploadingMedia}
+            className="w-8 h-8 rounded-full flex items-center justify-center text-white transition-colors hover:opacity-90 disabled:opacity-50 flex-shrink-0"
+            style={{ backgroundColor: '#00B8D9' }}
+            title="Enviar"
+          >
+            {uploadingMedia ? <span className="animate-spin text-sm inline-block">⏳</span> : <Check size={16} weight="bold" />}
+          </button>
+          <button
+            onClick={handleCancelPendingMedia}
+            disabled={uploadingMedia}
+            className="p-1 rounded-full hover:bg-[var(--chat-bg-hover)] text-[var(--chat-text-muted)] hover:text-red-400 transition-colors flex-shrink-0 disabled:opacity-50"
+            title="Cancelar"
+          >
+            <X size={18} weight="bold" />
+          </button>
+        </div>
+      )}
 
       {/* Reply Preview Bar */}
       {replyContext && (
@@ -442,7 +517,7 @@ export default function ActivityComposer({
               <button
                 type="button"
                 onClick={() => fileInputRef.current?.click()}
-                disabled={uploadingMedia || !onSendMedia}
+                disabled={uploadingMedia || !onSendMedia || !!pendingMedia}
                 className="text-[var(--chat-text-muted)] hover:text-[var(--chat-icon)] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 title="Enviar mídia"
               >
@@ -455,7 +530,7 @@ export default function ActivityComposer({
               <button
                 type="button"
                 onClick={handleMicClick}
-                disabled={uploadingMedia || !onSendMedia}
+                disabled={uploadingMedia || !onSendMedia || !!pendingMedia}
                 className="text-[var(--chat-text-muted)] hover:text-[var(--chat-icon)] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 title="Gravar áudio"
               >
@@ -538,14 +613,14 @@ export default function ActivityComposer({
               value={content}
               onChange={(e) => setContent(e.target.value)}
               onKeyDown={handleComposerKeyDown}
-              placeholder={replyContext ? 'Digite sua resposta...' : "Digite sua mensagem ou digite '/' para respostas rápidas..."}
+              placeholder={pendingMedia ? 'Legenda (opcional)...' : replyContext ? 'Digite sua resposta...' : "Digite sua mensagem ou digite '/' para respostas rápidas..."}
               className="flex-1 text-sm focus:outline-none text-[var(--chat-text-primary)] placeholder-[var(--chat-text-muted)] bg-transparent resize-none overflow-y-auto leading-[1.5] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
               rows={1}
               style={{ maxHeight: '160px' }}
             />
             <button
-              onClick={handleSend}
-              disabled={!content.trim() || sending}
+              onClick={pendingMedia ? handleConfirmSendMedia : handleSend}
+              disabled={pendingMedia ? uploadingMedia : (!content.trim() || sending)}
               className="w-8 h-8 rounded-full flex items-center justify-center text-white transition-colors hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed flex-shrink-0 mb-0.5"
               style={{ backgroundColor: '#00B8D9' }}
             >
