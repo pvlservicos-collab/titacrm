@@ -7,6 +7,7 @@ import {
 } from '@/lib/schema'
 import { eq, and, isNull, desc, asc, ilike, or, sql, count } from 'drizzle-orm'
 import { mapLead } from '@/lib/mappers'
+import { isUniqueViolation } from '@/lib/db-helpers'
 import type { Integration } from '@/lib/types'
 
 /**
@@ -137,19 +138,31 @@ export async function POST(req: NextRequest) {
       .orderBy(asc(pipelineStages.rank))
       .limit(1)
 
-    const [lead] = await db
-      .insert(leads)
-      .values({
-        organizationId: auth.organizationId,
-        title: body.title,
-        phone: body.phone || null,
-        email: body.email || null,
-        stageId: body.stage_id || firstStage?.id || null,
-        ownerMemberId: body.owner_member_id || null,
-        customAttributes: body.custom_fields || {},
-        lastActivityAt: new Date(),
-      })
-      .returning()
+    let lead: typeof leads.$inferSelect
+    try {
+      ;[lead] = await db
+        .insert(leads)
+        .values({
+          organizationId: auth.organizationId,
+          title: body.title,
+          phone: body.phone || null,
+          email: body.email || null,
+          stageId: body.stage_id || firstStage?.id || null,
+          ownerMemberId: body.owner_member_id || null,
+          customAttributes: body.custom_fields || {},
+          lastActivityAt: new Date(),
+        })
+        .returning()
+    } catch (err) {
+      // Checagem de duplicata acima (linha ~113) não cobre corrida entre duas
+      // requisições simultâneas — leads_org_phone_unique garante isso no banco.
+      if (!isUniqueViolation(err) || !body.phone) throw err
+      const [raceLead] = await db.select().from(leads)
+        .where(and(eq(leads.organizationId, auth.organizationId), eq(leads.phone, body.phone), isNull(leads.deletedAt)))
+        .limit(1)
+      if (!raceLead) throw err
+      return Response.json({ data: raceLead, existed: true })
+    }
 
     // Aplicar tags se enviadas
     if (body.tags && Array.isArray(body.tags) && body.tags.length > 0) {

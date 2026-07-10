@@ -3,6 +3,7 @@ import { leads, leadActivities, pipelineStages, integrationMessageLogs, tags, le
 import { eq, and, isNull, ilike, asc } from 'drizzle-orm'
 import { publishEvent, channels, events } from '@/lib/realtime'
 import { startExecution } from '@/lib/funnel-engine'
+import { isUniqueViolation } from '@/lib/db-helpers'
 
 export const ORGANIZATION_ID = 'bdfac9ab-68cd-4434-856c-897199dc267d'
 
@@ -58,15 +59,27 @@ export async function sendAutomatedMessage(opts: {
       stageId = firstStage?.id || null
     }
 
-    const [newLead] = await db.insert(leads).values({
-      organizationId: ORGANIZATION_ID,
-      title: phone,
-      phone,
-      stageId,
-      lastActivityAt: new Date(),
-      customAttributes: { source },
-    }).returning({ id: leads.id })
-    leadId = newLead.id
+    try {
+      const [newLead] = await db.insert(leads).values({
+        organizationId: ORGANIZATION_ID,
+        title: phone,
+        phone,
+        stageId,
+        lastActivityAt: new Date(),
+        customAttributes: { source },
+      }).returning({ id: leads.id })
+      leadId = newLead.id
+    } catch (err) {
+      // leads_org_phone_unique cobre corrida entre dois webhooks automáticos quase
+      // simultâneos pro mesmo telefone (ex: recuperação de carrinho + figurinha liberada
+      // chegando juntos).
+      if (!isUniqueViolation(err)) throw err
+      const [raceLead] = await db.select({ id: leads.id }).from(leads)
+        .where(and(eq(leads.organizationId, ORGANIZATION_ID), eq(leads.phone, phone), isNull(leads.deletedAt)))
+        .limit(1)
+      if (!raceLead) throw err
+      leadId = raceLead.id
+    }
   }
 
   // Marca a origem do lead com uma tag visível no painel do contato

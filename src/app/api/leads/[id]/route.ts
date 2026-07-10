@@ -5,6 +5,7 @@ import { publishEvent, channels, events } from '@/lib/realtime'
 import { leads, leadTags, tags, leadStageHistory, organizationMembers, profiles } from '@/lib/schema'
 import { eq, and, isNull, asc } from 'drizzle-orm'
 import { mapLead } from '@/lib/mappers'
+import { isUniqueViolation } from '@/lib/db-helpers'
 
 type Params = { params: Promise<{ id: string }> }
 
@@ -59,20 +60,33 @@ export async function PATCH(req: NextRequest, { params }: Params) {
       const isUuid = /^[0-9a-f]{8}/.test(id)
       if (isUuid) return apiError(404, 'Lead não encontrado.')
 
-      const [created] = await db
-        .insert(leads)
-        .values({
-          organizationId: auth.organizationId,
-          title: body.title || decodeURIComponent(id),
-          phone: decodeURIComponent(id),
-          stageId: body.stage_id || null,
-          customAttributes: body.custom_fields || {},
-          lastActivityAt: new Date(),
-        })
-        .returning()
+      const decodedPhone = decodeURIComponent(id)
+      try {
+        const [created] = await db
+          .insert(leads)
+          .values({
+            organizationId: auth.organizationId,
+            title: body.title || decodedPhone,
+            phone: decodedPhone,
+            stageId: body.stage_id || null,
+            customAttributes: body.custom_fields || {},
+            lastActivityAt: new Date(),
+          })
+          .returning()
 
-      await publishEvent(channels.orgLeads(auth.organizationId), events.LEAD_CREATED, { id: created.id })
-      return Response.json({ data: created })
+        await publishEvent(channels.orgLeads(auth.organizationId), events.LEAD_CREATED, { id: created.id })
+        return Response.json({ data: created })
+      } catch (err) {
+        // leads_org_phone_unique cobre corrida entre duas requisições simultâneas
+        // pra esse mesmo telefone (ex: dois PATCH concorrentes antes de qualquer um
+        // ver o lead que o outro está criando).
+        if (!isUniqueViolation(err)) throw err
+        const [raceLead] = await db.select().from(leads)
+          .where(and(eq(leads.organizationId, auth.organizationId), eq(leads.phone, decodedPhone), isNull(leads.deletedAt)))
+          .limit(1)
+        if (!raceLead) throw err
+        return Response.json({ data: raceLead })
+      }
     }
 
     const updates: any = {}

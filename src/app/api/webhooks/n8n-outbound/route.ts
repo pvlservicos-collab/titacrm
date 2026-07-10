@@ -4,6 +4,7 @@ import { db } from '@/lib/db'
 import { leads, leadActivities, pipelineStages, integrationMessageLogs } from '@/lib/schema'
 import { eq, and, isNull, ilike, asc, sql } from 'drizzle-orm'
 import { publishEvent, channels, events } from '@/lib/realtime'
+import { isUniqueViolation } from '@/lib/db-helpers'
 
 const ORGANIZATION_ID = '91a7f4af-9e58-4e30-906b-b0ebc9386da4'
 
@@ -108,31 +109,52 @@ export async function POST(req: NextRequest) {
         .where(and(eq(pipelineStages.organizationId, ORGANIZATION_ID), isNull(pipelineStages.deletedAt)))
         .orderBy(asc(pipelineStages.rank)).limit(1)
 
-      const [newLead] = await db.insert(leads).values({
-        organizationId: ORGANIZATION_ID,
-        title: senderName || phone,
-        phone,
-        stageId: firstStage?.id || null,
-        lastActivityAt: new Date(),
-        customAttributes: { source: 'n8n' },
-      }).returning({ id: leads.id })
-      leadId = newLead.id
+      try {
+        const [newLead] = await db.insert(leads).values({
+          organizationId: ORGANIZATION_ID,
+          title: senderName || phone,
+          phone,
+          stageId: firstStage?.id || null,
+          lastActivityAt: new Date(),
+          customAttributes: { source: 'n8n' },
+        }).returning({ id: leads.id })
+        leadId = newLead.id
+      } catch (err) {
+        // Mesma race condition dos outros webhooks: duas chamadas quase simultâneas pro
+        // mesmo telefone, cada uma criava seu próprio lead sem constraint. Agora
+        // leads_org_phone_unique garante que só uma vence.
+        if (!isUniqueViolation(err)) throw err
+        const [raceLead] = await db.select({ id: leads.id }).from(leads)
+          .where(and(eq(leads.organizationId, ORGANIZATION_ID), eq(leads.phone, phone), isNull(leads.deletedAt)))
+          .limit(1)
+        if (!raceLead) throw err
+        leadId = raceLead.id
+      }
     }
 
-    const [activity] = await db.insert(leadActivities).values({
-      organizationId: ORGANIZATION_ID,
-      leadId,
-      type: 'whatsapp',
-      content,
-      metadata: {
-        source: 'n8n',
-        direction: 'outbound',
-        send_status: 'sent',
-        sender_name: senderName,
-        whatsapp_message_id: whatsappMessageId,
-        whatsapp_status: messageStatus,
-      },
-    }).returning({ id: leadActivities.id })
+    let activity: { id: string }
+    try {
+      ;[activity] = await db.insert(leadActivities).values({
+        organizationId: ORGANIZATION_ID,
+        leadId,
+        type: 'whatsapp',
+        content,
+        metadata: {
+          source: 'n8n',
+          direction: 'outbound',
+          send_status: 'sent',
+          sender_name: senderName,
+          whatsapp_message_id: whatsappMessageId,
+          whatsapp_status: messageStatus,
+        },
+      }).returning({ id: leadActivities.id })
+    } catch (err) {
+      // Reenvio do mesmo webhook do n8n (retry, replay manual) — antes duplicava
+      // incondicionalmente quando havia conteúdo (só o ramo de status-sem-conteúdo,
+      // acima, tinha alguma checagem). lead_activities_whatsapp_msgid_unique cobre isso.
+      if (!isUniqueViolation(err)) throw err
+      return Response.json({ status: 'ok', skipped: 'duplicate' })
+    }
 
     const leadUpdates: any = {
       lastMessageContent: content,

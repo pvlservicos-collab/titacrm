@@ -167,7 +167,17 @@ export const leads = pgTable('leads', {
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow(),
   deletedAt: timestamp('deleted_at', { withTimezone: true }),
-})
+}, (t) => ({
+  // Defesa real contra lead duplicado: SELECT-then-INSERT por telefone/external_id em
+  // vários webhooks concorrentes já criou lead repetido pro mesmo contato (ex: 2 leads
+  // "Geicymara Alves" com o mesmo telefone, criados a 1ms de diferença). Índices já
+  // aplicados diretamente no Neon via script; declarados aqui só pra manter o schema
+  // Drizzle fiel ao banco real (não roda migration automática neste projeto).
+  orgPhoneUnique: uniqueIndex('leads_org_phone_unique').on(t.organizationId, t.phone)
+    .where(sql`deleted_at IS NULL AND phone IS NOT NULL AND phone != ''`),
+  integrationExternalIdUnique: uniqueIndex('leads_integration_external_id_unique').on(t.integrationId, t.externalId)
+    .where(sql`deleted_at IS NULL AND external_id IS NOT NULL`),
+}))
 
 // ── Tags ──────────────────────────────────────────────────────────────────────
 export const tags = pgTable('tags', {
@@ -198,7 +208,19 @@ export const leadActivities = pgTable('lead_activities', {
   metadata: jsonb('metadata').default({}),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow(),
-})
+}, (t) => ({
+  // Mesma defesa que leads_org_phone_unique, só que pra mensagem: um webhook duplicado
+  // (mesmo evolution_message_id/whatsapp_message_id/instagram_message_id) já criou
+  // activity repetida — inclusive batendo em dois leads diferentes de uma vez, quando a
+  // resolução de telefone divergiu entre as duas entregas do mesmo webhook. Único
+  // global (não por lead), de propósito. Índices já aplicados no Neon via script.
+  evolutionMsgIdUnique: uniqueIndex('lead_activities_evolution_msgid_unique').on(sql`(metadata->>'evolution_message_id')`)
+    .where(sql`metadata->>'evolution_message_id' IS NOT NULL`),
+  whatsappMsgIdUnique: uniqueIndex('lead_activities_whatsapp_msgid_unique').on(sql`(metadata->>'whatsapp_message_id')`)
+    .where(sql`metadata->>'whatsapp_message_id' IS NOT NULL`),
+  instagramMsgIdUnique: uniqueIndex('lead_activities_instagram_msgid_unique').on(sql`(metadata->>'instagram_message_id')`)
+    .where(sql`metadata->>'instagram_message_id' IS NOT NULL`),
+}))
 
 // ── Mensagens Fixadas ─────────────────────────────────────────────────────────
 // Tabela separada (em vez de metadata da activity) para não concorrer com outros

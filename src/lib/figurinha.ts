@@ -5,6 +5,7 @@ import { sendWhatsAppMessage } from '@/lib/whatsapp'
 import { publishEvent, channels, events } from '@/lib/realtime'
 import { ORGANIZATION_ID } from '@/lib/automated-message'
 import { startExecution, resolveConditionNow } from '@/lib/funnel-engine'
+import { isUniqueViolation } from '@/lib/db-helpers'
 
 /**
  * Mensagem enviada automaticamente quando o cliente pede a figurinha
@@ -73,16 +74,28 @@ export async function findOrCreateLeadByFigurinhaPhone(telefone: string): Promis
 
     const phone = telefone.length <= 11 ? `55${telefone}` : telefone
 
-    const [newLead] = await db.insert(leads).values({
-      organizationId: ORGANIZATION_ID,
-      title: phone,
-      phone,
-      stageId: firstStage?.id || null,
-      lastActivityAt: new Date(),
-      customAttributes: { source: 'geracaowhatsapp' },
-    }).returning({ id: leads.id, phone: leads.phone })
+    try {
+      const [newLead] = await db.insert(leads).values({
+        organizationId: ORGANIZATION_ID,
+        title: phone,
+        phone,
+        stageId: firstStage?.id || null,
+        lastActivityAt: new Date(),
+        customAttributes: { source: 'geracaowhatsapp' },
+      }).returning({ id: leads.id, phone: leads.phone })
 
-    return { id: newLead.id, phone: newLead.phone }
+      return { id: newLead.id, phone: newLead.phone }
+    } catch (err) {
+      // leads_org_phone_unique cobre corrida entre dois webhooks de figurinha quase
+      // simultâneos pro mesmo telefone (gerada/página vista/abandono de preço podem
+      // chegar em sequência muito rápida).
+      if (!isUniqueViolation(err)) throw err
+      const [raceLead] = await db.select({ id: leads.id, phone: leads.phone }).from(leads)
+        .where(and(eq(leads.organizationId, ORGANIZATION_ID), eq(leads.phone, phone), isNull(leads.deletedAt)))
+        .limit(1)
+      if (!raceLead) throw err
+      return raceLead
+    }
   }
 
   const [lead] = await db.select({ id: leads.id, phone: leads.phone }).from(leads).where(eq(leads.id, leadId)).limit(1)

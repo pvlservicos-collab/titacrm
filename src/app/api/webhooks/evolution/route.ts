@@ -5,6 +5,7 @@ import { eq, and, isNull, asc, ilike } from 'drizzle-orm'
 import { publishEvent, channels, events } from '@/lib/realtime'
 import { dispatchOutboundWebhook } from '@/lib/outbound-webhook'
 import { downloadEvolutionMedia } from '@/lib/evolution'
+import { isUniqueViolation } from '@/lib/db-helpers'
 
 // DIAGNÓSTICO TEMPORÁRIO (2026-07-10): mídia (foto/vídeo) enviada direto do celular
 // (fromMe) nunca aparece no CRM, nem como texto — nenhum rastro na tabela de
@@ -125,21 +126,36 @@ export async function POST(req: NextRequest) {
         .orderBy(asc(pipelineStages.rank))
         .limit(1)
 
-      const [newLead] = await db
-        .insert(leads)
-        .values({
-          organizationId: orgId,
-          // Em fromMe, pushName é o nome do próprio dono do WhatsApp, não do contato.
-          title: isFromMe ? phone : (senderName || phone),
-          phone,
-          isGroup,
-          integrationId: integration?.id || null,
-          stageId: firstStage?.id || null,
-          lastActivityAt: new Date(),
-        })
-        .returning({ id: leads.id, title: leads.title, phone: leads.phone })
+      try {
+        const [newLead] = await db
+          .insert(leads)
+          .values({
+            organizationId: orgId,
+            // Em fromMe, pushName é o nome do próprio dono do WhatsApp, não do contato.
+            title: isFromMe ? phone : (senderName || phone),
+            phone,
+            isGroup,
+            integrationId: integration?.id || null,
+            stageId: firstStage?.id || null,
+            lastActivityAt: new Date(),
+          })
+          .returning({ id: leads.id, title: leads.title, phone: leads.phone })
 
-      lead = newLead
+        lead = newLead
+      } catch (err) {
+        // Duas mensagens quase simultâneas pro mesmo telefone corriam o mesmo SELECT
+        // acima antes de qualquer INSERT commitar, e cada uma criava seu próprio lead —
+        // já causou duplicata real em produção. A constraint leads_org_phone_unique
+        // garante que só uma vence; a outra recupera o lead que já foi criado.
+        if (!isUniqueViolation(err)) throw err
+        const [existingLead] = await db
+          .select({ id: leads.id, title: leads.title, phone: leads.phone })
+          .from(leads)
+          .where(and(eq(leads.organizationId, orgId), eq(leads.phone, phone), isNull(leads.deletedAt)))
+          .limit(1)
+        if (!existingLead) throw err
+        lead = existingLead
+      }
     }
 
     // Deduplicate by Evolution message ID
@@ -190,16 +206,26 @@ export async function POST(req: NextRequest) {
     if (extracted.mediaFilename) metadata.media_filename = extracted.mediaFilename
     if (extracted.audioPtt !== undefined) metadata.audio_ptt = extracted.audioPtt
 
-    const [activity] = await db
-      .insert(leadActivities)
-      .values({
-        organizationId: orgId,
-        leadId: lead.id,
-        type: 'whatsapp',
-        content: extracted.text,
-        metadata,
-      })
-      .returning({ id: leadActivities.id })
+    let activity: { id: string }
+    try {
+      ;[activity] = await db
+        .insert(leadActivities)
+        .values({
+          organizationId: orgId,
+          leadId: lead.id,
+          type: 'whatsapp',
+          content: extracted.text,
+          metadata,
+        })
+        .returning({ id: leadActivities.id })
+    } catch (err) {
+      // Rede de segurança pro dedupe fraco acima (só olha as últimas 100 activities DO
+      // MESMO lead) — a constraint lead_activities_evolution_msgid_unique é global e já
+      // pegou um caso real: a mesma mensagem batendo num lead-fantasma diferente do lead
+      // certo, quando o webhook chegou duplicado e a resolução de telefone divergiu.
+      if (!isUniqueViolation(err)) throw err
+      return NextResponse.json({ ok: true, skipped: 'duplicate' })
+    }
 
     // Update lead
     const leadUpdates: Record<string, any> = {

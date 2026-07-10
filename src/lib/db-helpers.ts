@@ -14,6 +14,20 @@ import {
   customFieldDefinitions, customFieldCategories, notifications,
 } from './schema'
 
+// ── Concorrência ──────────────────────────────────────────────────────────────
+
+/**
+ * Código de erro padrão do Postgres pra violação de constraint única (23505). Usado
+ * junto com as constraints em leads(organization_id, phone)/leads(integration_id,
+ * external_id)/lead_activities(metadata->>'*_message_id') — quando duas requisições
+ * concorrentes (ex: dois webhooks quase simultâneos) tentam criar o mesmo lead ou a
+ * mesma mensagem, o banco garante que só uma vence a corrida; a outra pega esse erro
+ * em vez de duplicar silenciosamente.
+ */
+export function isUniqueViolation(err: unknown): boolean {
+  return !!err && typeof err === 'object' && (err as { code?: string }).code === '23505'
+}
+
 // ── Pedidos ───────────────────────────────────────────────────────────────────
 
 export interface OrderAddressSync {

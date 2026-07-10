@@ -16,6 +16,7 @@ import { eq, and, isNull, ilike, asc, sql } from 'drizzle-orm'
 import { publishEvent, channels, events } from '@/lib/realtime'
 import { dispatchOutboundWebhook } from '@/lib/outbound-webhook'
 import { ORGANIZATION_ID } from '@/lib/automated-message'
+import { isUniqueViolation } from '@/lib/db-helpers'
 import {
   FIGURINHA_BUSCANDO_MESSAGE,
   FIGURINHA_READY_TEST_NUMBERS,
@@ -206,32 +207,50 @@ async function handleInstagramEntry(entry: any) {
       const { getInstagramUserProfile } = await import('@/lib/instagram')
       const profile = await getInstagramUserProfile(orgId, integration.id, senderId)
 
-      const [newLead] = await db.insert(leads).values({
-        organizationId: orgId,
-        integrationId: integration.id,
-        title: profile?.name || senderId,
-        externalId: senderId,
-        avatarUrl: profile?.profilePic || null,
-        customAttributes: profile?.username ? { instagram_username: profile.username } : {},
-        stageId: firstStage?.id || null,
-        lastActivityAt: new Date(),
-      }).returning({ id: leads.id })
-      leadId = newLead.id
+      try {
+        const [newLead] = await db.insert(leads).values({
+          organizationId: orgId,
+          integrationId: integration.id,
+          title: profile?.name || senderId,
+          externalId: senderId,
+          avatarUrl: profile?.profilePic || null,
+          customAttributes: profile?.username ? { instagram_username: profile.username } : {},
+          stageId: firstStage?.id || null,
+          lastActivityAt: new Date(),
+        }).returning({ id: leads.id })
+        leadId = newLead.id
+      } catch (err) {
+        // Mesma race condition do WhatsApp: duas mensagens quase simultâneas do mesmo
+        // IGSID, cada uma criava seu próprio lead sem constraint. Agora
+        // leads_integration_external_id_unique garante que só uma vence.
+        if (!isUniqueViolation(err)) throw err
+        const [raceLead] = await db.select({ id: leads.id }).from(leads)
+          .where(and(eq(leads.organizationId, orgId), eq(leads.integrationId, integration.id), eq(leads.externalId, senderId), isNull(leads.deletedAt)))
+          .limit(1)
+        if (!raceLead) throw err
+        leadId = raceLead.id
+      }
     }
 
-    const [activity] = await db.insert(leadActivities).values({
-      organizationId: orgId,
-      leadId,
-      type: 'whatsapp',
-      content,
-      metadata: {
-        direction: 'inbound',
-        source: 'instagram',
-        channel: 'instagram_direct',
-        instagram_message_id: message.mid,
-        ...(mediaUrl ? { media_url: mediaUrl, media_type: mediaType } : {}),
-      },
-    }).returning({ id: leadActivities.id })
+    let activity: { id: string }
+    try {
+      ;[activity] = await db.insert(leadActivities).values({
+        organizationId: orgId,
+        leadId,
+        type: 'whatsapp',
+        content,
+        metadata: {
+          direction: 'inbound',
+          source: 'instagram',
+          channel: 'instagram_direct',
+          instagram_message_id: message.mid,
+          ...(mediaUrl ? { media_url: mediaUrl, media_type: mediaType } : {}),
+        },
+      }).returning({ id: leadActivities.id })
+    } catch (err) {
+      if (!isUniqueViolation(err)) throw err
+      return Response.json({ status: 'ignored: duplicate message' })
+    }
 
     await db.update(leads).set({
       lastMessageContent: content,
@@ -354,28 +373,50 @@ export async function POST(req: NextRequest) {
         .where(and(eq(pipelineStages.organizationId, orgId), isNull(pipelineStages.deletedAt)))
         .orderBy(asc(pipelineStages.rank)).limit(1)
 
-      const [newLead] = await db.insert(leads).values({
-        organizationId: orgId,
-        title: senderName,
-        phone,
-        stageId: firstStage?.id || null,
-        lastActivityAt: new Date(),
-      }).returning({ id: leads.id })
-      leadId = newLead.id
+      try {
+        const [newLead] = await db.insert(leads).values({
+          organizationId: orgId,
+          title: senderName,
+          phone,
+          stageId: firstStage?.id || null,
+          lastActivityAt: new Date(),
+        }).returning({ id: leads.id })
+        leadId = newLead.id
+      } catch (err) {
+        // Mesma race condition já vista no Evolution: duas mensagens quase simultâneas
+        // pro mesmo telefone, cada uma cria seu próprio lead sem constraint. Agora a
+        // constraint leads_org_phone_unique garante que só uma vence.
+        if (!isUniqueViolation(err)) throw err
+        const [raceLead] = await db.select({ id: leads.id }).from(leads)
+          .where(and(eq(leads.organizationId, orgId), eq(leads.phone, phone), isNull(leads.deletedAt)))
+          .limit(1)
+        if (!raceLead) throw err
+        leadId = raceLead.id
+      }
     }
 
-    const [activity] = await db.insert(leadActivities).values({
-      organizationId: orgId,
-      leadId,
-      type: 'whatsapp',
-      content,
-      metadata: {
-        direction: isOutboundEcho ? 'outbound' : 'inbound',
-        source: isOutboundEcho ? 'whatsapp_app' : 'facebook_cloud',
-        sender_name: senderName,
-        ...(mediaUrl ? { media_url: mediaUrl, media_type: mediaType, media_mimetype: mediaMimetype, ...(mediaFilename ? { media_filename: mediaFilename } : {}) } : {}),
-      },
-    }).returning({ id: leadActivities.id })
+    let activity: { id: string }
+    try {
+      ;[activity] = await db.insert(leadActivities).values({
+        organizationId: orgId,
+        leadId,
+        type: 'whatsapp',
+        content,
+        metadata: {
+          direction: isOutboundEcho ? 'outbound' : 'inbound',
+          source: isOutboundEcho ? 'whatsapp_app' : 'facebook_cloud',
+          sender_name: senderName,
+          ...(message.id ? { whatsapp_message_id: message.id } : {}),
+          ...(mediaUrl ? { media_url: mediaUrl, media_type: mediaType, media_mimetype: mediaMimetype, ...(mediaFilename ? { media_filename: mediaFilename } : {}) } : {}),
+        },
+      }).returning({ id: leadActivities.id })
+    } catch (err) {
+      // Replay do webhook da Meta (oficialmente pode reenviar o mesmo evento) — antes
+      // duplicava incondicionalmente, sem checagem nenhuma. A constraint
+      // lead_activities_whatsapp_msgid_unique agora rejeita a segunda tentativa.
+      if (!isUniqueViolation(err)) throw err
+      return Response.json({ ok: true, skipped: 'duplicate' })
+    }
 
     await db.update(leads).set({
       lastMessageContent: content,

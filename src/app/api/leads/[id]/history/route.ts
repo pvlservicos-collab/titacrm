@@ -3,6 +3,7 @@ import { authenticateRequest, apiError, validateRequired, validateSource } from 
 import { db } from '@/lib/db'
 import { leads, leadActivities, leadStageHistory, pipelineStages, orders, orderItems } from '@/lib/schema'
 import { eq, and, isNull, asc, desc, inArray } from 'drizzle-orm'
+import { isUniqueViolation } from '@/lib/db-helpers'
 
 type Params = { params: Promise<{ id: string }> }
 
@@ -123,16 +124,29 @@ export async function POST(req: NextRequest, { params }: Params) {
         .orderBy(asc(pipelineStages.rank))
         .limit(1)
 
-      const [newLead] = await db.insert(leads).values({
-        organizationId: auth.organizationId,
-        title: decodedPhone,
-        phone: decodedPhone,
-        stageId: firstStage?.id || null,
-        lastActivityAt: new Date(),
-        customAttributes: { source: body.source },
-      }).returning({ id: leads.id, createdAt: leads.createdAt, title: leads.title, value: leads.value })
+      try {
+        const [newLead] = await db.insert(leads).values({
+          organizationId: auth.organizationId,
+          title: decodedPhone,
+          phone: decodedPhone,
+          stageId: firstStage?.id || null,
+          lastActivityAt: new Date(),
+          customAttributes: { source: body.source },
+        }).returning({ id: leads.id, createdAt: leads.createdAt, title: leads.title, value: leads.value })
 
-      lead = newLead
+        lead = newLead
+      } catch (err) {
+        // leads_org_phone_unique cobre corrida entre duas requisições simultâneas
+        // pra esse mesmo telefone.
+        if (!isUniqueViolation(err)) throw err
+        const [raceLead] = await db
+          .select({ id: leads.id, createdAt: leads.createdAt, title: leads.title, value: leads.value })
+          .from(leads)
+          .where(and(eq(leads.organizationId, auth.organizationId), eq(leads.phone, decodedPhone), isNull(leads.deletedAt)))
+          .limit(1)
+        if (!raceLead) throw err
+        lead = raceLead
+      }
     }
 
     const [activity] = await db.insert(leadActivities).values({
