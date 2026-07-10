@@ -53,6 +53,11 @@ export async function POST(req: NextRequest) {
     // o número real vem em remoteJidAlt ("5511999999999@s.whatsapp.net").
     const remoteJid: string = key.remoteJid || ''
     const isGroup = remoteJid.endsWith('@g.us')
+    // Mensagens de grupo não viram lead/conversa no CRM: uma mensagem de grupo mistura
+    // várias pessoas num único "contato", o que já causou risco de PII vazando entre
+    // clientes distintos que estão no mesmo grupo. Ignorada o mais cedo possível, antes
+    // de criar lead, gravar atividade ou disparar o webhook de saída.
+    if (isGroup) return NextResponse.json({ ok: true, skipped: 'group' })
     const phoneJid = (!isGroup && key.addressingMode === 'lid' && key.remoteJidAlt) ? key.remoteJidAlt : remoteJid
     const phone = phoneJid.split('@')[0]
     if (!phone) return NextResponse.json({ ok: true, skipped: 'no phone' })
