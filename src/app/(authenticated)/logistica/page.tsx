@@ -82,7 +82,9 @@ export default function LogisticaPage() {
   const [orders, setOrders] = useState<Order[]>([])
   const [loading, setLoading] = useState(true)
   const [paymentFilter, setPaymentFilter] = useState<string>('')
-  const [deliveryFilter, setDeliveryFilter] = useState<string>('')
+  // Aba padrão é "pending" — o entregador usa essa tela pra saber o que falta entregar,
+  // e pedido já entregue misturado na lista tava confundindo.
+  const [activeTab, setActiveTab] = useState<'pending' | 'delivered'>('pending')
   // Permite abrir a Logística já filtrada (ex: link "Ver todos os pedidos" no perfil do Chat)
   const [search, setSearch] = useState(() => searchParams.get('search') || '')
   const [updatingOrder, setUpdatingOrder] = useState<string | null>(null)
@@ -95,7 +97,6 @@ export default function LogisticaPage() {
     try {
       const params = new URLSearchParams()
       if (paymentFilter) params.set('payment_status', paymentFilter)
-      if (deliveryFilter) params.set('delivery_status', deliveryFilter)
       const res = await fetch(`/api/orders?${params}`)
       if (res.ok) {
         const { data } = await res.json()
@@ -104,7 +105,7 @@ export default function LogisticaPage() {
     } finally {
       setLoading(false)
     }
-  }, [paymentFilter, deliveryFilter])
+  }, [paymentFilter])
 
   useEffect(() => { fetchOrders() }, [fetchOrders])
 
@@ -152,7 +153,14 @@ export default function LogisticaPage() {
     }
   }
 
-  const filtered = orders.filter(o => {
+  // "Pendentes" cobre tudo que ainda não foi entregue (pending/picking/picked/shipped e
+  // até cancelled) — só delivered vai pra aba separada, é a distinção que importa pro
+  // entregador.
+  const pendingOrders = orders.filter(o => o.delivery_status !== 'delivered')
+  const deliveredOrders = orders.filter(o => o.delivery_status === 'delivered')
+  const tabOrders = activeTab === 'pending' ? pendingOrders : deliveredOrders
+
+  const filtered = tabOrders.filter(o => {
     if (!search) return true
     const q = search.toLowerCase()
     return (
@@ -222,6 +230,29 @@ export default function LogisticaPage() {
           </div>
         </div>
 
+        {/* Abas: pendentes (padrão) vs entregues — evita misturar pedido já entregue
+            com o que ainda falta entregar, que era o que confundia o entregador. */}
+        <div className="flex items-center gap-6 border-b border-gray-200">
+          <button
+            onClick={() => setActiveTab('pending')}
+            className={`pb-3 text-sm font-medium transition-colors border-b-2 ${activeTab === 'pending'
+              ? 'border-blue-600 text-blue-600'
+              : 'border-transparent text-gray-500 hover:text-gray-900'
+              }`}
+          >
+            Pendentes ({pendingOrders.length})
+          </button>
+          <button
+            onClick={() => setActiveTab('delivered')}
+            className={`pb-3 text-sm font-medium transition-colors border-b-2 ${activeTab === 'delivered'
+              ? 'border-blue-600 text-blue-600'
+              : 'border-transparent text-gray-500 hover:text-gray-900'
+              }`}
+          >
+            Entregues ({deliveredOrders.length})
+          </button>
+        </div>
+
         {/* Filters */}
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4">
           <div className="flex items-center gap-4 flex-wrap">
@@ -244,18 +275,6 @@ export default function LogisticaPage() {
                   className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${paymentFilter === s ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
                 >
                   {s === '' ? 'Todos' : PAYMENT_STATUS_LABELS[s]?.label || s}
-                </button>
-              ))}
-            </div>
-            <div className="flex items-center gap-2 flex-wrap">
-              <span className="text-xs font-medium text-gray-500">Entrega:</span>
-              {['', 'pending', 'shipped', 'delivered', 'cancelled'].map(s => (
-                <button
-                  key={s}
-                  onClick={() => setDeliveryFilter(s)}
-                  className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${deliveryFilter === s ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
-                >
-                  {s === '' ? 'Todos' : DELIVERY_STATUS_LABELS[s]?.label || s}
                 </button>
               ))}
             </div>
