@@ -4,17 +4,40 @@ import { leads, leadActivities, integrations, pipelineStages, webhookLogs } from
 import { eq, and, isNull, asc, ilike } from 'drizzle-orm'
 import { publishEvent, channels, events } from '@/lib/realtime'
 import { dispatchOutboundWebhook } from '@/lib/outbound-webhook'
-import { downloadEvolutionMedia } from '@/lib/evolution'
+import { downloadEvolutionMedia, fetchEvolutionProfilePicture } from '@/lib/evolution'
 import { isUniqueViolation } from '@/lib/db-helpers'
 
-// DIAGNÓSTICO TEMPORÁRIO (2026-07-10): mídia (foto/vídeo) enviada direto do celular
-// (fromMe) nunca aparece no CRM, nem como texto — nenhum rastro na tabela de
-// atividades. Duas hipóteses possíveis: (1) a Evolution nunca dispara messages.upsert
-// pra esse caso específico, ou (2) o payload chega com um formato de mensagem que
-// extractMessage() não reconhece. Loga o payload bruto nesses dois casos pra pegar um
-// exemplo real na próxima ocorrência — remover depois de diagnosticar com dados reais.
-function logDiagnostic(reason: string, orgId: string, body: any) {
-  db.insert(webhookLogs).values({ payload: { reason, org_id: orgId, body } }).catch((err) => console.error('[evolution webhook] diagnostic log failed', err))
+// DIAGNÓSTICO TEMPORÁRIO (2026-07-10, causa raiz confirmada em 2026-07-11 — ver
+// unwrapMessage/albumMessage acima): mantido pra pegar formatos de mensagem ainda não
+// mapeados. Antes essa chamada não era aguardada (await) — numa function serverless a
+// resposta do webhook podia ser finalizada antes do INSERT completar, perdendo o
+// diagnóstico exatamente no caso que mais importava capturar. Agora é sempre aguardada.
+async function logDiagnostic(reason: string, orgId: string, body: any) {
+  try {
+    await db.insert(webhookLogs).values({ payload: { reason, org_id: orgId, body } })
+  } catch (err) {
+    console.error('[evolution webhook] diagnostic log failed', err)
+  }
+}
+
+// Eventos "message*" que não sejam messages.upsert/send.message (já tratados) e não
+// estejam nessa lista são candidatos a mais algum formato desconhecido, então valem
+// registro. messages.update é recibo de entrega/leitura — evento normal e frequente,
+// nunca teria conteúdo extraível; sem essa exclusão ele sozinho gerava 393 das 395
+// linhas já gravadas na tabela (puro ruído, tabela sem rotina de limpeza).
+const KNOWN_NOISE_EVENTS = new Set(['messages.update', 'messages.delete', 'messages.reaction'])
+
+// WhatsApp/Baileys embrulha o conteúdo real dentro de "containers" pra mensagem
+// efêmera (some após X tempo), "ver uma vez" e documento-com-legenda. Sem desembrulhar,
+// extractMessage não reconhecia nada desses casos e a mensagem inteira sumia do CRM sem
+// nenhum rastro — confirmado em produção pra foto enviada direto do WhatsApp (fromMe).
+function unwrapMessage(msg: any): any {
+  if (msg?.ephemeralMessage?.message) return unwrapMessage(msg.ephemeralMessage.message)
+  if (msg?.viewOnceMessage?.message) return unwrapMessage(msg.viewOnceMessage.message)
+  if (msg?.viewOnceMessageV2?.message) return unwrapMessage(msg.viewOnceMessageV2.message)
+  if (msg?.viewOnceMessageV2Extension?.message) return unwrapMessage(msg.viewOnceMessageV2Extension.message)
+  if (msg?.documentWithCaptionMessage?.message) return unwrapMessage(msg.documentWithCaptionMessage.message)
+  return msg
 }
 
 function extractMessage(data: any): {
@@ -26,7 +49,7 @@ function extractMessage(data: any): {
   audioSeconds?: number
   audioPtt?: boolean
 } | null {
-  const msg = data?.message
+  const msg = unwrapMessage(data?.message)
   if (!msg) return null
 
   if (msg.conversation) return { text: msg.conversation }
@@ -35,6 +58,19 @@ function extractMessage(data: any): {
   if (msg.videoMessage) return { text: msg.videoMessage.caption || '', mediaType: 'video', mediaUrl: msg.videoMessage.url, mediaMimetype: msg.videoMessage.mimetype }
   if (msg.audioMessage) return { text: '[Áudio]', mediaType: 'audio', mediaUrl: msg.audioMessage.url, mediaMimetype: msg.audioMessage.mimetype, audioSeconds: msg.audioMessage.seconds, audioPtt: msg.audioMessage.ptt }
   if (msg.documentMessage) return { text: msg.documentMessage.fileName || '[Documento]', mediaType: 'document', mediaUrl: msg.documentMessage.url, mediaMimetype: msg.documentMessage.mimetype, mediaFilename: msg.documentMessage.fileName }
+
+  // Álbum (várias fotos/vídeos selecionados juntos no celular e enviados de uma vez):
+  // confirmado em produção que a Evolution só entrega esse "anúncio" com a quantidade
+  // esperada — nunca as mídias individuais como eventos separados. Sem tratar esse
+  // caso, a mensagem inteira desaparecia sem nenhum rastro no CRM; agora pelo menos
+  // fica visível que algo foi enviado, mesmo sem conseguir mostrar as fotos.
+  if (msg.albumMessage) {
+    const { expectedImageCount = 0, expectedVideoCount = 0 } = msg.albumMessage
+    const parts: string[] = []
+    if (expectedImageCount) parts.push(`${expectedImageCount} foto(s)`)
+    if (expectedVideoCount) parts.push(`${expectedVideoCount} vídeo(s)`)
+    return { text: `📷 Álbum com ${parts.join(' e ') || 'mídias'} enviado direto do WhatsApp — abra no celular pra ver.` }
+  }
 
   return null
 }
@@ -54,11 +90,12 @@ export async function POST(req: NextRequest) {
     // aparecia no CRM. O formato de "data" dos dois eventos é o mesmo (key/message/
     // messageTimestamp), então o resto do processamento abaixo funciona sem mudança.
     if (body.event !== 'messages.upsert' && body.event !== 'send.message') {
-      // Eventos "message*" que não sejam esses dois já tratados são candidatos a mais
-      // algum formato desconhecido — os demais (presence, connection.update etc.) são
-      // ruído normal e não valem o registro.
-      if (typeof body.event === 'string' && body.event.toLowerCase().includes('message')) {
-        logDiagnostic('unhandled_message_event', orgId, body)
+      if (
+        typeof body.event === 'string' &&
+        body.event.toLowerCase().includes('message') &&
+        !KNOWN_NOISE_EVENTS.has(body.event)
+      ) {
+        await logDiagnostic('unhandled_message_event', orgId, body)
       }
       return NextResponse.json({ ok: true, skipped: true })
     }
@@ -87,7 +124,7 @@ export async function POST(req: NextRequest) {
 
     const extracted = extractMessage(data)
     if (!extracted) {
-      if (isFromMe) logDiagnostic('no_extractable_content_fromme', orgId, body)
+      if (isFromMe) await logDiagnostic('no_extractable_content_fromme', orgId, body)
       return NextResponse.json({ ok: true, skipped: 'no message content' })
     }
 
@@ -148,6 +185,15 @@ export async function POST(req: NextRequest) {
           .returning({ id: leads.id, title: leads.title, phone: leads.phone })
 
         lead = newLead
+
+        // Só busca a foto num lead recém-criado (primeira mensagem do contato) — não
+        // faz sentido rebuscar a cada mensagem. fetchEvolutionProfilePicture já engole
+        // qualquer erro e retorna null, então isso nunca derruba o processamento da
+        // mensagem em si.
+        const avatarUrl = await fetchEvolutionProfilePicture(orgId, phone)
+        if (avatarUrl) {
+          await db.update(leads).set({ avatarUrl }).where(eq(leads.id, lead.id))
+        }
       } catch (err) {
         // Duas mensagens quase simultâneas pro mesmo telefone corriam o mesmo SELECT
         // acima antes de qualquer INSERT commitar, e cada uma criava seu próprio lead —

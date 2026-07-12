@@ -81,6 +81,50 @@ export async function downloadEvolutionMedia(
   }
 }
 
+/**
+ * Busca a foto de perfil do contato via Evolution API e re-hospeda no Blob — mesmo
+ * padrão de downloadEvolutionMedia acima. A Evolution respeita a configuração de
+ * privacidade de cada contato (retorna vazio se a pessoa não permite ver a foto), igual
+ * o próprio WhatsApp Web faria; nesse caso a função retorna null sem erro.
+ */
+export async function fetchEvolutionProfilePicture(
+  organizationId: string,
+  phone: string
+): Promise<string | null> {
+  try {
+    const { instanceName, apiKey, server } = await getEvolutionCredentials(organizationId)
+
+    const res = await fetch(`${server}/chat/fetchProfilePictureUrl/${instanceName}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', apikey: apiKey },
+      body: JSON.stringify({ number: phone }),
+    })
+    if (!res.ok) return null
+
+    const data = await res.json().catch(() => null)
+    const pictureUrl: string | undefined = data?.profilePictureUrl
+    if (!pictureUrl || typeof pictureUrl !== 'string') return null
+
+    const imgRes = await fetch(pictureUrl)
+    if (!imgRes.ok) return null
+
+    const mimetype = imgRes.headers.get('content-type') || 'image/jpeg'
+    const buffer = Buffer.from(await imgRes.arrayBuffer())
+
+    const { put } = await import('@vercel/blob')
+    const ext = mimetype.split('/')[1]?.split(';')[0] || 'jpg'
+    const blob = await put(`evolution-avatars/${organizationId}/${phone}-${Date.now()}.${ext}`, buffer, {
+      access: 'public',
+      contentType: mimetype,
+    })
+
+    return blob.url
+  } catch (err) {
+    console.error('[Evolution] profile picture fetch failed', err)
+    return null
+  }
+}
+
 /** Grupo precisa do JID completo (`<id>@g.us`); contato usa só os dígitos do telefone. */
 function formatRecipient(phone: string, isGroup?: boolean) {
   const digits = phone.replace(/\D/g, '')
