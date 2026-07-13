@@ -24,6 +24,14 @@ const config: NextConfig = {
   outputFileTracingIncludes: {
     '/api/leads/[id]/messages': ['./node_modules/ffmpeg-static/**'],
   },
+  // ffmpeg-static calcula o path do binário com `path.join(__dirname, 'ffmpeg')`
+  // (ver node_modules/ffmpeg-static/index.js). Se o webpack empacotar esse módulo
+  // dentro do chunk da function, __dirname aponta pra .next/server/chunks em vez de
+  // node_modules/ffmpeg-static — daí o ENOENT em produção mesmo com o binário
+  // presente (bug real observado: "spawn /var/task/.next/server/chunks/ffmpeg
+  // ENOENT" nos envios de áudio via API Oficial/Instagram). serverExternalPackages
+  // exclui o pacote do bundling, mantendo o require() nativo do node_modules real.
+  serverExternalPackages: ['ffmpeg-static'],
 }
 
 export default config

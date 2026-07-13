@@ -246,6 +246,13 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
         metadata.send_status = 'failed'
         metadata.send_error = err.message || 'Erro ao enviar mensagem.'
 
+        // Sem isso, uma falha de envio só aparece pro toast do agente e fica invisível
+        // no `vercel logs` — foi por isso que o bug do ffmpeg-static (ENOENT em produção
+        // nos áudios via API Oficial/Instagram) só foi encontrado via query direta no
+        // banco, e não pelos logs. Loga aqui pra qualquer falha futura (áudio, imagem,
+        // vídeo, documento, qualquer canal) já sair visível.
+        console.error(`[messages] Falha ao enviar ${body.media_type ? `mídia (${body.media_type})` : 'texto'} via ${integrationTyp} para lead ${actualLeadId}:`, err)
+
         // Notificação persistente (sino) — best-effort, não deve derrubar a resposta
         // se o próprio insert de notificação falhar.
         if (auth.memberId) {
