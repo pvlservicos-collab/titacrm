@@ -13,7 +13,7 @@ interface ActivityTimelineProps {
   lead: LeadWithOwner
   onReply?: (activity: LeadActivityWithActor) => void
   onTogglePin?: (activity: LeadActivityWithActor) => void
-  onDelete?: (activity: LeadActivityWithActor) => void
+  onDelete?: (activity: LeadActivityWithActor, deleteForEveryone: boolean) => void
   pinnedActivityIds?: Set<string>
 }
 
@@ -337,7 +337,7 @@ function MessageBubble({
   onImageClick,
   onReply,
   onTogglePin,
-  onDelete,
+  onRequestDelete,
   canDelete,
   isPinned
 }: {
@@ -349,7 +349,7 @@ function MessageBubble({
   onImageClick?: (url: string) => void
   onReply?: (activity: LeadActivityWithActor) => void
   onTogglePin?: (activity: LeadActivityWithActor) => void
-  onDelete?: (activity: LeadActivityWithActor) => void
+  onRequestDelete?: (activity: LeadActivityWithActor) => void
   canDelete?: boolean
   isPinned?: boolean
 }) {
@@ -407,11 +407,11 @@ function MessageBubble({
         )}
         <div className="relative">
           {/* Reply/Pin/Delete buttons — outgoing (appear on left) */}
-          {!isDeleted && (onTogglePin || onReply || (onDelete && canDelete)) && (
+          {!isDeleted && (onTogglePin || onReply || (onRequestDelete && canDelete)) && (
             <div className="absolute -left-9 top-1/2 -translate-y-1/2 flex items-center gap-1 opacity-0 group-hover/msg:opacity-100 transition-opacity z-20">
-              {onDelete && canDelete && (
+              {onRequestDelete && canDelete && (
                 <button
-                  onClick={() => onDelete(activity)}
+                  onClick={() => onRequestDelete(activity)}
                   className="w-7 h-7 rounded-full bg-[var(--chat-bg-menu)] border border-[var(--chat-border)] shadow-sm flex items-center justify-center hover:bg-red-500/10 hover:border-red-500/30"
                   title="Apagar mensagem"
                 >
@@ -601,6 +601,7 @@ export default function ActivityTimeline({
   pinnedActivityIds,
 }: ActivityTimelineProps) {
   const [selectedImage, setSelectedImage] = useState<string | null>(null)
+  const [deleteTarget, setDeleteTarget] = useState<LeadActivityWithActor | null>(null)
   const endRef = useRef<HTMLDivElement>(null)
   const { currentOrganization, isMaster, roleName } = useAuth()
   const isOrgAdminUser = isMaster || roleName?.toLowerCase() === 'administrador' || roleName?.toLowerCase() === 'owner'
@@ -771,7 +772,7 @@ export default function ActivityTimeline({
           onImageClick={setSelectedImage}
           onReply={onReply}
           onTogglePin={onTogglePin}
-          onDelete={onDelete}
+          onRequestDelete={onDelete ? setDeleteTarget : undefined}
           canDelete={canDeleteActivity(activity)}
           isPinned={pinnedActivityIds?.has(activity.id)}
         />
@@ -807,6 +808,66 @@ export default function ActivityTimeline({
           />
         </div>
       )}
+
+      {deleteTarget && (() => {
+        // "Para todos" só é real na Evolution (WhatsApp Nº 2) — a API Oficial e o
+        // Instagram não expõem nenhuma operação de apagar mensagem já enviada por um
+        // negócio (limitação da própria Meta, não é algo contornável daqui). Fora da
+        // Evolution só faz sentido oferecer "apenas pra mim".
+        const supportsEveryone = deleteTarget.metadata?.channel === 'whatsapp_evolution'
+        const close = () => setDeleteTarget(null)
+        const choose = (deleteForEveryone: boolean) => {
+          onDelete?.(deleteTarget, deleteForEveryone)
+          close()
+        }
+        return (
+          <div
+            className="fixed inset-0 z-[999] flex items-center justify-center bg-black/70 backdrop-blur-sm p-4"
+            onClick={close}
+          >
+            <div
+              className="w-full max-w-sm rounded-2xl bg-[var(--chat-bg-menu)] border border-[var(--chat-border)] shadow-2xl p-5"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <h3 className="text-sm font-semibold text-[var(--chat-text-primary)] mb-1">Apagar mensagem</h3>
+              <p className="text-xs text-[var(--chat-text-muted)] mb-4">
+                {supportsEveryone
+                  ? 'Escolha se ela também deve sumir do WhatsApp do cliente ou só daqui do CRM.'
+                  : 'A API Oficial do WhatsApp não permite apagar mensagens já enviadas — ela vai continuar visível no celular do cliente. Só sai daqui do CRM.'}
+              </p>
+
+              <div className="flex flex-col gap-2">
+                {supportsEveryone && (
+                  <button
+                    onClick={() => choose(true)}
+                    className="w-full text-left px-3 py-2.5 rounded-lg bg-red-500/10 hover:bg-red-500/20 border border-red-500/30 transition-colors"
+                  >
+                    <span className="block text-sm font-medium text-red-400">Apagar para todos</span>
+                    <span className="block text-xs text-[var(--chat-text-muted)] mt-0.5">
+                      Também apaga no WhatsApp do cliente, se ainda estiver dentro do prazo permitido.
+                    </span>
+                  </button>
+                )}
+                <button
+                  onClick={() => choose(false)}
+                  className="w-full text-left px-3 py-2.5 rounded-lg bg-[var(--chat-bg-hover)] hover:bg-[var(--chat-border)] border border-[var(--chat-border)] transition-colors"
+                >
+                  <span className="block text-sm font-medium text-[var(--chat-text-primary)]">Apagar apenas para mim</span>
+                  <span className="block text-xs text-[var(--chat-text-muted)] mt-0.5">
+                    Some só daqui do CRM — continua visível pro cliente.
+                  </span>
+                </button>
+                <button
+                  onClick={close}
+                  className="w-full text-center px-3 py-2 rounded-lg text-sm font-medium text-[var(--chat-text-muted)] hover:text-[var(--chat-text-primary)] mt-1"
+                >
+                  Cancelar
+                </button>
+              </div>
+            </div>
+          </div>
+        )
+      })()}
     </>
   )
 }

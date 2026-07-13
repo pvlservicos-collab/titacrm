@@ -129,18 +129,12 @@ export default function ChatWindow({ lead, organizationId, onMessageSent }: Chat
     }
   }
 
-  const handleDeleteMessage = async (activity: LeadActivityWithActor) => {
+  const handleDeleteMessage = async (activity: LeadActivityWithActor, deleteForEveryone: boolean) => {
     setSendError(null)
 
-    const isEvolution = activity.metadata?.channel === 'whatsapp_evolution'
-    const confirmMsg = isEvolution
-      ? 'Apagar esta mensagem? Ela também será apagada para o cliente no WhatsApp (Nº 2), se ainda estiver dentro do prazo permitido pelo WhatsApp.'
-      : 'Apagar esta mensagem do histórico do CRM? A API Oficial do WhatsApp não permite apagar mensagens já enviadas — ela vai continuar visível no celular do cliente.'
-    if (!confirm(confirmMsg)) return
-
     try {
-      const result = await deleteMessage(activity.id)
-      if (result.channel_supports_delete && !result.deleted_for_everyone) {
+      const result = await deleteMessage(activity.id, deleteForEveryone)
+      if (deleteForEveryone && result.channel_supports_delete && !result.deleted_for_everyone) {
         setSendError(`Mensagem removida do CRM, mas não foi possível apagar no WhatsApp do cliente: ${result.delete_error || 'erro desconhecido'}`)
       }
     } catch (error) {

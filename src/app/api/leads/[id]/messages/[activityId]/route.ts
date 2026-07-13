@@ -10,11 +10,13 @@ import { isOrgAdmin } from '@/lib/admin-auth'
 /**
  * DELETE /api/leads/[id]/messages/[activityId]
  * Apaga uma única mensagem enviada pela equipe (ex: vendedor mandou por engano).
- * Sempre some do CRM; quando o canal por onde ela foi enviada suporta revogar a
- * mensagem (hoje só a Evolution — WhatsApp Nº 2), também apaga "para todos" no
- * WhatsApp do cliente. A Cloud API oficial da Meta e o Instagram Direct não expõem
- * essa operação pra mensagens de negócio já enviadas — nesses casos a mensagem some
- * só do CRM e isso é sinalizado na resposta pro front avisar o usuário.
+ * Sempre some do CRM. Body opcional `{ deleteForEveryone: boolean }` (default true)
+ * escolhe se também tenta apagar "para todos" no WhatsApp do cliente — só é possível
+ * de verdade quando o canal por onde ela foi enviada suporta revogar a mensagem (hoje
+ * só a Evolution — WhatsApp Nº 2). A Cloud API oficial da Meta e o Instagram Direct não
+ * expõem essa operação pra mensagens de negócio já enviadas — nesses canais só existe
+ * "apagar pra mim", e isso é sinalizado na resposta (`channel_supports_delete`) pro
+ * front nem oferecer a opção de "para todos".
  */
 export async function DELETE(
   req: NextRequest,
@@ -23,6 +25,12 @@ export async function DELETE(
   try {
     const auth = await authenticateRequest(req)
     const { id, activityId } = await params
+
+    // Corpo é opcional pra manter compatibilidade com um DELETE sem body — nesse caso
+    // preserva o comportamento antigo (sempre tenta "para todos" quando o canal suporta).
+    // `deleteForEveryone: false` é a escolha explícita de "apagar só pra mim".
+    const body = await req.json().catch(() => ({}))
+    const wantsEveryone = body?.deleteForEveryone !== false
 
     const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(id)
 
@@ -78,7 +86,11 @@ export async function DELETE(
     // Só a Evolution implementa deleteMessage hoje, e seu destinatário é o telefone —
     // por isso o telefone só é exigido quando o canal realmente suporta apagar pra todos
     // (leads do Instagram não têm telefone e não devem ser bloqueados de apagar do CRM).
-    if (adapter.deleteMessage && !lead.phone) {
+    // Se o usuário escolheu explicitamente "apagar só pra mim", nem tenta revogar no
+    // canal — mesmo que ele suporte.
+    if (!wantsEveryone) {
+      // Escolha explícita do usuário — não é erro, não tenta apagar no canal.
+    } else if (adapter.deleteMessage && !lead.phone) {
       deleteError = 'Lead sem telefone — não é possível apagar no WhatsApp do cliente.'
     } else if (adapter.deleteMessage) {
       if (externalId) {
@@ -102,6 +114,9 @@ export async function DELETE(
           deleted_by_member_id: auth.memberId,
           deleted_at: new Date().toISOString(),
           deleted_for_everyone: deletedForEveryone,
+          // Registra a intenção de quem apagou, separado do resultado — distingue "não
+          // tentou porque o usuário escolheu só pra mim" de "tentou e falhou".
+          delete_scope: wantsEveryone ? 'everyone' : 'me',
         },
         updatedAt: new Date(),
       })

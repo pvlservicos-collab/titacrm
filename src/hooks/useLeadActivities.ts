@@ -210,7 +210,7 @@ export function useLeadActivities(organizationId: string, leadId: string) {
     }
   }
 
-  const deleteMessage = async (activityId: string) => {
+  const deleteMessage = async (activityId: string, deleteForEveryone: boolean) => {
     // Optimistic: já mostra o balão "Mensagem apagada" antes da resposta do servidor
     const prevActivities = activities
     setActivities((prev) =>
@@ -218,7 +218,11 @@ export function useLeadActivities(organizationId: string, leadId: string) {
     )
 
     try {
-      const res = await fetch(`/api/leads/${leadId}/messages/${activityId}`, { method: 'DELETE' })
+      const res = await fetch(`/api/leads/${leadId}/messages/${activityId}`, {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ deleteForEveryone }),
+      })
       const data = await res.json().catch(() => ({}))
       if (!res.ok) throw new Error(data.error || 'Falha ao apagar mensagem')
       return data as {
