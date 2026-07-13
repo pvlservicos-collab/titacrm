@@ -34,6 +34,14 @@ export async function DELETE(
 
     const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(id)
 
+    // activityId sempre precisa ser um uuid de verdade (coluna é uuid) — se o front
+    // mandar o id otimista local (ex: "temp-1783984181626", de uma mensagem que ainda
+    // nem terminou de enviar), a query abaixo quebraria com um erro cru do Postgres
+    // ("invalid input syntax for type uuid") em vez de uma mensagem de erro decente.
+    if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(activityId)) {
+      return apiError(400, 'Essa mensagem ainda está sendo enviada — aguarde ela terminar de enviar antes de apagar.')
+    }
+
     const [lead] = await db
       .select({ id: leads.id, phone: leads.phone, isGroup: leads.isGroup, integrationId: leads.integrationId })
       .from(leads)

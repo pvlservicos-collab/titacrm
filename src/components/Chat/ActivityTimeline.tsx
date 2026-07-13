@@ -608,7 +608,11 @@ export default function ActivityTimeline({
 
   // Só quem enviou a mensagem (ou um admin) pode apagá-la — mesma regra aplicada no
   // servidor em /api/leads/[id]/messages/[activityId]; aqui só decide se o botão aparece.
+  // Mensagem otimista (ainda enviando, sem id real do servidor) não pode ser apagada:
+  // o id é só um placeholder local ("temp-...") — mandar isso pro DELETE quebra com
+  // "invalid input syntax for type uuid" porque a coluna é uuid de verdade.
   const canDeleteActivity = (activity: LeadActivityWithActor) =>
+    !activity.metadata?.is_optimistic &&
     activity.metadata?.source === 'human' &&
     (isOrgAdminUser || (!!currentOrganization?.id && activity.actor_member_id === currentOrganization.id))
 
