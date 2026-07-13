@@ -7,223 +7,319 @@ interface ChartOrder {
   delivery_status: string
 }
 
-interface SeriesCounts {
-  emProcesso: number
-  entregue: number
-  cancelado: number
-}
+type StatusKey = 'emProcesso' | 'entregue' | 'cancelado'
 
-interface PeriodBucket extends SeriesCounts {
+interface DayBucket extends Record<StatusKey, number> {
   key: string
-  label: string
+  date: Date
+  total: number
 }
 
-const SERIES: { key: keyof SeriesCounts; label: string; color: string }[] = [
-  { key: 'emProcesso', label: 'Em processo', color: '#fab219' },
-  { key: 'entregue', label: 'Entregue', color: '#0ca30c' },
-  { key: 'cancelado', label: 'Cancelado', color: '#d03b3b' },
+// Mesmas cores de status usadas nos badges de pedido e nos cards de resumo acima
+// (laranja = pendente/em processo, verde = sucesso, vermelho = cancelado) — o
+// gráfico usa o mesmo "idioma" de cor do resto da tela, não inventa um novo.
+const STATUS_ORDER: StatusKey[] = ['emProcesso', 'entregue', 'cancelado'] // empilhamento: base → topo
+const STATUS_META: Record<StatusKey, { label: string; color: string }> = {
+  emProcesso: { label: 'Em processo', color: '#fab219' },
+  entregue: { label: 'Entregue', color: '#0ca30c' },
+  cancelado: { label: 'Cancelado', color: '#d03b3b' },
+}
+
+const WINDOW_OPTIONS = [
+  { days: 7, label: '7 dias' },
+  { days: 14, label: '14 dias' },
+  { days: 30, label: '30 dias' },
 ]
 
-function countByStatus(orders: ChartOrder[]): SeriesCounts {
-  return orders.reduce(
-    (acc, o) => {
-      if (o.delivery_status === 'delivered') acc.entregue++
-      else if (o.delivery_status === 'cancelled') acc.cancelado++
-      else acc.emProcesso++
-      return acc
-    },
-    { emProcesso: 0, entregue: 0, cancelado: 0 }
-  )
+const WEEKDAYS_SHORT = ['dom', 'seg', 'ter', 'qua', 'qui', 'sex', 'sáb']
+
+function statusKey(deliveryStatus: string): StatusKey {
+  if (deliveryStatus === 'delivered') return 'entregue'
+  if (deliveryStatus === 'cancelled') return 'cancelado'
+  return 'emProcesso'
 }
 
-/** Degrau "redondo" pro eixo Y (0/5/10/25...) — mesma ideia de um nice-number de eixo.
- * mag nunca fica abaixo de 1: são contagens de pedidos, sempre inteiras. */
+function pad2(n: number) {
+  return String(n).padStart(2, '0')
+}
+
+function dateKey(d: Date) {
+  return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`
+}
+
+function formatDay(d: Date) {
+  return `${pad2(d.getDate())}/${pad2(d.getMonth() + 1)}`
+}
+
+/** Degrau "redondo" pro eixo Y (0/5/10/25...) — mag nunca fica abaixo de 1: são
+ * contagens de pedidos, sempre inteiras. */
 function niceStep(max: number, targetTicks = 4) {
   if (max <= 0) return 1
   const rough = max / targetTicks
   const mag = Math.max(1, Math.pow(10, Math.floor(Math.log10(rough))))
   const norm = rough / mag
   const step = norm < 1.5 ? 1 : norm < 3 ? 2 : norm < 7 ? 5 : 10
-  return step * mag
+  return Math.max(1, step * mag)
+}
+
+/** Retângulo com cantos arredondados só no topo (base quadrada, encostada no eixo)
+ * — é o "data-end" da barra empilhada; todo o resto do stack fica quadrado. */
+function roundedTopRectPath(x: number, y: number, w: number, h: number, r: number) {
+  const rr = Math.max(0, Math.min(r, h, w / 2))
+  if (rr === 0) return `M ${x} ${y} H ${x + w} V ${y + h} H ${x} Z`
+  return `M ${x} ${y + h} L ${x} ${y + rr} Q ${x} ${y} ${x + rr} ${y} L ${x + w - rr} ${y} Q ${x + w} ${y} ${x + w} ${y + rr} L ${x + w} ${y + h} Z`
 }
 
 export default function OrderStatusChart({ orders }: { orders: ChartOrder[] }) {
-  const [hovered, setHovered] = useState<{ period: number; series: number } | null>(null)
+  const [windowDays, setWindowDays] = useState(14)
+  const [hoveredIdx, setHoveredIdx] = useState<number | null>(null)
+  const [showTable, setShowTable] = useState(false)
 
-  const periods = useMemo<PeriodBucket[]>(() => {
-    const now = new Date()
-    const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate())
-    // Semana civil começando na segunda — getDay() 0=domingo..6=sábado.
-    const diffToMonday = (startOfToday.getDay() + 6) % 7
-    const startOfWeek = new Date(startOfToday)
-    startOfWeek.setDate(startOfToday.getDate() - diffToMonday)
-    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1)
+  const days = useMemo<DayBucket[]>(() => {
+    const today = new Date()
+    const start = new Date(today.getFullYear(), today.getMonth(), today.getDate() - (windowDays - 1))
 
-    const buckets: { key: string; label: string; from: Date | null }[] = [
-      { key: 'today', label: 'Hoje', from: startOfToday },
-      { key: 'week', label: 'Semana', from: startOfWeek },
-      { key: 'month', label: 'Mês', from: startOfMonth },
-      { key: 'all', label: 'Tudo', from: null },
-    ]
+    const counts = new Map<string, Record<StatusKey, number>>()
+    for (const o of orders) {
+      const d = new Date(o.created_at)
+      const key = dateKey(new Date(d.getFullYear(), d.getMonth(), d.getDate()))
+      const bucket = counts.get(key) || { emProcesso: 0, entregue: 0, cancelado: 0 }
+      bucket[statusKey(o.delivery_status)]++
+      counts.set(key, bucket)
+    }
 
-    return buckets.map(b => {
-      const inBucket = b.from ? orders.filter(o => new Date(o.created_at) >= b.from!) : orders
-      return { key: b.key, label: b.label, ...countByStatus(inBucket) }
+    return Array.from({ length: windowDays }, (_, i) => {
+      const date = new Date(start)
+      date.setDate(start.getDate() + i)
+      const key = dateKey(date)
+      const c = counts.get(key) || { emProcesso: 0, entregue: 0, cancelado: 0 }
+      return { key, date, ...c, total: c.emProcesso + c.entregue + c.cancelado }
     })
-  }, [orders])
+  }, [orders, windowDays])
 
-  const maxValue = Math.max(1, ...periods.flatMap(p => [p.emProcesso, p.entregue, p.cancelado]))
+  const totalInWindow = days.reduce((s, d) => s + d.total, 0)
+  const maxValue = Math.max(1, ...days.map(d => d.total))
   const step = niceStep(maxValue)
   const axisMax = Math.ceil(maxValue / step) * step
   const ticks = Array.from({ length: axisMax / step + 1 }, (_, i) => i * step)
 
   // Geometria do SVG (viewBox fixo; escala com a largura do container).
-  const W = 480
-  const H = 220
-  const PAD_LEFT = 28
-  const PAD_BOTTOM = 24
-  const PAD_TOP = 10
-  const plotW = W - PAD_LEFT - 8
+  const W = 720
+  const H = 260
+  const PAD_LEFT = 30
+  const PAD_RIGHT = 6
+  const PAD_TOP = 22
+  const PAD_BOTTOM = 26
+  const plotW = W - PAD_LEFT - PAD_RIGHT
   const plotH = H - PAD_TOP - PAD_BOTTOM
-  const groupW = plotW / periods.length
-  const barW = 16
-  const barGap = 2
+  const colW = plotW / days.length
+  const barW = Math.min(24, colW - 4)
+  const yFor = (v: number) => PAD_TOP + plotH - (v / axisMax) * plotH
 
-  const yFor = (value: number) => PAD_TOP + plotH - (value / axisMax) * plotH
+  // Com muitos dias no eixo, rotula só um a cada N pra não sobrepor texto.
+  const labelEvery = days.length > 15 ? Math.ceil(days.length / 10) : 1
+
+  if (orders.length === 0) {
+    return (
+      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-8 flex items-center justify-center">
+        <p className="text-sm text-gray-400">Sem pedidos ainda pra mostrar tendência.</p>
+      </div>
+    )
+  }
 
   return (
     <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 sm:p-5">
-      <div className="flex items-center justify-between flex-wrap gap-2 mb-4">
+      {/* Cabeçalho: título + total do período + presets de janela */}
+      <div className="flex items-start justify-between flex-wrap gap-3 mb-4">
         <div>
-          <h2 className="text-sm font-semibold text-gray-900">Pedidos por status e período</h2>
-          <p className="text-xs text-gray-500 mt-0.5">Contagem por data de criação do pedido</p>
+          <h2 className="text-sm font-semibold text-gray-900">Pedidos por dia</h2>
+          <p className="text-xs text-gray-500 mt-0.5">
+            <span className="font-semibold text-gray-700">{totalInWindow}</span> pedido{totalInWindow !== 1 ? 's' : ''} nos últimos {windowDays} dias
+          </p>
         </div>
-        {/* Legenda — sempre presente com 3 séries, cor nunca carrega o texto. */}
-        <div className="flex items-center gap-4 flex-wrap">
-          {SERIES.map(s => (
-            <div key={s.key} className="flex items-center gap-1.5">
-              <span className="w-2.5 h-2.5 rounded-sm shrink-0" style={{ backgroundColor: s.color }} />
-              <span className="text-xs text-gray-600">{s.label}</span>
-            </div>
+        <div className="flex items-center gap-1 bg-gray-100 rounded-full p-0.5">
+          {WINDOW_OPTIONS.map(opt => (
+            <button
+              key={opt.days}
+              onClick={() => setWindowDays(opt.days)}
+              className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${windowDays === opt.days ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'
+                }`}
+            >
+              {opt.label}
+            </button>
           ))}
         </div>
       </div>
 
+      {/* Legenda — identidade nunca só por cor, sempre com rótulo de texto ao lado. */}
+      <div className="flex items-center gap-4 flex-wrap mb-3">
+        {STATUS_ORDER.map(key => (
+          <div key={key} className="flex items-center gap-1.5">
+            <span className="w-2.5 h-2.5 rounded-sm shrink-0" style={{ backgroundColor: STATUS_META[key].color }} />
+            <span className="text-xs text-gray-600">{STATUS_META[key].label}</span>
+          </div>
+        ))}
+      </div>
+
       <div className="relative">
         <svg viewBox={`0 0 ${W} ${H}`} className="w-full h-auto" aria-hidden="true">
-          {/* Gridlines + rótulos do eixo Y */}
+          {/* Gridlines + rótulos do eixo Y — hairline, recessivo, nunca tracejado. */}
           {ticks.map(t => (
             <g key={t}>
-              <line
-                x1={PAD_LEFT} x2={W - 8} y1={yFor(t)} y2={yFor(t)}
-                stroke="#e5e7eb" strokeWidth={1}
-              />
+              <line x1={PAD_LEFT} x2={W - PAD_RIGHT} y1={yFor(t)} y2={yFor(t)} stroke="#eef0f2" strokeWidth={1} />
               <text x={PAD_LEFT - 6} y={yFor(t)} textAnchor="end" dominantBaseline="middle" className="fill-gray-400" fontSize={9}>
                 {t}
               </text>
             </g>
           ))}
 
-          {/* Grupos de barras */}
-          {periods.map((p, pi) => {
-            const groupX = PAD_LEFT + pi * groupW
-            const groupCenter = groupX + groupW / 2
-            const totalBarsW = SERIES.length * barW + (SERIES.length - 1) * barGap
-            const startX = groupCenter - totalBarsW / 2
+          {/* Barras empilhadas por dia */}
+          {days.map((d, i) => {
+            const x = PAD_LEFT + i * colW + (colW - barW) / 2
+            let cum = 0
+            const segs = STATUS_ORDER.map(key => {
+              const value = d[key]
+              const y0 = cum
+              cum += value
+              return { key, value, y0, y1: cum }
+            })
+            const topSeg = [...segs].reverse().find(s => s.value > 0)
+            const isDimmed = hoveredIdx !== null && hoveredIdx !== i
 
             return (
-              <g key={p.key}>
-                {SERIES.map((s, si) => {
-                  const value = p[s.key]
-                  const x = startX + si * (barW + barGap)
-                  const y = yFor(value)
-                  const height = Math.max(0, PAD_TOP + plotH - y)
-                  const isHovered = hovered?.period === pi && hovered?.series === si
-                  return (
-                    <rect
-                      key={s.key}
-                      x={x}
-                      y={y}
-                      width={barW}
-                      height={height}
-                      rx={4}
-                      fill={s.color}
-                      opacity={isHovered ? 1 : 0.9}
-                      style={{ cursor: 'pointer', transition: 'opacity 0.1s' }}
-                      onMouseEnter={() => setHovered({ period: pi, series: si })}
-                      onMouseLeave={() => setHovered(null)}
-                    />
+              <g key={d.key} opacity={isDimmed ? 0.45 : 1} style={{ transition: 'opacity 0.15s' }}>
+                {segs.map(s => {
+                  if (s.value === 0) return null
+                  const rectTopY = yFor(s.y1)
+                  const rectBottomY = yFor(s.y0)
+                  // Gap de 2px encostado no lado de baixo de cada segmento que tem
+                  // outro segmento embaixo — separa os blocos sem precisar de borda.
+                  const shrinkBottom = s.y0 > 0 ? 2 : 0
+                  const rectH = Math.max(0, rectBottomY - shrinkBottom - rectTopY)
+                  const color = STATUS_META[s.key].color
+
+                  return s.key === topSeg?.key ? (
+                    <path key={s.key} d={roundedTopRectPath(x, rectTopY, barW, rectH, 4)} fill={color} />
+                  ) : (
+                    <rect key={s.key} x={x} y={rectTopY} width={barW} height={rectH} fill={color} />
                   )
                 })}
-                <text
-                  x={groupCenter}
-                  y={H - PAD_BOTTOM + 14}
-                  textAnchor="middle"
-                  className="fill-gray-600"
-                  fontSize={10}
-                  fontWeight={600}
-                >
-                  {p.label}
-                </text>
+
+                {/* Rótulo seletivo: só o total no topo da coluna, nunca um número
+                    por segmento. */}
+                {d.total > 0 && (
+                  <text x={x + barW / 2} y={yFor(d.total) - 6} textAnchor="middle" className="fill-gray-500" fontSize={9} fontWeight={600}>
+                    {d.total}
+                  </text>
+                )}
+
+                {i % labelEvery === 0 && (
+                  <text x={x + barW / 2} y={H - PAD_BOTTOM + 14} textAnchor="middle" className="fill-gray-500" fontSize={9}>
+                    {formatDay(d.date)}
+                  </text>
+                )}
               </g>
             )
           })}
         </svg>
 
-        {/* Tooltip — posicionado em % sobre o mesmo viewBox do SVG, acompanha a barra. */}
-        {hovered && (() => {
-          const p = periods[hovered.period]
-          const s = SERIES[hovered.series]
-          const value = p[s.key]
-          const groupX = PAD_LEFT + hovered.period * groupW
-          const groupCenter = groupX + groupW / 2
-          const totalBarsW = SERIES.length * barW + (SERIES.length - 1) * barGap
-          const startX = groupCenter - totalBarsW / 2
-          const barCenterX = startX + hovered.series * (barW + barGap) + barW / 2
-          const barTopY = yFor(value)
+        {/* Overlay HTML: um botão focável por dia (mesmo alvo pro mouse e pro teclado),
+            cobrindo a altura do gráfico — a barra em si não precisa ser o alvo exato. */}
+        <div
+          className="absolute inset-0 flex"
+          style={{
+            paddingLeft: `${(PAD_LEFT / W) * 100}%`,
+            paddingRight: `${(PAD_RIGHT / W) * 100}%`,
+            paddingTop: `${(PAD_TOP / H) * 100}%`,
+            paddingBottom: `${(PAD_BOTTOM / H) * 100}%`,
+          }}
+        >
+          {days.map((d, i) => (
+            <button
+              key={d.key}
+              type="button"
+              onMouseEnter={() => setHoveredIdx(i)}
+              onMouseLeave={() => setHoveredIdx(null)}
+              onFocus={() => setHoveredIdx(i)}
+              onBlur={() => setHoveredIdx(null)}
+              aria-label={`${WEEKDAYS_SHORT[d.date.getDay()]} ${formatDay(d.date)}: ${d.total} pedido${d.total !== 1 ? 's' : ''} — ${STATUS_META.emProcesso.label} ${d.emProcesso}, ${STATUS_META.entregue.label} ${d.entregue}, ${STATUS_META.cancelado.label} ${d.cancelado}`}
+              className="flex-1 h-full bg-transparent focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-400/50 rounded-sm"
+            />
+          ))}
+        </div>
+
+        {/* Tooltip — uma leitura só, com todas as séries do dia (o ponteiro nunca
+            precisa acertar um segmento específico). */}
+        {hoveredIdx !== null && (() => {
+          const d = days[hoveredIdx]
+          const x = PAD_LEFT + hoveredIdx * colW + colW / 2
+          const anchorRight = hoveredIdx > (days.length - 1) / 2
+          const barTopPct = (yFor(d.total) / H) * 100
+
           return (
             <div
-              className="absolute pointer-events-none bg-gray-900 text-white text-xs rounded-lg px-2.5 py-1.5 shadow-lg whitespace-nowrap"
+              className="absolute pointer-events-none bg-gray-900 text-white text-xs rounded-lg px-3 py-2 shadow-lg z-10 min-w-[132px]"
               style={{
-                left: `${(barCenterX / W) * 100}%`,
-                top: `${(barTopY / H) * 100}%`,
-                transform: 'translate(-50%, -110%)',
+                left: `${(x / W) * 100}%`,
+                top: `${barTopPct}%`,
+                transform: `translate(${anchorRight ? '-100%' : '0%'}, calc(-100% - 8px))`,
               }}
             >
-              <span className="font-semibold">{value}</span> {s.label.toLowerCase()} · {p.label.toLowerCase()}
+              <p className="font-semibold mb-1.5">{WEEKDAYS_SHORT[d.date.getDay()]}, {formatDay(d.date)}</p>
+              {STATUS_ORDER.map(key => (
+                <div key={key} className="flex items-center justify-between gap-3">
+                  <span className="flex items-center gap-1.5 text-gray-300">
+                    <span className="w-2 h-0.5 rounded-full shrink-0" style={{ backgroundColor: STATUS_META[key].color }} />
+                    {STATUS_META[key].label}
+                  </span>
+                  <span className="font-semibold tabular-nums">{d[key]}</span>
+                </div>
+              ))}
+              <div className="flex items-center justify-between gap-3 mt-1.5 pt-1.5 border-t border-white/15">
+                <span className="text-gray-300">Total</span>
+                <span className="font-semibold tabular-nums">{d.total}</span>
+              </div>
             </div>
           )
         })()}
       </div>
 
-      {/* Tabela — mesmo dado em texto puro, fonte de verdade acessível (leitor de tela,
-          quem não consegue ler o gráfico). */}
-      <div className="mt-4 overflow-x-auto">
-        <table className="w-full text-xs">
-          <thead>
-            <tr className="border-b border-gray-100">
-              <th className="text-left py-1.5 font-medium text-gray-500">Período</th>
-              {SERIES.map(s => (
-                <th key={s.key} className="text-right py-1.5 font-medium text-gray-500">{s.label}</th>
-              ))}
-              <th className="text-right py-1.5 font-medium text-gray-500">Total</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-gray-50">
-            {periods.map(p => (
-              <tr key={p.key}>
-                <td className="py-1.5 text-gray-700 font-medium">{p.label}</td>
-                {SERIES.map(s => (
-                  <td key={s.key} className="py-1.5 text-right text-gray-700 tabular-nums">{p[s.key]}</td>
+      {/* Tabela — mesmo dado em texto puro, fonte de verdade acessível (leitor de
+          tela, ou quem só quer os números). */}
+      <button
+        type="button"
+        onClick={() => setShowTable(v => !v)}
+        className="text-xs font-medium text-blue-600 hover:text-blue-700 mt-3"
+      >
+        {showTable ? 'Ocultar tabela' : 'Ver como tabela'}
+      </button>
+
+      {showTable && (
+        <div className="mt-2 overflow-x-auto">
+          <table className="w-full text-xs">
+            <thead>
+              <tr className="border-b border-gray-100">
+                <th className="text-left py-1.5 font-medium text-gray-500">Dia</th>
+                {STATUS_ORDER.map(key => (
+                  <th key={key} className="text-right py-1.5 font-medium text-gray-500">{STATUS_META[key].label}</th>
                 ))}
-                <td className="py-1.5 text-right text-gray-900 font-semibold tabular-nums">
-                  {p.emProcesso + p.entregue + p.cancelado}
-                </td>
+                <th className="text-right py-1.5 font-medium text-gray-500">Total</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+            </thead>
+            <tbody className="divide-y divide-gray-50">
+              {days.map(d => (
+                <tr key={d.key}>
+                  <td className="py-1.5 text-gray-700 font-medium">{WEEKDAYS_SHORT[d.date.getDay()]} {formatDay(d.date)}</td>
+                  {STATUS_ORDER.map(key => (
+                    <td key={key} className="py-1.5 text-right text-gray-700 tabular-nums">{d[key]}</td>
+                  ))}
+                  <td className="py-1.5 text-right text-gray-900 font-semibold tabular-nums">{d.total}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
     </div>
   )
 }
