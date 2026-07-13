@@ -2,11 +2,12 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { useSearchParams } from 'next/navigation'
-import { Truck, Package, CurrencyDollar, Clock, MagnifyingGlass, Plus, Trash, WhatsappLogo } from '@phosphor-icons/react'
+import { Truck, Package, CurrencyDollar, Clock, MagnifyingGlass, Plus, Trash, WhatsappLogo, XCircle } from '@phosphor-icons/react'
 import { useAuth } from '@/hooks'
 import NotAuthorized from '@/components/Shared/NotAuthorized'
 import NovoPedidoModal from './NovoPedidoModal'
 import OrderDetailModal from './OrderDetailModal'
+import OrderStatusChart from './OrderStatusChart'
 import { buildDeliveryWhatsAppLink } from './whatsapp'
 import { PAYMENT_STATUS_META, DELIVERY_STATUS_META, StatusTone } from '@/lib/orderStatus'
 
@@ -84,7 +85,7 @@ export default function LogisticaPage() {
   const [paymentFilter, setPaymentFilter] = useState<string>('')
   // Aba padrão é "pending" — o entregador usa essa tela pra saber o que falta entregar,
   // e pedido já entregue misturado na lista tava confundindo.
-  const [activeTab, setActiveTab] = useState<'pending' | 'delivered'>('pending')
+  const [activeTab, setActiveTab] = useState<'pending' | 'delivered' | 'cancelled'>('pending')
   // Permite abrir a Logística já filtrada (ex: link "Ver todos os pedidos" no perfil do Chat)
   const [search, setSearch] = useState(() => searchParams.get('search') || '')
   const [updatingOrder, setUpdatingOrder] = useState<string | null>(null)
@@ -153,12 +154,13 @@ export default function LogisticaPage() {
     }
   }
 
-  // "Pendentes" cobre tudo que ainda não foi entregue (pending/picking/picked/shipped e
-  // até cancelled) — só delivered vai pra aba separada, é a distinção que importa pro
-  // entregador.
-  const pendingOrders = orders.filter(o => o.delivery_status !== 'delivered')
+  // "Pendentes" cobre só o que ainda está em andamento (pending/picking/picked/shipped)
+  // — entregue e cancelado agora têm aba própria cada um, não confunde mais o
+  // entregador nem mistura "já resolvido" com "ainda em processo".
+  const pendingOrders = orders.filter(o => o.delivery_status !== 'delivered' && o.delivery_status !== 'cancelled')
   const deliveredOrders = orders.filter(o => o.delivery_status === 'delivered')
-  const tabOrders = activeTab === 'pending' ? pendingOrders : deliveredOrders
+  const cancelledOrders = orders.filter(o => o.delivery_status === 'cancelled')
+  const tabOrders = activeTab === 'pending' ? pendingOrders : activeTab === 'delivered' ? deliveredOrders : cancelledOrders
 
   const filtered = tabOrders.filter(o => {
     if (!search) return true
@@ -172,7 +174,12 @@ export default function LogisticaPage() {
 
   // Summary cards
   const pendingDeliveries = orders.filter(o => o.delivery_status === 'pending').length
-  const totalRevenue = orders.filter(o => o.payment_status === 'paid').reduce((s, o) => s + Number(o.total_value), 0)
+  // Pedido cancelado não conta como faturamento mesmo se ainda estiver marcado como
+  // pago (ex: pagou e depois cancelou, reembolso pendente) — não é receita de verdade.
+  const totalRevenue = orders
+    .filter(o => o.payment_status === 'paid' && o.delivery_status !== 'cancelled')
+    .reduce((s, o) => s + Number(o.total_value), 0)
+  const cancellationRate = orders.length > 0 ? (cancelledOrders.length / orders.length) * 100 : 0
 
   if (!authLoading && !isAdmin && permissions && !permissions.settings?.view_logistica) {
     return <NotAuthorized />
@@ -200,7 +207,7 @@ export default function LogisticaPage() {
         </div>
 
         {/* Summary Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           <div className="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm">
             <div className="flex items-center gap-3 mb-2">
               <div className="w-10 h-10 bg-orange-50 rounded-xl flex items-center justify-center">
@@ -228,10 +235,22 @@ export default function LogisticaPage() {
             </div>
             <p className="text-3xl font-bold text-gray-900">{orders.length}</p>
           </div>
+          <div className="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm">
+            <div className="flex items-center gap-3 mb-2">
+              <div className="w-10 h-10 bg-red-50 rounded-xl flex items-center justify-center">
+                <XCircle size={20} className="text-red-500" />
+              </div>
+              <span className="text-sm font-medium text-gray-500">Taxa de cancelamento</span>
+            </div>
+            <p className="text-3xl font-bold text-gray-900">{cancellationRate.toFixed(1).replace('.', ',')}%</p>
+          </div>
         </div>
 
-        {/* Abas: pendentes (padrão) vs entregues — evita misturar pedido já entregue
-            com o que ainda falta entregar, que era o que confundia o entregador. */}
+        <OrderStatusChart orders={orders} />
+
+        {/* Abas: pendentes (padrão) / entregues / cancelados — evita misturar pedido já
+            resolvido (entregue ou cancelado) com o que ainda falta entregar, que era o
+            que confundia o entregador. */}
         <div className="flex items-center gap-6 border-b border-gray-200">
           <button
             onClick={() => setActiveTab('pending')}
@@ -250,6 +269,15 @@ export default function LogisticaPage() {
               }`}
           >
             Entregues ({deliveredOrders.length})
+          </button>
+          <button
+            onClick={() => setActiveTab('cancelled')}
+            className={`pb-3 text-sm font-medium transition-colors border-b-2 ${activeTab === 'cancelled'
+              ? 'border-blue-600 text-blue-600'
+              : 'border-transparent text-gray-500 hover:text-gray-900'
+              }`}
+          >
+            Cancelados ({cancelledOrders.length})
           </button>
         </div>
 
