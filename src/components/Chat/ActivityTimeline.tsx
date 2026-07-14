@@ -611,10 +611,14 @@ export default function ActivityTimeline({
   // Mensagem otimista (ainda enviando, sem id real do servidor) não pode ser apagada:
   // o id é só um placeholder local ("temp-...") — mandar isso pro DELETE quebra com
   // "invalid input syntax for type uuid" porque a coluna é uuid de verdade.
-  const canDeleteActivity = (activity: LeadActivityWithActor) =>
-    !activity.metadata?.is_optimistic &&
-    activity.metadata?.source === 'human' &&
-    (isOrgAdminUser || (!!currentOrganization?.id && activity.actor_member_id === currentOrganization.id))
+  // Mensagens que chegaram via automação externa (source !== 'human', ex: bot de
+  // disparo ligado no mesmo número) não têm actor_member_id — só um admin pode apagá-las;
+  // um membro comum só apaga as que ele mesmo mandou pelo CRM.
+  const canDeleteActivity = (activity: LeadActivityWithActor) => {
+    if (activity.metadata?.is_optimistic || activity.metadata?.direction !== 'outbound') return false
+    if (isOrgAdminUser) return true
+    return activity.metadata?.source === 'human' && !!currentOrganization?.id && activity.actor_member_id === currentOrganization.id
+  }
 
   useEffect(() => {
     endRef.current?.scrollIntoView({ behavior: 'smooth' })

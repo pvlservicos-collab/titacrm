@@ -72,8 +72,11 @@ export async function DELETE(
 
     const metadata = (activity.metadata as Record<string, any>) || {}
 
-    if (activity.type !== 'whatsapp' || metadata.direction !== 'outbound' || metadata.source !== 'human') {
-      return apiError(400, 'Só é possível apagar mensagens de WhatsApp enviadas manualmente por um membro da equipe.')
+    // Mensagens recebidas do cliente nunca são apagáveis por aqui (não é um "envio da
+    // equipe" pra desfazer). Mensagens enviadas por automação externa (source !== 'human',
+    // sem actor_member_id) só um admin apaga — ver isOwner abaixo.
+    if (activity.type !== 'whatsapp' || metadata.direction !== 'outbound') {
+      return apiError(400, 'Só é possível apagar mensagens de WhatsApp enviadas (não é possível apagar mensagens recebidas do cliente).')
     }
     if (metadata.deleted) return apiError(400, 'Essa mensagem já foi apagada.')
 
