@@ -131,6 +131,20 @@ function formatRecipient(phone: string, isGroup?: boolean) {
   return isGroup ? `${digits}@g.us` : digits
 }
 
+/**
+ * Em erro, a Evolution normalmente responde com o motivo real em `response.message`
+ * (ex: `["Error: Connection Closed"]`), não em `data.message` — usar só `data.message`
+ * fazia esses erros caírem sempre no texto genérico de fallback, escondendo a causa
+ * real (ex: instância deslogada) tanto do log quanto do `lead_activities.metadata`.
+ */
+function extractEvolutionError(data: any, fallback: string): string {
+  const responseMessage = data?.response?.message
+  if (Array.isArray(responseMessage) && responseMessage.length > 0) return responseMessage.join('; ')
+  if (typeof responseMessage === 'string' && responseMessage) return responseMessage
+  if (typeof data?.message === 'string' && data.message) return data.message
+  return fallback
+}
+
 export async function sendEvolutionMessage(
   organizationId: string,
   phone: string,
@@ -147,7 +161,7 @@ export async function sendEvolutionMessage(
   })
 
   const data = await res.json().catch(() => ({}))
-  if (!res.ok) throw new Error(data.message || 'Falha ao enviar mensagem via Evolution')
+  if (!res.ok) throw new Error(extractEvolutionError(data, 'Falha ao enviar mensagem via Evolution'))
   return data
 }
 
@@ -176,7 +190,7 @@ export async function sendEvolutionMedia(
     })
 
     const data = await res.json().catch(() => ({}))
-    if (!res.ok) throw new Error(data.message || 'Falha ao enviar áudio via Evolution')
+    if (!res.ok) throw new Error(extractEvolutionError(data, 'Falha ao enviar áudio via Evolution'))
     return data
   }
 
@@ -197,7 +211,7 @@ export async function sendEvolutionMedia(
   })
 
   const data = await res.json().catch(() => ({}))
-  if (!res.ok) throw new Error(data.message || 'Falha ao enviar mídia via Evolution')
+  if (!res.ok) throw new Error(extractEvolutionError(data, 'Falha ao enviar mídia via Evolution'))
   return data
 }
 
@@ -226,6 +240,6 @@ export async function deleteEvolutionMessage(
   })
 
   const data = await res.json().catch(() => ({}))
-  if (!res.ok) throw new Error(data.message || 'Falha ao apagar mensagem via Evolution')
+  if (!res.ok) throw new Error(extractEvolutionError(data, 'Falha ao apagar mensagem via Evolution'))
   return data
 }
