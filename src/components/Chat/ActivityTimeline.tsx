@@ -13,7 +13,7 @@ interface ActivityTimelineProps {
   lead: LeadWithOwner
   onReply?: (activity: LeadActivityWithActor) => void
   onTogglePin?: (activity: LeadActivityWithActor) => void
-  onDelete?: (activity: LeadActivityWithActor, deleteForEveryone: boolean) => void
+  onDelete?: (activity: LeadActivityWithActor, deleteForEveryone: boolean) => void | Promise<void>
   pinnedActivityIds?: Set<string>
 }
 
@@ -339,7 +339,9 @@ function MessageBubble({
   onTogglePin,
   onRequestDelete,
   canDelete,
-  isPinned
+  isPinned,
+  onToggleSelect,
+  isSelected,
 }: {
   activity: LeadActivityWithActor
   senderType: SenderType | 'system_other'
@@ -352,6 +354,8 @@ function MessageBubble({
   onRequestDelete?: (activity: LeadActivityWithActor) => void
   canDelete?: boolean
   isPinned?: boolean
+  onToggleSelect?: (activity: LeadActivityWithActor) => void
+  isSelected?: boolean
 }) {
   if (senderType === 'system_other') {
     // Other types, we handled in main loop
@@ -406,9 +410,24 @@ function MessageBubble({
           </div>
         )}
         <div className="relative">
-          {/* Reply/Pin/Delete buttons — outgoing (appear on left) */}
+          {/* Reply/Pin/Delete buttons — outgoing (appear on left). Fica sempre visível
+              (não só no hover) quando a mensagem está selecionada pra apagar em lote,
+              senão o checkbox marcado "some" assim que o mouse sai da bolha. */}
           {!isDeleted && (onTogglePin || onReply || (onRequestDelete && canDelete)) && (
-            <div className="absolute -left-9 top-1/2 -translate-y-1/2 flex items-center gap-1 opacity-0 group-hover/msg:opacity-100 transition-opacity z-20">
+            <div className={`absolute -left-9 top-1/2 -translate-y-1/2 flex items-center gap-1 transition-opacity z-20 ${isSelected ? 'opacity-100' : 'opacity-0 group-hover/msg:opacity-100'}`}>
+              {onToggleSelect && canDelete && (
+                <button
+                  onClick={() => onToggleSelect(activity)}
+                  className={`w-7 h-7 rounded-full border shadow-sm flex items-center justify-center transition-colors ${
+                    isSelected
+                      ? 'bg-[var(--chat-accent)] border-[var(--chat-accent)]'
+                      : 'bg-[var(--chat-bg-menu)] border-[var(--chat-border)] hover:bg-[var(--chat-bg-hover)]'
+                  }`}
+                  title={isSelected ? 'Remover da seleção' : 'Selecionar mensagem'}
+                >
+                  {isSelected && <Check size={14} weight="bold" className="text-white" />}
+                </button>
+              )}
               {onRequestDelete && canDelete && (
                 <button
                   onClick={() => onRequestDelete(activity)}
@@ -602,6 +621,9 @@ export default function ActivityTimeline({
 }: ActivityTimelineProps) {
   const [selectedImage, setSelectedImage] = useState<string | null>(null)
   const [deleteTarget, setDeleteTarget] = useState<LeadActivityWithActor | null>(null)
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
+  const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false)
+  const [bulkDeleting, setBulkDeleting] = useState(false)
   const endRef = useRef<HTMLDivElement>(null)
   const { currentOrganization, isMaster, roleName } = useAuth()
   const isOrgAdminUser = isMaster || roleName?.toLowerCase() === 'administrador' || roleName?.toLowerCase() === 'owner'
@@ -619,6 +641,22 @@ export default function ActivityTimeline({
     if (isOrgAdminUser) return true
     return activity.metadata?.source === 'human' && !!currentOrganization?.id && activity.actor_member_id === currentOrganization.id
   }
+
+  const toggleSelect = (activity: LeadActivityWithActor) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev)
+      if (next.has(activity.id)) next.delete(activity.id)
+      else next.add(activity.id)
+      return next
+    })
+  }
+  const clearSelection = () => setSelectedIds(new Set())
+
+  // ChatWindow não remonta ao trocar de lead (sem key={lead.id}) — sem isso a seleção
+  // de um lead ficaria pendurada ao abrir outra conversa.
+  useEffect(() => {
+    clearSelection()
+  }, [lead.id])
 
   useEffect(() => {
     endRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -783,6 +821,8 @@ export default function ActivityTimeline({
           onRequestDelete={onDelete ? setDeleteTarget : undefined}
           canDelete={canDeleteActivity(activity)}
           isPinned={pinnedActivityIds?.has(activity.id)}
+          onToggleSelect={onDelete ? toggleSelect : undefined}
+          isSelected={selectedIds.has(activity.id)}
         />
       </div>
     )
@@ -795,6 +835,31 @@ export default function ActivityTimeline({
       <div className="flex-1 overflow-y-auto overflow-x-hidden px-6 py-4 z-10 relative flex flex-col">
         <div className="flex flex-col flex-1 justify-end">{elements}</div>
       </div>
+
+      {selectedIds.size > 0 && (
+        <div className="flex items-center justify-between gap-3 px-4 py-2.5 border-t border-[var(--chat-border)] bg-[var(--chat-bg-panel)] z-10 relative">
+          <div className="flex items-center gap-2">
+            <button
+              onClick={clearSelection}
+              className="w-7 h-7 rounded-full flex items-center justify-center hover:bg-[var(--chat-bg-hover)]"
+              title="Cancelar seleção"
+            >
+              <X size={16} weight="bold" className="text-[var(--chat-icon)]" />
+            </button>
+            <span className="text-sm font-medium text-[var(--chat-text-primary)]">
+              {selectedIds.size} {selectedIds.size === 1 ? 'selecionada' : 'selecionadas'}
+            </span>
+          </div>
+          <button
+            onClick={() => setBulkDeleteOpen(true)}
+            disabled={bulkDeleting}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-red-500/10 hover:bg-red-500/20 border border-red-500/30 text-red-400 text-sm font-medium transition-colors disabled:opacity-50"
+          >
+            <Trash size={14} weight="bold" />
+            {bulkDeleting ? 'Apagando…' : 'Apagar selecionadas'}
+          </button>
+        </div>
+      )}
 
       {selectedImage && (
         <div
@@ -842,6 +907,73 @@ export default function ActivityTimeline({
                 {supportsEveryone
                   ? 'Escolha se ela também deve sumir do WhatsApp do cliente ou só daqui do CRM.'
                   : 'A API Oficial do WhatsApp não permite apagar mensagens já enviadas — ela vai continuar visível no celular do cliente. Só sai daqui do CRM.'}
+              </p>
+
+              <div className="flex flex-col gap-2">
+                {supportsEveryone && (
+                  <button
+                    onClick={() => choose(true)}
+                    className="w-full text-left px-3 py-2.5 rounded-lg bg-red-500/10 hover:bg-red-500/20 border border-red-500/30 transition-colors"
+                  >
+                    <span className="block text-sm font-medium text-red-400">Apagar para todos</span>
+                    <span className="block text-xs text-[var(--chat-text-muted)] mt-0.5">
+                      Também apaga no WhatsApp do cliente, se ainda estiver dentro do prazo permitido.
+                    </span>
+                  </button>
+                )}
+                <button
+                  onClick={() => choose(false)}
+                  className="w-full text-left px-3 py-2.5 rounded-lg bg-[var(--chat-bg-hover)] hover:bg-[var(--chat-border)] border border-[var(--chat-border)] transition-colors"
+                >
+                  <span className="block text-sm font-medium text-[var(--chat-text-primary)]">Apagar apenas para mim</span>
+                  <span className="block text-xs text-[var(--chat-text-muted)] mt-0.5">
+                    Some só daqui do CRM — continua visível pro cliente.
+                  </span>
+                </button>
+                <button
+                  onClick={close}
+                  className="w-full text-center px-3 py-2 rounded-lg text-sm font-medium text-[var(--chat-text-muted)] hover:text-[var(--chat-text-primary)] mt-1"
+                >
+                  Cancelar
+                </button>
+              </div>
+            </div>
+          </div>
+        )
+      })()}
+
+      {bulkDeleteOpen && (() => {
+        const targets = activities.filter(a => selectedIds.has(a.id))
+        // "Para todos" só entra se TODAS as selecionadas suportarem — misturar canais
+        // e prometer "apaga no WhatsApp do cliente" pra uma que na verdade não apaga
+        // (API Oficial/Instagram) seria enganoso.
+        const supportsEveryone = targets.length > 0 && targets.every(a => a.metadata?.channel === 'whatsapp_evolution')
+        const close = () => setBulkDeleteOpen(false)
+        const choose = async (deleteForEveryone: boolean) => {
+          close()
+          setBulkDeleting(true)
+          for (const act of targets) {
+            await onDelete?.(act, deleteForEveryone)
+          }
+          setBulkDeleting(false)
+          clearSelection()
+        }
+        return (
+          <div
+            className="fixed inset-0 z-[999] flex items-center justify-center bg-black/70 backdrop-blur-sm p-4"
+            onClick={close}
+          >
+            <div
+              className="w-full max-w-sm rounded-2xl bg-[var(--chat-bg-menu)] border border-[var(--chat-border)] shadow-2xl p-5"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <h3 className="text-sm font-semibold text-[var(--chat-text-primary)] mb-1">
+                Apagar {targets.length} {targets.length === 1 ? 'mensagem' : 'mensagens'}
+              </h3>
+              <p className="text-xs text-[var(--chat-text-muted)] mb-4">
+                {supportsEveryone
+                  ? 'Escolha se elas também devem sumir do WhatsApp do cliente ou só daqui do CRM.'
+                  : 'Pelo menos uma dessas mensagens não pode ser apagada no WhatsApp do cliente (API Oficial/Instagram não permitem) — ela vai continuar visível pra ele. Só sai daqui do CRM.'}
               </p>
 
               <div className="flex flex-col gap-2">
