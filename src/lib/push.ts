@@ -59,11 +59,12 @@ export async function sendPushToMember(organizationId: string, memberId: string,
 }
 
 /**
- * Notifica sobre uma mensagem inbound nova — dono do lead, ou (lead ainda sem dono)
- * todos os membros ativos da organização com alguma inscrição. Também grava em
- * `notifications` (mesma tabela do sino do app), reaproveitando a convenção de
- * deep-link `linkUrl` já usada em outros pontos do app. Nunca lança — chamável com
- * segurança de dentro de um webhook sem risco de quebrar a resposta.
+ * Notifica sobre uma mensagem inbound nova — todo mundo da organização que tem push
+ * ativado, dono do lead ou não (time pequeno, ninguém deve perder mensagem por não
+ * ser o "responsável" formal do lead). Também grava em `notifications` (mesma tabela
+ * do sino do app), reaproveitando a convenção de deep-link `linkUrl` já usada em
+ * outros pontos do app. Nunca lança — chamável com segurança de dentro de um webhook
+ * sem risco de quebrar a resposta.
  */
 export async function notifyInboundMessage(
   organizationId: string,
@@ -72,7 +73,7 @@ export async function notifyInboundMessage(
 ) {
   try {
     const [lead] = await db
-      .select({ title: leads.title, ownerMemberId: leads.ownerMemberId })
+      .select({ title: leads.title })
       .from(leads)
       .where(eq(leads.id, leadId))
       .limit(1)
@@ -82,23 +83,18 @@ export async function notifyInboundMessage(
     const body = activity.text?.trim() || (activity.mediaType && MEDIA_LABELS[activity.mediaType]) || 'Nova mensagem'
     const linkUrl = `/chat?leadId=${leadId}`
 
-    let targetMemberIds: string[]
-    if (lead.ownerMemberId) {
-      targetMemberIds = [lead.ownerMemberId]
-    } else {
-      const rows = await db
-        .selectDistinct({ memberId: pushSubscriptions.memberId })
-        .from(pushSubscriptions)
-        .innerJoin(organizationMembers, eq(organizationMembers.id, pushSubscriptions.memberId))
-        .where(
-          and(
-            eq(pushSubscriptions.organizationId, organizationId),
-            eq(organizationMembers.status, 'active'),
-            isNull(organizationMembers.deletedAt)
-          )
+    const rows = await db
+      .selectDistinct({ memberId: pushSubscriptions.memberId })
+      .from(pushSubscriptions)
+      .innerJoin(organizationMembers, eq(organizationMembers.id, pushSubscriptions.memberId))
+      .where(
+        and(
+          eq(pushSubscriptions.organizationId, organizationId),
+          eq(organizationMembers.status, 'active'),
+          isNull(organizationMembers.deletedAt)
         )
-      targetMemberIds = rows.map((r) => r.memberId)
-    }
+      )
+    const targetMemberIds = rows.map((r) => r.memberId)
     if (targetMemberIds.length === 0) return
 
     await Promise.all(
