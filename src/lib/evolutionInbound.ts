@@ -286,6 +286,9 @@ export async function processEvolutionMessage(
     lastActivityAt: new Date(),
     lastActivityType: 'whatsapp',
     isUnread: !isFromMe,
+    // Mensagem nova do cliente desarquiva a conversa sozinha (igual WhatsApp) — mensagem
+    // que a própria empresa manda não deve tirar do arquivo.
+    ...(!isFromMe ? { isArchived: false } : {}),
     integrationId: integration?.id || null,
   }
   if (!isFromMe) {

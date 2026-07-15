@@ -2,7 +2,7 @@
 
 import { memo } from 'react'
 
-export type ChatTab = 'all' | 'unread' | 'whatsapp' | 'instagram'
+export type ChatTab = 'all' | 'unread' | 'whatsapp' | 'instagram' | 'archived'
 
 interface ChatFilterTabsProps {
   activeTab: ChatTab
@@ -15,6 +15,7 @@ const TABS: { key: ChatTab; label: string }[] = [
   { key: 'unread', label: 'Não lidas' },
   { key: 'whatsapp', label: 'WhatsApp' },
   { key: 'instagram', label: 'Instagram' },
+  { key: 'archived', label: 'Arquivados' },
 ]
 
 function ChatFilterTabs({ activeTab, onChange, counts }: ChatFilterTabsProps) {

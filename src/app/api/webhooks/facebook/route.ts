@@ -258,6 +258,7 @@ async function handleInstagramEntry(entry: any) {
       lastMessageSenderType: 'lead',
       lastActivityAt: new Date(),
       isUnread: true,
+      isArchived: false,
     }).where(eq(leads.id, leadId))
 
     await publishEvent(channels.leadActivities(leadId), events.ACTIVITY_CREATED, { id: activity.id })
@@ -426,6 +427,9 @@ export async function POST(req: NextRequest) {
       lastMessageSenderType: isOutboundEcho ? 'agent' : 'lead',
       lastActivityAt: new Date(),
       isUnread: !isOutboundEcho,
+      // Mensagem nova do cliente desarquiva sozinha (igual WhatsApp) — eco de mensagem
+      // que a própria empresa mandou não deve tirar do arquivo.
+      ...(!isOutboundEcho ? { isArchived: false } : {}),
     }).where(eq(leads.id, leadId))
 
     await publishEvent(channels.leadActivities(leadId), events.ACTIVITY_CREATED, { id: activity.id })

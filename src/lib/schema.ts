@@ -162,6 +162,7 @@ export const leads = pgTable('leads', {
   isGroup: boolean('is_group').default(false),
   isUnread: boolean('is_unread').default(false),
   isPinned: boolean('is_pinned').default(false),
+  isArchived: boolean('is_archived').default(false),
   value: numeric('value', { precision: 15, scale: 2 }),
   goals: jsonb('goals').default({}),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),

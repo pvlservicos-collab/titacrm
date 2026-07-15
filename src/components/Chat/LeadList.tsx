@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { LeadWithOwner, SearchHit } from '@/lib/types'
-import { MagnifyingGlass, PushPin } from '@phosphor-icons/react'
+import { MagnifyingGlass, PushPin, Archive, ArrowCounterClockwise } from '@phosphor-icons/react'
 import LoadingSpinner from '@/components/Shared/LoadingSpinner'
 import { useSession } from 'next-auth/react'
 import { useLeadSearch } from '@/hooks/useLeadSearch'
@@ -190,6 +190,29 @@ export default function LeadList({
     }
   }, [contextMenu.lead, onUpdateLead])
 
+  const handleToggleArchive = useCallback(async () => {
+    if (!contextMenu.lead) return
+    const lead = contextMenu.lead
+    const newArchived = !lead.is_archived
+
+    // Optimistic update
+    if (onUpdateLead) {
+      onUpdateLead(lead.id, { is_archived: newArchived })
+    }
+
+    setContextMenu(prev => ({ ...prev, visible: false }))
+
+    try {
+      await fetch(`/api/leads/${lead.id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ is_archived: newArchived }) })
+    } catch (err) {
+      console.error('Failed to toggle archive', err)
+      // Revert
+      if (onUpdateLead) {
+        onUpdateLead(lead.id, { is_archived: !newArchived })
+      }
+    }
+  }, [contextMenu.lead, onUpdateLead])
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-full">
@@ -215,20 +238,26 @@ export default function LeadList({
     return tb - ta
   })
 
-  const tabCounts: Record<ChatTab, number> = { all: filteredHits.length, unread: 0, whatsapp: 0, instagram: 0 }
-  for (const hit of filteredHits) {
+  // Arquivada some das outras abas (igual WhatsApp) — só a aba "Arquivados" mostra.
+  const nonArchivedHits = filteredHits.filter((hit) => !hit.lead.is_archived)
+
+  const tabCounts: Record<ChatTab, number> = { all: nonArchivedHits.length, unread: 0, whatsapp: 0, instagram: 0, archived: 0 }
+  for (const hit of nonArchivedHits) {
     if (hit.lead.is_unread) tabCounts.unread++
     const channel = getLeadChannel(hit.lead)
     if (channel === 'whatsapp') tabCounts.whatsapp++
     else if (channel === 'instagram') tabCounts.instagram++
   }
+  tabCounts.archived = filteredHits.length - nonArchivedHits.length
 
-  const tabFilteredHits = activeTab === 'all'
-    ? filteredHits
-    : filteredHits.filter((hit) => {
-        if (activeTab === 'unread') return !!hit.lead.is_unread
-        return getLeadChannel(hit.lead) === activeTab
-      })
+  const tabFilteredHits = activeTab === 'archived'
+    ? filteredHits.filter((hit) => hit.lead.is_archived)
+    : activeTab === 'all'
+      ? nonArchivedHits
+      : nonArchivedHits.filter((hit) => {
+          if (activeTab === 'unread') return !!hit.lead.is_unread
+          return getLeadChannel(hit.lead) === activeTab
+        })
 
   const visibleHits = tabFilteredHits.slice(0, displayLimit)
 
@@ -298,6 +327,17 @@ export default function LeadList({
           >
             <PushPin size={16} weight={contextMenu.lead?.is_pinned ? 'regular' : 'fill'} className={contextMenu.lead?.is_pinned ? 'text-[var(--chat-text-muted)]' : 'text-[var(--chat-accent)] -rotate-45'} />
             {contextMenu.lead?.is_pinned ? 'Desafixar conversa' : 'Fixar conversa'}
+          </button>
+          <button
+            onClick={handleToggleArchive}
+            className="w-full text-left px-4 py-2 text-sm text-[var(--chat-text-primary)] hover:bg-[var(--chat-bg-hover)] flex items-center gap-2.5 transition-colors"
+          >
+            {contextMenu.lead?.is_archived ? (
+              <ArrowCounterClockwise size={16} className="text-[var(--chat-text-muted)]" />
+            ) : (
+              <Archive size={16} className="text-[var(--chat-text-muted)]" />
+            )}
+            {contextMenu.lead?.is_archived ? 'Desarquivar conversa' : 'Arquivar conversa'}
           </button>
         </div>
       )}

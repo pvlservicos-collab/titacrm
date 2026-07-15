@@ -25,6 +25,7 @@ export function mapLead(l: DrizzleLead) {
     is_group: l.isGroup,
     is_unread: l.isUnread,
     is_pinned: l.isPinned,
+    is_archived: l.isArchived,
     value: l.value,
     goals: l.goals,
     cep: l.cep,

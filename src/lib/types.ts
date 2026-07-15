@@ -63,6 +63,7 @@ export interface Lead {
   last_message_sender_type?: 'lead' | 'ai' | 'ai_agent' | 'human' | 'system_other'
   is_unread?: boolean
   is_pinned?: boolean
+  is_archived?: boolean
   is_group?: boolean
   avatar_url?: string
   custom_attributes?: Record<string, any>
