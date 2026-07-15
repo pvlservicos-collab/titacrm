@@ -169,6 +169,7 @@ export default function QuickRepliesSettingsPage() {
           scope={modalState.scope}
           quickReply={modalState.quickReply}
           existingCategories={existingCategories}
+          allQuickReplies={[...shared, ...personal].filter((qr) => qr.id !== modalState.quickReply?.id)}
           onSave={handleSave}
           onClose={() => setModalState(null)}
         />

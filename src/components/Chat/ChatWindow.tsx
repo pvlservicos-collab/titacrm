@@ -106,6 +106,39 @@ export default function ChatWindow({ lead, organizationId, onMessageSent }: Chat
     }
   }
 
+  // Nota de voz não aceita legenda no WhatsApp — mandar texto no campo de legenda aqui
+  // simplesmente some sem chegar no cliente, mesmo aparecendo (errado) como enviado no
+  // histórico do CRM. Pra áudio com texto junto, manda como duas mensagens reais: o
+  // áudio primeiro, depois o texto — igual sairia se alguém gravasse e mandasse assim
+  // manualmente. Reaproveitado tanto pela mídia única quanto por cada passo de uma
+  // sequência, pra não duplicar esse caso especial em dois lugares.
+  const sendQuickReplyStep = async (step: {
+    content: string
+    mediaUrl: string | null
+    mediaType: string | null
+    mediaFilename?: string | null
+    mediaMimetype?: string | null
+  }) => {
+    if (step.mediaUrl && step.mediaType) {
+      if (step.mediaType === 'audio' && step.content.trim()) {
+        await sendMediaMessage(step.mediaUrl, 'audio', '', step.mediaFilename || undefined, step.mediaMimetype || undefined)
+        await sendHumanMessage(step.content, 'whatsapp', currentOrganization?.id)
+      } else {
+        await sendMediaMessage(
+          step.mediaUrl,
+          step.mediaType as 'image' | 'video' | 'audio' | 'document' | 'sticker',
+          step.content,
+          step.mediaFilename || undefined,
+          step.mediaMimetype || undefined
+        )
+      }
+      return
+    }
+    if (step.content.trim()) {
+      await sendHumanMessage(step.content, 'whatsapp', currentOrganization?.id)
+    }
+  }
+
   const handleSendQuickReplyMedia = async (qr: {
     content: string
     mediaUrl: string
@@ -116,27 +149,37 @@ export default function ChatWindow({ lead, organizationId, onMessageSent }: Chat
     setSendError(null)
     try {
       if (onMessageSent) onMessageSent(qr.content || `[${qr.mediaType}]`)
-
-      // Nota de voz não aceita legenda no WhatsApp — mandar texto no campo de legenda
-      // aqui simplesmente some sem chegar no cliente, mesmo aparecendo (errado) como
-      // enviado no histórico do CRM. Pra áudio com texto junto, manda como duas
-      // mensagens reais: o áudio primeiro, depois o texto — igual sairia se alguém
-      // gravasse e mandasse assim manualmente.
-      if (qr.mediaType === 'audio' && qr.content.trim()) {
-        await sendMediaMessage(qr.mediaUrl, 'audio', '', qr.mediaFilename || undefined, qr.mediaMimetype || undefined)
-        await sendHumanMessage(qr.content, 'whatsapp', currentOrganization?.id)
-      } else {
-        await sendMediaMessage(
-          qr.mediaUrl,
-          qr.mediaType as 'image' | 'video' | 'audio' | 'document' | 'sticker',
-          qr.content,
-          qr.mediaFilename || undefined,
-          qr.mediaMimetype || undefined
-        )
-      }
+      await sendQuickReplyStep(qr)
     } catch (error) {
       console.error('Failed to send quick reply media:', error)
       setSendError('Falha ao enviar mídia. Verifique sua conexão e tente novamente.')
+    }
+  }
+
+  const handleSendQuickReplySequence = async (steps: {
+    content: string
+    mediaUrl: string | null
+    mediaType: string | null
+    mediaFilename?: string | null
+    mediaMimetype?: string | null
+    delaySeconds: number
+  }[]) => {
+    setSendError(null)
+    for (let i = 0; i < steps.length; i++) {
+      const step = steps[i]
+      try {
+        if (onMessageSent) onMessageSent(step.content || (step.mediaType ? `[${step.mediaType}]` : ''))
+        await sendQuickReplyStep(step)
+        // Espera configurada no passo antes de mandar o próximo — só roda enquanto
+        // esta aba estiver aberta (não é durável tipo o funil, ver plano da feature).
+        if (step.delaySeconds > 0 && i < steps.length - 1) {
+          await new Promise((resolve) => setTimeout(resolve, step.delaySeconds * 1000))
+        }
+      } catch (error) {
+        console.error(`Failed to send quick reply sequence step ${i + 1}/${steps.length}:`, error)
+        setSendError(`Falha ao enviar o passo ${i + 1} de ${steps.length}. As mensagens anteriores já foram enviadas.`)
+        return
+      }
     }
   }
 
@@ -224,6 +267,7 @@ export default function ChatWindow({ lead, organizationId, onMessageSent }: Chat
         onSend={handleSendActivity}
         onSendMedia={handleSendMedia}
         onSendQuickReplyMedia={handleSendQuickReplyMedia}
+        onSendQuickReplySequence={handleSendQuickReplySequence}
         organizationId={organizationId}
         lead={{ title: lead.title, phone: lead.phone }}
         replyContext={replyContext}

@@ -1,7 +1,7 @@
 'use client'
 
 import { useMemo, useRef, useEffect } from 'react'
-import { Image, VideoCamera, FileAudio, FileText, Lightning } from '@phosphor-icons/react'
+import { Image, VideoCamera, FileAudio, FileText, Lightning, Stack } from '@phosphor-icons/react'
 import { QuickReply } from '@/hooks/useQuickReplies'
 
 export interface QuickReplyGroup {
@@ -112,10 +112,17 @@ export default function QuickReplyPicker({
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-1.5">
                       <span className="text-[12px] font-semibold text-[var(--chat-text-primary)]">/{qr.shortcut}</span>
-                      <MediaGlyph mediaType={qr.mediaType} />
+                      {(!qr.steps || qr.steps.length === 0) && <MediaGlyph mediaType={qr.mediaType} />}
                     </div>
-                    {qr.content && (
-                      <p className="text-[11px] text-[var(--chat-text-muted)] truncate">{qr.content}</p>
+                    {qr.steps && qr.steps.length > 0 ? (
+                      <p className="text-[11px] text-[var(--chat-text-muted)] flex items-center gap-1">
+                        <Stack size={12} className="flex-shrink-0" />
+                        {qr.steps.length} passos
+                      </p>
+                    ) : (
+                      qr.content && (
+                        <p className="text-[11px] text-[var(--chat-text-muted)] truncate">{qr.content}</p>
+                      )
                     )}
                   </div>
                 </button>

@@ -37,10 +37,20 @@ interface QuickReplyMediaPayload {
   mediaMimetype?: string | null
 }
 
+interface QuickReplyStepPayload {
+  content: string
+  mediaUrl: string | null
+  mediaType: string | null
+  mediaFilename?: string | null
+  mediaMimetype?: string | null
+  delaySeconds: number
+}
+
 interface ActivityComposerProps {
   onSend: (content: string) => Promise<void>
   onSendMedia?: (file: File, caption?: string) => Promise<void>
   onSendQuickReplyMedia?: (payload: QuickReplyMediaPayload) => Promise<void>
+  onSendQuickReplySequence?: (steps: QuickReplyStepPayload[]) => Promise<void>
   replyContext?: ReplyContext | null
   onCancelReply?: () => void
   chatButtonSettings?: ChatButtonSettings
@@ -68,6 +78,7 @@ const ActivityComposer = forwardRef<ActivityComposerHandle, ActivityComposerProp
   onSend,
   onSendMedia,
   onSendQuickReplyMedia,
+  onSendQuickReplySequence,
   replyContext,
   onCancelReply,
   chatButtonSettings,
@@ -290,6 +301,33 @@ const ActivityComposer = forwardRef<ActivityComposerHandle, ActivityComposerProp
     if (sendingQuickReplyMedia) return
     const wasSlash = !!slashMatch
     closeQuickReplyPicker()
+
+    // Sequência (steps): checar antes de tudo — numa resposta em modo sequência,
+    // content/mediaUrl do topo vêm vazios/nulos, então sem checar isso primeiro ela
+    // cairia no fallback de texto vazio abaixo e não faria nada visível.
+    if (qr.steps && qr.steps.length > 0) {
+      if (wasSlash) setContent('')
+      if (!onSendQuickReplySequence) return
+      const interpolatedSteps: QuickReplyStepPayload[] = qr.steps.map((step) => ({
+        content: interpolateQuickReply(step.content, {
+          name: lead?.title,
+          phone: lead?.phone,
+          agentName,
+        }),
+        mediaUrl: step.mediaUrl,
+        mediaType: step.mediaType,
+        mediaFilename: step.mediaFilename,
+        mediaMimetype: step.mediaMimetype,
+        delaySeconds: step.delaySeconds || 0,
+      }))
+      try {
+        setSendingQuickReplyMedia(true)
+        await onSendQuickReplySequence(interpolatedSteps)
+      } finally {
+        setSendingQuickReplyMedia(false)
+      }
+      return
+    }
 
     const interpolated = interpolateQuickReply(qr.content, {
       name: lead?.title,

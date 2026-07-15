@@ -484,6 +484,28 @@ export const quickReplies = pgTable('quick_replies', {
     .where(sql`${t.scope} = 'personal' and ${t.deletedAt} is null`),
 }))
 
+// Passos de uma resposta rápida em sequência (ex: áudio de apresentação + foto do
+// produto, mandados em mensagens separadas com um único atalho). Uma quick_reply sem
+// nenhuma linha aqui continua funcionando exatamente como antes — usa o próprio
+// content/media_url dela como sequência implícita de 1 passo. Só resposta com steps
+// de verdade ignora content/media_url do pai.
+export const quickReplySteps = pgTable('quick_reply_steps', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  quickReplyId: uuid('quick_reply_id').notNull().references(() => quickReplies.id, { onDelete: 'cascade' }),
+  position: integer('position').notNull(),
+  content: text('content').notNull().default(''),
+  mediaUrl: text('media_url'),
+  mediaType: text('media_type'),
+  mediaMimetype: text('media_mimetype'),
+  mediaFilename: text('media_filename'),
+  // Espera (em segundos) depois de mandar este passo, antes do próximo — 0 = sem
+  // pausa, sai um atrás do outro como sempre foi.
+  delaySeconds: integer('delay_seconds').notNull().default(0),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
+}, (t) => ({
+  quickReplyPositionUnique: uniqueIndex('quick_reply_steps_position_unique').on(t.quickReplyId, t.position),
+}))
+
 // ── Histórico de Status do Pedido ──────────────────────────────────────────────
 export const orderStatusHistory = pgTable('order_status_history', {
   id: uuid('id').defaultRandom().primaryKey(),

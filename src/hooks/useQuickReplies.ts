@@ -1,5 +1,27 @@
 import { useState, useEffect, useCallback } from 'react'
 
+export interface QuickReplyStep {
+  id: string
+  quickReplyId: string
+  position: number
+  content: string
+  mediaUrl: string | null
+  mediaType: string | null
+  mediaMimetype: string | null
+  mediaFilename: string | null
+  /** Espera (segundos) depois de mandar este passo, antes do próximo. 0 = sem pausa. */
+  delaySeconds: number
+}
+
+export interface QuickReplyStepInput {
+  content?: string
+  mediaUrl?: string | null
+  mediaType?: string | null
+  mediaMimetype?: string | null
+  mediaFilename?: string | null
+  delaySeconds?: number
+}
+
 export interface QuickReply {
   id: string
   organizationId: string
@@ -14,6 +36,9 @@ export interface QuickReply {
   mediaFilename: string | null
   createdAt: string
   updatedAt: string
+  /** Sequência de passos (áudio + imagem, várias fotos, etc.). Vazio/ausente = resposta
+   * única de 1 mensagem, usando os campos content/mediaUrl acima diretamente. */
+  steps?: QuickReplyStep[]
 }
 
 export interface QuickReplyInput {
@@ -25,6 +50,8 @@ export interface QuickReplyInput {
   mediaType?: string | null
   mediaMimetype?: string | null
   mediaFilename?: string | null
+  /** Presente (mesmo vazio) substitui a sequência inteira. Ausente = não mexe nos passos. */
+  steps?: QuickReplyStepInput[]
 }
 
 export function useQuickReplies(organizationId: string | null | undefined) {

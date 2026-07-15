@@ -1,9 +1,21 @@
 import { NextRequest } from 'next/server'
 import { authenticateRequest, apiError } from '@/lib/api-auth'
 import { db } from '@/lib/db'
-import { quickReplies } from '@/lib/schema'
-import { eq, and, isNull } from 'drizzle-orm'
+import { quickReplies, quickReplySteps } from '@/lib/schema'
+import { eq, and, isNull, asc } from 'drizzle-orm'
 import { canManageSharedQuickReplies } from '../permissions'
+
+/** Cada passo precisa de texto ou mídia, igual a regra de uma resposta única. */
+function validateSteps(rawSteps: any[]): string | null {
+  for (let i = 0; i < rawSteps.length; i++) {
+    const step = rawSteps[i]
+    const stepContent = typeof step?.content === 'string' ? step.content : ''
+    if (!stepContent.trim() && !step?.mediaUrl) {
+      return `Passo ${i + 1}: informe um texto ou anexe uma mídia.`
+    }
+  }
+  return null
+}
 
 type Params = { params: Promise<{ id: string }> }
 
@@ -53,7 +65,15 @@ export async function PATCH(req: NextRequest, { params }: Params) {
     if (body.mediaMimetype !== undefined) updates.mediaMimetype = body.mediaMimetype || null
     if (body.mediaFilename !== undefined) updates.mediaFilename = body.mediaFilename || null
 
-    if ((updates.content !== undefined || updates.mediaUrl !== undefined)) {
+    // 'steps' presente no body (mesmo vazio) substitui a sequência inteira — vazio
+    // significa "voltar a ser resposta única", usando content/mediaUrl do próprio pai.
+    const hasStepsField = 'steps' in body
+    const rawSteps: any[] = hasStepsField && Array.isArray(body.steps) ? body.steps : []
+
+    if (hasStepsField && rawSteps.length > 0) {
+      const stepsError = validateSteps(rawSteps)
+      if (stepsError) return apiError(400, stepsError)
+    } else if (updates.content !== undefined || updates.mediaUrl !== undefined || (hasStepsField && rawSteps.length === 0)) {
       const nextContent = updates.content !== undefined ? updates.content : existing.content
       const nextMediaUrl = updates.mediaUrl !== undefined ? updates.mediaUrl : existing.mediaUrl
       if (!String(nextContent || '').trim() && !nextMediaUrl) {
@@ -67,7 +87,33 @@ export async function PATCH(req: NextRequest, { params }: Params) {
         .set(updates)
         .where(eq(quickReplies.id, id))
         .returning()
-      return Response.json({ data: updated })
+
+      // Sem transaction (driver neon-http não suporta) — substitui a sequência inteira:
+      // apaga os passos antigos e reinsere a lista nova, um de cada vez, na ordem certa.
+      if (hasStepsField) {
+        await db.delete(quickReplySteps).where(eq(quickReplySteps.quickReplyId, id))
+        for (let i = 0; i < rawSteps.length; i++) {
+          const step = rawSteps[i]
+          await db.insert(quickReplySteps).values({
+            quickReplyId: id,
+            position: i,
+            content: typeof step.content === 'string' ? step.content : '',
+            mediaUrl: step.mediaUrl || null,
+            mediaType: step.mediaType || null,
+            mediaMimetype: step.mediaMimetype || null,
+            mediaFilename: step.mediaFilename || null,
+            delaySeconds: Number(step.delaySeconds) || 0,
+          })
+        }
+      }
+
+      const currentSteps = await db
+        .select()
+        .from(quickReplySteps)
+        .where(eq(quickReplySteps.quickReplyId, id))
+        .orderBy(asc(quickReplySteps.position))
+
+      return Response.json({ data: { ...updated, steps: currentSteps } })
     } catch (err: any) {
       if (err?.code === '23505') return apiError(409, `Já existe um atalho "/${updates.shortcut}".`)
       throw err
