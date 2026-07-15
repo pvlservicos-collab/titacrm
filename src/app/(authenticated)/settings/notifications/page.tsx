@@ -19,9 +19,12 @@ import {
     CurrencyDollar,
     CalendarBlank,
     Play,
+    DeviceMobile,
+    ShareFat,
 } from '@phosphor-icons/react'
 import { useNotification } from '@/contexts/NotificationContext'
 import { useApiNotifications, ApiNotificationEvent } from '@/hooks/useApiNotifications'
+import { usePushNotifications } from '@/hooks/usePushNotifications'
 
 /* ─── Types ─── */
 
@@ -251,6 +254,55 @@ function ApiNotificationCard({
     )
 }
 
+/* ─── Push Notifications Card ─── */
+
+function PushNotificationsCard() {
+    const { status, subscribe, unsubscribe } = usePushNotifications()
+
+    return (
+        <div className="bg-white border border-gray-200 rounded-2xl shadow-sm">
+            <div className="px-5 py-4 flex items-center gap-2.5 border-b border-gray-100">
+                <DeviceMobile size={18} weight="duotone" className="text-gray-600" />
+                <span className="text-xs font-bold text-gray-700 uppercase tracking-wider">
+                    Notificações no Celular
+                </span>
+            </div>
+            <div className="px-5 py-4">
+                {status === 'ios-not-installed' ? (
+                    <div>
+                        <p className="text-sm font-semibold text-gray-900">Instale o app pra receber notificações</p>
+                        <p className="text-xs text-gray-500 mt-1 flex items-center gap-1 flex-wrap">
+                            No iPhone, o Safari só manda notificação push pra apps adicionados à tela de início. Toque em{' '}
+                            <ShareFat size={14} weight="bold" className="text-blue-500" /> Compartilhar e depois em
+                            &quot;Adicionar à Tela de Início&quot;, e volte aqui.
+                        </p>
+                    </div>
+                ) : status === 'unsupported' ? (
+                    <p className="text-sm text-gray-500">Seu navegador não é compatível com notificações push.</p>
+                ) : status === 'denied' ? (
+                    <p className="text-sm text-gray-500">
+                        As notificações estão bloqueadas pro Atlas Eye neste navegador. Ative de novo nas
+                        configurações de site do seu navegador/celular pra poder ligar aqui.
+                    </p>
+                ) : (
+                    <div className="flex items-center justify-between">
+                        <div>
+                            <p className="text-sm font-semibold text-gray-900">Avisar quando chegar mensagem nova</p>
+                            <p className="text-xs text-gray-500 mt-0.5">
+                                Notificação com prévia da mensagem, mesmo com o app fechado.
+                            </p>
+                        </div>
+                        <Toggle
+                            enabled={status === 'subscribed'}
+                            onChange={(v) => (v ? subscribe() : unsubscribe())}
+                        />
+                    </div>
+                )}
+            </div>
+        </div>
+    )
+}
+
 /* ─── Page ─── */
 
 export default function NotificationSettingsPage() {
@@ -358,6 +410,9 @@ export default function NotificationSettingsPage() {
                     Gerencie como e quando você deseja receber alertas do CRM.
                 </p>
             </div>
+
+            {/* Push Notifications */}
+            <PushNotificationsCard />
 
             {/* System Notifications */}
             <div className="bg-white border border-gray-200 rounded-2xl shadow-sm">

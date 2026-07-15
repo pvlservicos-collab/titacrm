@@ -9,7 +9,7 @@
  *   URL: https://seu-app.vercel.app/api/webhooks/facebook?org_id=SEU_ORG_ID
  *   Verify Token: valor de FACEBOOK_WEBHOOK_VERIFY_TOKEN
  */
-import { NextRequest } from 'next/server'
+import { NextRequest, after } from 'next/server'
 import { db } from '@/lib/db'
 import { leads, leadActivities, pipelineStages, integrationMessageLogs, integrations } from '@/lib/schema'
 import { eq, and, isNull, ilike, asc, sql } from 'drizzle-orm'
@@ -17,6 +17,7 @@ import { publishEvent, channels, events } from '@/lib/realtime'
 import { dispatchOutboundWebhook } from '@/lib/outbound-webhook'
 import { ORGANIZATION_ID } from '@/lib/automated-message'
 import { isUniqueViolation } from '@/lib/db-helpers'
+import { notifyInboundMessage } from '@/lib/push'
 import {
   FIGURINHA_BUSCANDO_MESSAGE,
   FIGURINHA_READY_TEST_NUMBERS,
@@ -262,6 +263,8 @@ async function handleInstagramEntry(entry: any) {
     await publishEvent(channels.leadActivities(leadId), events.ACTIVITY_CREATED, { id: activity.id })
     await publishEvent(channels.orgLeads(orgId), events.LEAD_UPDATED, { id: leadId })
 
+    after(() => notifyInboundMessage(orgId, leadId, { text: content, mediaType }))
+
     await db.insert(integrationMessageLogs).values({
       organizationId: orgId,
       source: 'instagram',
@@ -427,6 +430,10 @@ export async function POST(req: NextRequest) {
 
     await publishEvent(channels.leadActivities(leadId), events.ACTIVITY_CREATED, { id: activity.id })
     await publishEvent(channels.orgLeads(orgId), events.LEAD_UPDATED, { id: leadId })
+
+    if (!isOutboundEcho) {
+      after(() => notifyInboundMessage(orgId, leadId, { text: content, mediaType }))
+    }
 
     await db.insert(integrationMessageLogs).values({
       organizationId: orgId,

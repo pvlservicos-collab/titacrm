@@ -16,6 +16,7 @@ const config: NextConfig = {
   env: {
     NEXT_PUBLIC_PUSHER_KEY: process.env.NEXT_PUBLIC_PUSHER_KEY!,
     NEXT_PUBLIC_PUSHER_CLUSTER: process.env.NEXT_PUBLIC_PUSHER_CLUSTER!,
+    NEXT_PUBLIC_VAPID_PUBLIC_KEY: process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY!,
   },
   // O binário do ffmpeg-static (usado pra converter áudio pro formato que a Meta
   // aceita, ver src/lib/audioConvert.ts) é referenciado em runtime via path calculado

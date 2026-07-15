@@ -313,6 +313,26 @@ export const notifications = pgTable('notifications', {
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
 })
 
+// Inscrições de push (Web Push/VAPID) — uma linha por navegador/aparelho. Chave única
+// em endpoint (não em member_id): um aparelho compartilhado pode trocar de dono, o
+// upsert por endpoint resolve isso sozinho, e é o mesmo campo usado pra limpar
+// inscrições mortas quando o navegador reporta 404/410.
+export const pushSubscriptions = pgTable('push_subscriptions', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  organizationId: uuid('organization_id').notNull().references(() => organizations.id),
+  memberId: uuid('member_id').notNull(),
+  endpoint: text('endpoint').notNull(),
+  p256dh: text('p256dh').notNull(),
+  auth: text('auth').notNull(),
+  userAgent: text('user_agent'),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
+  lastSeenAt: timestamp('last_seen_at', { withTimezone: true }).defaultNow(),
+}, (t) => ({
+  endpointUnique: uniqueIndex('push_subscriptions_endpoint_unique').on(t.endpoint),
+  memberIdx: index('push_subscriptions_member_idx').on(t.memberId),
+  orgIdx: index('push_subscriptions_org_idx').on(t.organizationId),
+}))
+
 // ── Setup Tokens (para criação inicial de workspace) ──────────────────────────
 export const setupTokens = pgTable('setup_tokens', {
   id: uuid('id').defaultRandom().primaryKey(),

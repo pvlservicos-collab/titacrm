@@ -1,3 +1,4 @@
+import { after } from 'next/server'
 import { db } from '@/lib/db'
 import { leads, leadActivities, integrations, pipelineStages, webhookLogs } from '@/lib/schema'
 import { eq, and, isNull, asc, ilike } from 'drizzle-orm'
@@ -5,6 +6,7 @@ import { publishEvent, channels, events } from '@/lib/realtime'
 import { dispatchOutboundWebhook } from '@/lib/outbound-webhook'
 import { downloadEvolutionMedia, fetchEvolutionProfilePicture } from '@/lib/evolution'
 import { isUniqueViolation } from '@/lib/db-helpers'
+import { notifyInboundMessage } from '@/lib/push'
 
 // Processamento de uma mensagem Evolution/Baileys já reconhecida como conteúdo real
 // (não recibo de entrega/leitura) — compartilhado entre o webhook em tempo real
@@ -307,6 +309,10 @@ export async function processEvolutionMessage(
 
   await publishEvent(channels.leadActivities(lead.id), events.ACTIVITY_CREATED, { id: activity.id })
   await publishEvent(channels.orgLeads(orgId), events.LEAD_UPDATED, { id: lead.id })
+
+  if (!isFromMe) {
+    after(() => notifyInboundMessage(orgId, lead.id, { text: extracted.text, mediaType: extracted.mediaType }))
+  }
 
   const chatLid = (!isGroup && key.addressingMode === 'lid' && remoteJid.endsWith('@lid')) ? remoteJid : null
   const connectedPhone = typeof meta.sender === 'string' ? meta.sender.split('@')[0] : null
