@@ -93,11 +93,18 @@ export default function PipelineBoard({ organizationId, filters }: PipelineBoard
   // Ref for scroll detection
   const scrollContainerRef = useRef<HTMLDivElement>(null)
 
-  const INITIAL_DISPLAY = 12
-  const DISPLAY_INCREMENT = 10
+  const INITIAL_DISPLAY = 30
+  const DISPLAY_INCREMENT = 40
   const [displayLimit, setDisplayLimit] = useState(INITIAL_DISPLAY)
 
-  // Increase display limit when scrolling near the bottom of the page
+  // Increase display limit when scrolling near the bottom of the page.
+  // `loading` como dependência é essencial: a primeira renderização (antes dos dados
+  // chegarem) mostra só o spinner — a div com scrollContainerRef nem existe ainda,
+  // então closest('main') vinha null e, com deps [], esse efeito nunca rodava de novo
+  // depois que o board de verdade aparecia. Resultado: o listener de scroll nunca era
+  // registrado, displayLimit ficava travado no valor inicial pra sempre, e rolar a
+  // tela não carregava mais leads (etapas grandes, tipo uma com 800+ leads, pareciam
+  // ter só um punhado).
   useEffect(() => {
     const el = scrollContainerRef.current?.closest('main') as HTMLElement | null
     if (!el) return
@@ -111,7 +118,7 @@ export default function PipelineBoard({ organizationId, filters }: PipelineBoard
 
     el.addEventListener('scroll', onScroll, { passive: true })
     return () => el.removeEventListener('scroll', onScroll)
-  }, [])
+  }, [loading])
 
   // Filter leads to only those belonging to the selected pipeline's stages
   const stageIds = useMemo(() => new Set(stages.map((s) => s.id)), [stages])
