@@ -79,7 +79,7 @@ export default function LeadDetailsSidebar({
   const [deletingHistory, setDeletingHistory] = useState(false)
 
   const { allTags, leadTags, addTagToLead, removeTagFromLead, loading: tagsLoading } = useTags(lead.organization_id, lead.id)
-  const { categories, definitions, values, updateFieldValue } = useCustomFields(lead.organization_id, lead.id)
+  const { categories, definitions, values, updateFieldValue } = useCustomFields(lead.organization_id, lead.id, lead.custom_attributes)
   const { settings: chatButtonSettings, fireWebhook } = useChatButtonSettings()
   const { members: orgMembers } = useOrganizationMembers(lead.organization_id)
   const [showTagMenu, setShowTagMenu] = useState(false)

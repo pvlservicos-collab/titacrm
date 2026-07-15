@@ -1,6 +1,6 @@
 'use client'
 
-import { useRef, useEffect, useState } from 'react'
+import { useRef, useEffect, useState, useMemo, memo } from 'react'
 import { Sparkle, X, MagnifyingGlassPlus, Play, Pause, Microphone, ArrowBendUpLeft, Check, WarningCircle, Lightning, PushPin, Trash, Prohibit } from '@phosphor-icons/react'
 import { LeadActivityWithActor, LeadWithOwner } from '@/lib/types'
 import { formatTime } from '@/lib/utils'
@@ -328,7 +328,11 @@ function QuotedMessageBar({ metadata, isOutgoing }: { metadata: any; isOutgoing:
 }
 
 // ── Message Bubble ──
-function MessageBubble({
+// memo() evita re-renderizar cada bolha quando algo não relacionado à lista muda (ex:
+// abrir o lightbox de uma foto, selecionar mensagens pra apagar) — sem isso, qualquer
+// re-render de ActivityTimeline reprocessa a bolha inteira de novo (formatação de data,
+// player de áudio, etc.) mesmo pras centenas de mensagens que não mudaram nada.
+const MessageBubble = memo(function MessageBubble({
   activity,
   senderType,
   showHeader,
@@ -607,7 +611,7 @@ function MessageBubble({
       </div>
     </div>
   )
-}
+})
 
 // ── Main Component ──
 export default function ActivityTimeline({
@@ -662,29 +666,19 @@ export default function ActivityTimeline({
     endRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [activities.length])
 
-  if (loading) {
-    return (
-      <div className="flex-1 flex items-center justify-center">
-        <LoadingSpinner text="Carregando mensagens..." />
-      </div>
-    )
-  }
+  // Monta a lista de bolhas só quando algo que realmente afeta o resultado muda — sem
+  // isso, qualquer re-render de ActivityTimeline por um motivo não relacionado (abrir o
+  // lightbox de uma foto, selecionar mensagens pra apagar) reprocessava a conversa
+  // inteira de novo a cada tecla/clique. Precisa ficar antes dos returns condicionais
+  // de loading/vazio abaixo — hook não pode ser chamado condicionalmente.
+  const elements = useMemo(() => {
+    if (activities.length === 0) return []
 
-  if (activities.length === 0) {
-    return (
-      <div className="flex-1 flex items-center justify-center bg-transparent z-10 relative">
-        <div className="bg-[var(--chat-bg-panel)] border border-white/5 rounded-full px-6 py-2.5 text-[13px] text-[var(--chat-text-muted)] shadow-sm">
-          Nenhuma mensagem ainda. Inicie a conversa!
-        </div>
-      </div>
-    )
-  }
+    // Pre-process reactions
+    const normalActivities: LeadActivityWithActor[] = []
+    const reactionMap = new Map<string, LeadActivityWithActor[]>()
 
-  // Pre-process reactions
-  const normalActivities: LeadActivityWithActor[] = []
-  const reactionMap = new Map<string, LeadActivityWithActor[]>()
-
-  activities.forEach(act => {
+    activities.forEach(act => {
     // Skip rename events from appearing in the chat timeline (they only go to the History panel)
     if (act.type === 'system' && act.metadata?.source === 'rename') {
       return
@@ -829,6 +823,28 @@ export default function ActivityTimeline({
   })
 
   elements.push(<div key="end" ref={endRef} className="h-2" />)
+
+    return elements
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activities, lead, pinnedActivityIds, selectedIds, onReply, onTogglePin, onDelete, isOrgAdminUser, currentOrganization?.id])
+
+  if (loading) {
+    return (
+      <div className="flex-1 flex items-center justify-center">
+        <LoadingSpinner text="Carregando mensagens..." />
+      </div>
+    )
+  }
+
+  if (activities.length === 0) {
+    return (
+      <div className="flex-1 flex items-center justify-center bg-transparent z-10 relative">
+        <div className="bg-[var(--chat-bg-panel)] border border-white/5 rounded-full px-6 py-2.5 text-[13px] text-[var(--chat-text-muted)] shadow-sm">
+          Nenhuma mensagem ainda. Inicie a conversa!
+        </div>
+      </div>
+    )
+  }
 
   return (
     <>

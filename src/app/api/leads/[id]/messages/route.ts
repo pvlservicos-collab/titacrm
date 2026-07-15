@@ -42,7 +42,12 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
 
     if (!lead) return apiError(404, 'Lead não encontrado.')
 
-    const rows = await db
+    // Só as últimas 300 (desc + limit, revertido pra ordem cronológica depois) — sem
+    // isso, uma conversa antiga com histórico longo vem inteira de uma vez só e trava
+    // o navegador ao montar centenas/milhares de bolhas na timeline, principalmente em
+    // celular (o desktop absorve, o celular não). Carregar mensagens mais antigas que
+    // isso fica pra uma paginação futura, se algum dia fizer falta.
+    const rowsDesc = await db
       .select({
         id: leadActivities.id,
         type: leadActivities.type,
@@ -64,7 +69,9 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
           sql`${leadActivities.type} IN ('whatsapp','note','email','system')`
         )
       )
-      .orderBy(asc(leadActivities.createdAt))
+      .orderBy(desc(leadActivities.createdAt))
+      .limit(300)
+    const rows = rowsDesc.reverse()
 
     // Mensagem apagada: não devolve mais o conteúdo/mídia originais na API (só o carimbo
     // "apagada") — a UI já esconde isso, mas sem redigir aqui o texto/mídia original

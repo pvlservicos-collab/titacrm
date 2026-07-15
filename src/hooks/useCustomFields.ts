@@ -9,12 +9,30 @@ export interface CustomFieldCategory {
   rank: number
 }
 
-export function useCustomFields(organizationId: string | null | undefined, leadId: string | null | undefined) {
+function valuesFromAttrs(attrs: Record<string, any>) {
+  return Object.entries(attrs).map(([fieldId, val]: any) => ({
+    field_id: fieldId,
+    ...(typeof val === 'object' && val !== null ? val : { value_text: String(val) }),
+  }))
+}
+
+/**
+ * `initialCustomAttributes`: quando quem chama já tem o lead inteiro na mão (ex:
+ * LeadDetailsSidebar recebe `lead` por prop), passa `lead.custom_attributes` aqui pra
+ * pular o `GET /api/leads/:id` que esse hook faria de novo só pra ler esse campo — esse
+ * fetch redundante rodava toda vez que o painel de detalhes abria, somando latência
+ * bem na hora que já tem outros ~5 fetches em paralelo acontecendo.
+ */
+export function useCustomFields(
+  organizationId: string | null | undefined,
+  leadId: string | null | undefined,
+  initialCustomAttributes?: Record<string, any>
+) {
   const { currentOrganization } = useAuth()
   const [categories, setCategories] = useState<CustomFieldCategory[]>([])
   const [definitions, setDefinitions] = useState<CustomFieldDefinition[]>([])
-  const [values, setValues] = useState<any[]>([])
-  const [customAttributes, setCustomAttributes] = useState<Record<string, any>>({})
+  const [values, setValues] = useState<any[]>(initialCustomAttributes ? valuesFromAttrs(initialCustomAttributes) : [])
+  const [customAttributes, setCustomAttributes] = useState<Record<string, any>>(initialCustomAttributes || {})
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<Error | null>(null)
 
@@ -26,6 +44,7 @@ export function useCustomFields(organizationId: string | null | undefined, leadI
       return
     }
     fetchCustomFields()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [organizationId, leadId])
 
   async function fetchCustomFields() {
@@ -38,18 +57,16 @@ export function useCustomFields(organizationId: string | null | undefined, leadI
       setCategories(json.categories || [])
       setDefinitions(json.definitions || json.data || [])
 
-      if (leadId) {
+      if (initialCustomAttributes) {
+        setCustomAttributes(initialCustomAttributes)
+        setValues(valuesFromAttrs(initialCustomAttributes))
+      } else if (leadId) {
         const leadRes = await fetch(`/api/leads/${leadId}`)
         if (leadRes.ok) {
           const { data: lead } = await leadRes.json()
           const attrs = lead?.custom_attributes || {}
           setCustomAttributes(attrs)
-          // Map custom_attributes to values array keyed by field_id
-          const vals = Object.entries(attrs).map(([fieldId, val]: any) => ({
-            field_id: fieldId,
-            ...(typeof val === 'object' && val !== null ? val : { value_text: String(val) }),
-          }))
-          setValues(vals)
+          setValues(valuesFromAttrs(attrs))
         }
       } else {
         setValues([])
