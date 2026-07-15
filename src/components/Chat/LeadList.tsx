@@ -2,10 +2,11 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { LeadWithOwner, SearchHit } from '@/lib/types'
-import { MagnifyingGlass, PushPin, Archive, ArrowCounterClockwise } from '@phosphor-icons/react'
+import { MagnifyingGlass, PushPin, Archive, ArrowCounterClockwise, Tag as TagIcon, Check } from '@phosphor-icons/react'
 import LoadingSpinner from '@/components/Shared/LoadingSpinner'
 import { useSession } from 'next-auth/react'
 import { useLeadSearch } from '@/hooks/useLeadSearch'
+import { useTags } from '@/hooks'
 import { getLeadChannel } from '@/lib/leadChannel'
 import LeadListItem from './LeadListItem'
 import ChatFilterTabs, { type ChatTab } from './ChatFilterTabs'
@@ -16,6 +17,7 @@ interface LeadListProps {
   onSelectLead: (lead: LeadWithOwner) => void
   onUpdateLead?: (leadId: string, updates: Partial<LeadWithOwner>) => void
   loading: boolean
+  organizationId?: string | null
 }
 
 const WEEKDAYS_PT = [
@@ -64,6 +66,7 @@ export default function LeadList({
   onSelectLead,
   onUpdateLead,
   loading,
+  organizationId,
 }: LeadListProps) {
   const [search, setSearch] = useState('')
   const [activeTab, setActiveTab] = useState<ChatTab>('all')
@@ -71,6 +74,28 @@ export default function LeadList({
     visible: false, x: 0, y: 0, lead: null
   })
   const [seenReplies, setSeenReplies] = useState<Record<string, string>>({})
+
+  // Filtro por etiqueta — multi-seleção, combina com a aba ativa (ex: "Não lidas" +
+  // etiqueta "VIP" ao mesmo tempo) em vez de ser mais uma aba.
+  const { allTags } = useTags(organizationId)
+  const [tagFilterOpen, setTagFilterOpen] = useState(false)
+  const [selectedTagIds, setSelectedTagIds] = useState<string[]>([])
+  const tagFilterRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (!tagFilterOpen) return
+    const handleClickOutside = (e: MouseEvent) => {
+      if (tagFilterRef.current && !tagFilterRef.current.contains(e.target as Node)) {
+        setTagFilterOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [tagFilterOpen])
+
+  const toggleTagFilter = (tagId: string) => {
+    setSelectedTagIds((prev) => (prev.includes(tagId) ? prev.filter((id) => id !== tagId) : [...prev, tagId]))
+  }
 
   // Load "seen" map from localStorage on mount
   useEffect(() => {
@@ -250,7 +275,7 @@ export default function LeadList({
   }
   tabCounts.archived = filteredHits.length - nonArchivedHits.length
 
-  const tabFilteredHits = activeTab === 'archived'
+  const tabFilteredHitsBeforeTags = activeTab === 'archived'
     ? filteredHits.filter((hit) => hit.lead.is_archived)
     : activeTab === 'all'
       ? nonArchivedHits
@@ -259,21 +284,94 @@ export default function LeadList({
           return getLeadChannel(hit.lead) === activeTab
         })
 
+  // Etiqueta é um filtro à parte, combinado com a aba ativa — não substitui, só
+  // restringe mais. Mantém quem tem pelo menos uma das etiquetas marcadas.
+  const tabFilteredHits = selectedTagIds.length === 0
+    ? tabFilteredHitsBeforeTags
+    : tabFilteredHitsBeforeTags.filter((hit) =>
+        hit.lead.lead_tags?.some((lt: any) => selectedTagIds.includes(lt.tag_id))
+      )
+
   const visibleHits = tabFilteredHits.slice(0, displayLimit)
 
   return (
     <div className="flex flex-col h-full border-r border-[var(--chat-border)] bg-[var(--chat-bg-base)]">
       {/* Search Bar */}
       <div className="p-3 border-b border-[var(--chat-border)]">
-        <div className="relative">
-          <MagnifyingGlass className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--chat-text-muted)]" />
-          <input
-            type="text"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Buscar leads..."
-            className="w-full pl-9 pr-3 py-2 text-sm border border-[var(--chat-border)] rounded-lg focus:outline-none focus:ring-2 focus:ring-[var(--chat-accent)] text-[var(--chat-text-primary)] placeholder-[var(--chat-text-muted)] transition-shadow bg-[var(--chat-bg-field)]"
-          />
+        <div className="flex items-center gap-2">
+          <div className="relative flex-1">
+            <MagnifyingGlass className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--chat-text-muted)]" />
+            <input
+              type="text"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Buscar leads..."
+              className="w-full pl-9 pr-3 py-2 text-sm border border-[var(--chat-border)] rounded-lg focus:outline-none focus:ring-2 focus:ring-[var(--chat-accent)] text-[var(--chat-text-primary)] placeholder-[var(--chat-text-muted)] transition-shadow bg-[var(--chat-bg-field)]"
+            />
+          </div>
+
+          {allTags.length > 0 && (
+            <div className="relative flex-shrink-0" ref={tagFilterRef}>
+              <button
+                type="button"
+                onClick={() => setTagFilterOpen((v) => !v)}
+                className={`relative flex items-center justify-center w-9 h-9 rounded-lg border transition-colors ${
+                  selectedTagIds.length > 0
+                    ? 'border-[var(--chat-accent)] text-[var(--chat-accent)] bg-[var(--chat-accent)]/10'
+                    : 'border-[var(--chat-border)] text-[var(--chat-text-muted)] hover:text-[var(--chat-text-primary)] hover:bg-[var(--chat-bg-hover)]'
+                }`}
+                title="Filtrar por etiqueta"
+              >
+                <TagIcon size={16} />
+                {selectedTagIds.length > 0 && (
+                  <span className="absolute -top-1.5 -right-1.5 min-w-[16px] h-4 px-1 rounded-full bg-[var(--chat-accent)] text-[var(--chat-bg-conversation)] text-[10px] font-bold flex items-center justify-center">
+                    {selectedTagIds.length}
+                  </span>
+                )}
+              </button>
+
+              {tagFilterOpen && (
+                <div className="absolute z-50 right-0 top-full mt-1 w-56 max-h-80 overflow-y-auto bg-[var(--chat-bg-menu)] border border-[var(--chat-border)] rounded-xl shadow-xl py-1.5">
+                  <div className="flex items-center justify-between px-3 py-1.5">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--chat-text-muted)]">
+                      Etiquetas
+                    </span>
+                    {selectedTagIds.length > 0 && (
+                      <button
+                        type="button"
+                        onClick={() => setSelectedTagIds([])}
+                        className="text-[11px] font-semibold text-[var(--chat-accent)] hover:underline"
+                      >
+                        Limpar
+                      </button>
+                    )}
+                  </div>
+                  {allTags.map((tag) => {
+                    const isSelected = selectedTagIds.includes(tag.id)
+                    return (
+                      <button
+                        key={tag.id}
+                        type="button"
+                        onClick={() => toggleTagFilter(tag.id)}
+                        className="w-full flex items-center gap-2.5 px-3 py-2 text-left text-sm text-[var(--chat-text-primary)] hover:bg-[var(--chat-bg-hover)] transition-colors"
+                      >
+                        <span
+                          className={`w-4 h-4 rounded flex items-center justify-center flex-shrink-0 border-2 transition-colors`}
+                          style={{
+                            borderColor: tag.color,
+                            backgroundColor: isSelected ? tag.color : 'transparent',
+                          }}
+                        >
+                          {isSelected && <Check size={11} weight="bold" className="text-white" />}
+                        </span>
+                        <span className="truncate">{tag.name}</span>
+                      </button>
+                    )
+                  })}
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </div>
 

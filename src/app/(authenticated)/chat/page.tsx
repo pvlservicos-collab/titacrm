@@ -248,6 +248,7 @@ export default function ChatPage() {
             onSelectLead={handleSelectLead}
             onUpdateLead={handleUpdateLead}
             loading={false}
+            organizationId={organizationId}
           />
         )}
 
@@ -317,6 +318,7 @@ export default function ChatPage() {
           onSelectLead={setSelectedLead}
           onUpdateLead={handleUpdateLead}
           loading={false}
+          organizationId={organizationId}
         />
       </div>
 

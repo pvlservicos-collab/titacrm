@@ -194,6 +194,7 @@ export default function ChatEvolutionPage() {
           onSelectLead={setSelectedLead}
           onUpdateLead={handleUpdateLead}
           loading={false}
+          organizationId={organizationId}
         />
       </div>
 
