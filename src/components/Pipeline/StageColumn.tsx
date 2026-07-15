@@ -5,7 +5,7 @@ import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable'
 import { PipelineStage, LeadWithOwner, StageGoal } from '@/lib/types'
 import { getStageColor } from '@/lib/stageColors'
 import LeadCard from './LeadCard'
-import { useMemo } from 'react'
+import { useMemo, useRef, useState, useEffect } from 'react'
 
 interface StageColumnProps {
   stage: PipelineStage
@@ -14,10 +14,14 @@ interface StageColumnProps {
   totalLeads: number
   isGoalsEnabled: boolean
   stageStats?: { count: number; totalValue: number }
-  displayLimit?: number
   /** Mobile: abre o seletor de "mover para" em vez de depender de arrastar. */
   onLeadClick?: (lead: LeadWithOwner) => void
+  /** Botão "ⓘ" do card — abre os detalhes do lead (funciona em mobile e desktop, mesmo quando onLeadClick já está sendo usado pra outra coisa). */
+  onLeadInfoClick?: (lead: LeadWithOwner) => void
 }
+
+const INITIAL_DISPLAY = 30
+const DISPLAY_INCREMENT = 40
 
 export default function StageColumn({
   stage,
@@ -26,8 +30,8 @@ export default function StageColumn({
   totalLeads,
   isGoalsEnabled,
   stageStats,
-  displayLimit,
   onLeadClick,
+  onLeadInfoClick,
 }: StageColumnProps) {
   const { setNodeRef } = useDroppable({ id: stage.id })
   const fallbackColor = getStageColor(stage.rank)
@@ -41,8 +45,32 @@ export default function StageColumn({
   const goalLeads = stage.target_volume || 0
   const progressPercentage = goalLeads > 0 ? Math.min((displayCount / goalLeads) * 100, 100) : 0
 
+  // Cada coluna rola (e "carrega mais") por conta própria — antes era um número
+  // compartilhado por todas as colunas, escutando o scroll da página inteira; agora
+  // cada uma tem seu próprio scroll interno, então cada uma cuida do seu próprio
+  // limite. Mesmo padrão de LeadList.tsx (ref na própria div que rola). Sem pegadinha
+  // de timing tipo a que existia na Pipeline antes: essa coluna só monta depois que os
+  // dados já carregaram, então a ref já existe desde o primeiro render.
+  const scrollContainerRef = useRef<HTMLDivElement>(null)
+  const [displayLimit, setDisplayLimit] = useState(INITIAL_DISPLAY)
+
+  useEffect(() => {
+    const el = scrollContainerRef.current
+    if (!el) return
+
+    const onScroll = () => {
+      const { scrollTop, scrollHeight, clientHeight } = el
+      if (scrollHeight - scrollTop - clientHeight < 300) {
+        setDisplayLimit((prev) => prev + DISPLAY_INCREMENT)
+      }
+    }
+
+    el.addEventListener('scroll', onScroll, { passive: true })
+    return () => el.removeEventListener('scroll', onScroll)
+  }, [])
+
   // Slice leads to respect the per-stage display limit
-  const visibleLeads = displayLimit ? leads.slice(0, displayLimit) : leads
+  const visibleLeads = leads.slice(0, displayLimit)
 
   // Memoize item ids to prevent SortableContext from infinite re-rendering
   const itemIds = useMemo(() => visibleLeads.map((l) => l.id), [visibleLeads])
@@ -50,7 +78,7 @@ export default function StageColumn({
   return (
     <div
       ref={setNodeRef}
-      className="flex-shrink-0 w-full md:w-[280px] flex flex-col"
+      className="flex-shrink-0 w-full md:w-[280px] h-full min-h-0 flex flex-col"
     >
       {/* Stage Header */}
       <div className="mb-3 px-2">
@@ -103,7 +131,8 @@ export default function StageColumn({
         strategy={verticalListSortingStrategy}
       >
         <div
-          className="space-y-3 min-h-[200px] flex-1 px-1"
+          ref={scrollContainerRef}
+          className="space-y-3 flex-1 min-h-0 px-1 overflow-y-auto"
         >
           {visibleLeads.length === 0 ? (
             <div className="text-center py-8 text-gray-400 text-sm">
@@ -117,6 +146,7 @@ export default function StageColumn({
                 organizationId={organizationId}
                 stageColor={stageColor}
                 onClick={onLeadClick ? () => onLeadClick(lead) : undefined}
+                onInfoClick={onLeadInfoClick ? () => onLeadInfoClick(lead) : undefined}
               />
             ))
           )}

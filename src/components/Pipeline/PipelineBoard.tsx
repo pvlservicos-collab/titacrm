@@ -1,7 +1,7 @@
 'use client'
 
-import { useState, useMemo, useCallback, useEffect, useRef } from 'react'
-import { useSearchParams } from 'next/navigation'
+import { useState, useMemo, useCallback, useEffect } from 'react'
+import { useSearchParams, useRouter } from 'next/navigation'
 import {
   DndContext,
   DragOverlay,
@@ -16,7 +16,7 @@ import {
   CollisionDetection,
 } from '@dnd-kit/core'
 import { arrayMove } from '@dnd-kit/sortable'
-import { usePipeline, useAuth, useIsMobile } from '@/hooks'
+import { usePipeline, useAuth, useIsMobile, useStageHistory } from '@/hooks'
 import { useLeadsContext } from '@/contexts/LeadsContext'
 import { usePipelineFilters } from '@/contexts/FilterContext'
 import { LeadWithOwner } from '@/lib/types'
@@ -24,6 +24,7 @@ import FilterButton, { FilterState } from '@/components/Shared/FilterButton'
 import StageColumn from './StageColumn'
 import LeadCard from './LeadCard'
 import LoadingSpinner from '@/components/Shared/LoadingSpinner'
+import { LeadDetailsSidebar } from '@/components/Chat'
 import { X } from '@phosphor-icons/react'
 
 interface PipelineBoardProps {
@@ -33,6 +34,7 @@ interface PipelineBoardProps {
 
 export default function PipelineBoard({ organizationId, filters }: PipelineBoardProps) {
   const searchParams = useSearchParams()
+  const router = useRouter()
   const pipelineIdFromUrl = searchParams.get('pipelineId')
 
   const { pipelines, stages, selectedPipelineId, selectPipeline, loading } =
@@ -68,6 +70,8 @@ export default function PipelineBoard({ organizationId, filters }: PipelineBoard
   const isMobile = useIsMobile()
   const [activeMobileStageId, setActiveMobileStageId] = useState<string | null>(null)
   const [movingLead, setMovingLead] = useState<LeadWithOwner | null>(null)
+  const [detailLead, setDetailLead] = useState<LeadWithOwner | null>(null)
+  const { history: detailStageHistory, loading: detailHistoryLoading } = useStageHistory(detailLead?.id || '')
 
   // Sync URL pipelineId with selected pipeline
   useEffect(() => {
@@ -89,36 +93,6 @@ export default function PipelineBoard({ organizationId, filters }: PipelineBoard
       activationConstraint: { distance: 8 },
     })
   )
-
-  // Ref for scroll detection
-  const scrollContainerRef = useRef<HTMLDivElement>(null)
-
-  const INITIAL_DISPLAY = 30
-  const DISPLAY_INCREMENT = 40
-  const [displayLimit, setDisplayLimit] = useState(INITIAL_DISPLAY)
-
-  // Increase display limit when scrolling near the bottom of the page.
-  // `loading` como dependência é essencial: a primeira renderização (antes dos dados
-  // chegarem) mostra só o spinner — a div com scrollContainerRef nem existe ainda,
-  // então closest('main') vinha null e, com deps [], esse efeito nunca rodava de novo
-  // depois que o board de verdade aparecia. Resultado: o listener de scroll nunca era
-  // registrado, displayLimit ficava travado no valor inicial pra sempre, e rolar a
-  // tela não carregava mais leads (etapas grandes, tipo uma com 800+ leads, pareciam
-  // ter só um punhado).
-  useEffect(() => {
-    const el = scrollContainerRef.current?.closest('main') as HTMLElement | null
-    if (!el) return
-
-    const onScroll = () => {
-      const { scrollTop, scrollHeight, clientHeight } = el
-      if (scrollHeight - scrollTop - clientHeight < 300) {
-        setDisplayLimit(prev => prev + DISPLAY_INCREMENT)
-      }
-    }
-
-    el.addEventListener('scroll', onScroll, { passive: true })
-    return () => el.removeEventListener('scroll', onScroll)
-  }, [loading])
 
   // Filter leads to only those belonging to the selected pipeline's stages
   const stageIds = useMemo(() => new Set(stages.map((s) => s.id)), [stages])
@@ -334,6 +308,53 @@ export default function PipelineBoard({ organizationId, filters }: PipelineBoard
     setMovingLead(null)
   }
 
+  // Handlers do painel "Detalhes do contato" aberto a partir de um card — mesma lógica
+  // já usada pelo Chat (chat/page.tsx), só trocando selectedLead/setSelectedLead por
+  // detailLead/setDetailLead e reaproveitando moveLeadToStage/setLeads que a Pipeline
+  // já busca de useLeadsContext().
+  const handleDetailStageChange = useCallback(async (newStageId: string) => {
+    if (!detailLead) return
+    const oldStageId = detailLead.stage_id
+    setDetailLead((prev) => (prev ? { ...prev, stage_id: newStageId } : prev))
+    try {
+      await moveLeadToStage(detailLead.id, newStageId, oldStageId)
+    } catch {
+      setDetailLead((prev) => (prev ? { ...prev, stage_id: oldStageId } : prev))
+    }
+  }, [detailLead, moveLeadToStage])
+
+  const handleDetailPipelineChange = useCallback(async (newPipelineId: string) => {
+    if (!detailLead) return
+    try {
+      const stagesRes = await fetch(`/api/pipelines/${newPipelineId}/stages`)
+      if (!stagesRes.ok) return
+      const { data: newStages } = await stagesRes.json()
+      if (!newStages || newStages.length === 0) return
+      await handleDetailStageChange(newStages[0].id)
+    } catch (err) {
+      console.error('Failed to change pipeline:', err)
+    }
+  }, [detailLead, handleDetailStageChange])
+
+  const handleDetailTagsChange = useCallback((targetLeadId: string, tagId: string, action: 'add' | 'remove', tagObj?: any) => {
+    const applyTags = (tags: any[] | undefined) => {
+      let newTags = [...(tags || [])]
+      if (action === 'add') {
+        if (!newTags.find((t) => t.tag_id === tagId)) newTags.push({ tag_id: tagId, tag: tagObj })
+      } else {
+        newTags = newTags.filter((t) => t.tag_id !== tagId)
+      }
+      return newTags
+    }
+    setLeads((prev) => prev.map((l) => (l.id === targetLeadId ? { ...l, lead_tags: applyTags(l.lead_tags) } : l)))
+    setDetailLead((prev) => (prev && prev.id === targetLeadId ? { ...prev, lead_tags: applyTags(prev.lead_tags) } : prev))
+  }, [setLeads])
+
+  const handleDetailUpdateLead = useCallback((leadId: string, updates: Partial<LeadWithOwner>) => {
+    setLeads((prev) => prev.map((l) => (l.id === leadId ? { ...l, ...updates } : l)))
+    setDetailLead((prev) => (prev && prev.id === leadId ? { ...prev, ...updates } : prev))
+  }, [setLeads])
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-screen">
@@ -343,12 +364,11 @@ export default function PipelineBoard({ organizationId, filters }: PipelineBoard
   }
 
   return (
-    <div className="flex-1 flex flex-col bg-gray-50 pb-10">
-      {/* Kanban Board */}
-      <div
-        ref={scrollContainerRef}
-        className="flex-1 p-4"
-      >
+    <div className="flex-1 flex flex-col h-full min-h-0 bg-gray-50">
+      {/* Kanban Board — largura rola no desktop (várias colunas lado a lado), altura
+          é travada aqui e repassada pra baixo; quem rola de verdade é a lista de cards
+          dentro de cada StageColumn, não essa página inteira. */}
+      <div className="flex-1 min-h-0 p-4 overflow-x-auto">
         <DndContext
           sensors={sensors}
           collisionDetection={collisionDetection}
@@ -367,14 +387,14 @@ export default function PipelineBoard({ organizationId, filters }: PipelineBoard
               </div>
             </div>
           ) : isMobile ? (
-            <div>
+            <div className="flex flex-col h-full min-h-0">
               {/* Filtro — some do topo desktop no celular, então reaparece aqui */}
-              <div className="mb-3">
+              <div className="mb-3 flex-shrink-0">
                 <FilterButton organizationId={organizationId} onFilterChange={setFilters} />
               </div>
 
               {/* Seletor de etapa — abas roláveis horizontalmente */}
-              <div className="flex gap-2 overflow-x-auto pb-3 -mx-1 px-1">
+              <div className="flex gap-2 overflow-x-auto pb-3 -mx-1 px-1 flex-shrink-0">
                 {stages.map(stage => {
                   const count = stageStats[stage.id]?.count ?? leadsByStage[stage.id]?.length ?? 0
                   const isActive = stage.id === activeMobileStageId
@@ -394,22 +414,24 @@ export default function PipelineBoard({ organizationId, filters }: PipelineBoard
 
               {/* Uma etapa por vez — arrastar entre etapas não funciona bem no toque,
                   então mover um lead é feito clicando no card (abre "mover para"). */}
-              {stages.filter(s => s.id === activeMobileStageId).map(stage => (
-                <StageColumn
-                  key={stage.id}
-                  stage={stage}
-                  leads={leadsByStage[stage.id] || []}
-                  organizationId={organizationId}
-                  totalLeads={pipelineLeads.length}
-                  isGoalsEnabled={isGoalsEnabled}
-                  stageStats={stageStats[stage.id]}
-                  displayLimit={displayLimit}
-                  onLeadClick={setMovingLead}
-                />
-              ))}
+              <div className="flex-1 min-h-0">
+                {stages.filter(s => s.id === activeMobileStageId).map(stage => (
+                  <StageColumn
+                    key={stage.id}
+                    stage={stage}
+                    leads={leadsByStage[stage.id] || []}
+                    organizationId={organizationId}
+                    totalLeads={pipelineLeads.length}
+                    isGoalsEnabled={isGoalsEnabled}
+                    stageStats={stageStats[stage.id]}
+                    onLeadClick={setMovingLead}
+                    onLeadInfoClick={setDetailLead}
+                  />
+                ))}
+              </div>
             </div>
           ) : (
-            <div className="flex gap-4 pb-4 w-max mx-auto">
+            <div className="flex gap-4 pb-4 h-full">
               {stages.map((stage) => (
                 <StageColumn
                   key={stage.id}
@@ -419,7 +441,8 @@ export default function PipelineBoard({ organizationId, filters }: PipelineBoard
                   totalLeads={pipelineLeads.length}
                   isGoalsEnabled={isGoalsEnabled}
                   stageStats={stageStats[stage.id]}
-                  displayLimit={displayLimit}
+                  onLeadClick={setDetailLead}
+                  onLeadInfoClick={setDetailLead}
                 />
               ))}
             </div>
@@ -472,6 +495,31 @@ export default function PipelineBoard({ organizationId, filters }: PipelineBoard
                 </button>
               ))}
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Detalhes do lead — clicar num card (desktop) ou no "ⓘ" (qualquer tela) */}
+      {detailLead && (
+        <div className="fixed inset-0 z-50 bg-black/40 flex items-stretch sm:items-center sm:justify-end" onClick={() => setDetailLead(null)}>
+          <div className="flex ml-auto h-full sm:h-[92vh] sm:my-auto sm:mr-4 sm:rounded-2xl overflow-hidden shadow-2xl w-full sm:w-auto" onClick={(e) => e.stopPropagation()}>
+            <LeadDetailsSidebar
+              lead={detailLead}
+              stages={stages}
+              stageHistory={detailStageHistory}
+              stageHistoryLoading={detailHistoryLoading}
+              onStageChange={handleDetailStageChange}
+              onTagsChange={handleDetailTagsChange}
+              onUpdateLead={handleDetailUpdateLead}
+              pipelines={pipelines}
+              currentPipelineId={selectedPipelineId ?? undefined}
+              onPipelineChange={handleDetailPipelineChange}
+              onClose={() => setDetailLead(null)}
+              onGoToConversation={() => {
+                setDetailLead(null)
+                router.push(`/chat?leadId=${detailLead.id}`)
+              }}
+            />
           </div>
         </div>
       )}

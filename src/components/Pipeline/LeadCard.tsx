@@ -4,6 +4,7 @@ import { memo } from 'react'
 
 import { useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
+import { Info } from '@phosphor-icons/react'
 import { LeadWithOwner } from '@/lib/types'
 import { formatPhone } from '@/lib/utils'
 import Avatar from '@/components/Shared/Avatar'
@@ -15,9 +16,13 @@ interface LeadCardProps {
   isDragOverlay?: boolean
   stageColor?: string
   onClick?: () => void
+  /** Abre os detalhes do lead — separado do onClick porque no mobile o card inteiro já
+   * é usado pra abrir "mover para etapa" (arrastar é ruim no touch); esse botão dá um
+   * jeito de ver/editar informações sem competir com aquele clique. */
+  onInfoClick?: () => void
 }
 
-const LeadCard = ({ lead, isDragOverlay, stageColor, onClick }: LeadCardProps) => {
+const LeadCard = ({ lead, isDragOverlay, stageColor, onClick, onInfoClick }: LeadCardProps) => {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: lead.id,
   })
@@ -78,6 +83,20 @@ const LeadCard = ({ lead, isDragOverlay, stageColor, onClick }: LeadCardProps) =
             <h4 className="font-semibold text-sm text-gray-900 truncate pr-2">
               {formatPhone(lead.title)}
             </h4>
+            {onInfoClick && !isDragOverlay && (
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation()
+                  onInfoClick()
+                }}
+                onPointerDown={(e) => e.stopPropagation()}
+                className="text-gray-300 hover:text-gray-500 hover:bg-gray-50 rounded-full p-0.5 flex-shrink-0 transition-colors"
+                title="Ver detalhes do lead"
+              >
+                <Info size={16} />
+              </button>
+            )}
           </div>
 
           {/* Last message row */}

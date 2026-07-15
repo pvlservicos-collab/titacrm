@@ -52,7 +52,20 @@ interface LeadDetailsSidebarProps {
   onPipelineChange?: (pipelineId: string) => void
   /** Só passado quando renderizado como overlay em tela cheia no mobile — exibe um botão de fechar. */
   onClose?: () => void
+  /** Só passado por quem abre esse painel de fora de uma conversa já ativa (ex: Pipeline)
+   * — exibe um botão "Ver conversa". O próprio Chat não passa, já está dentro dela. */
+  onGoToConversation?: () => void
 }
+
+const ADDRESS_FIELDS: { key: 'cep' | 'address' | 'address_number' | 'address_complement' | 'neighborhood' | 'city' | 'state'; label: string; placeholder: string }[] = [
+  { key: 'cep', label: 'CEP', placeholder: 'Adicionar CEP...' },
+  { key: 'address', label: 'Rua', placeholder: 'Adicionar rua...' },
+  { key: 'address_number', label: 'Número', placeholder: 'Adicionar número...' },
+  { key: 'address_complement', label: 'Complemento', placeholder: 'Adicionar complemento...' },
+  { key: 'neighborhood', label: 'Bairro', placeholder: 'Adicionar bairro...' },
+  { key: 'city', label: 'Cidade', placeholder: 'Adicionar cidade...' },
+  { key: 'state', label: 'Estado', placeholder: 'Adicionar estado...' },
+]
 
 
 export default function LeadDetailsSidebar({
@@ -67,6 +80,7 @@ export default function LeadDetailsSidebar({
   currentPipelineId,
   onPipelineChange,
   onClose,
+  onGoToConversation,
 }: LeadDetailsSidebarProps) {
   const ownerName = lead.owner?.profiles?.full_name || ''
   const ownerInitials = ownerName
@@ -247,6 +261,28 @@ export default function LeadDetailsSidebar({
     }
   }
 
+  // Salva um campo de contato/endereço direto (sem modo de edição separado, como o
+  // nome tem) — mesmo padrão debounced já usado nos campos customizados abaixo.
+  const saveContactField = async (field: string, value: string) => {
+    const trimmed = value.trim()
+    const prevValue = (lead as any)[field] ?? null
+    if (trimmed === (prevValue || '')) return
+
+    if (onUpdateLead) onUpdateLead(lead.id, { [field]: trimmed || null } as any)
+
+    try {
+      const res = await fetch(`/api/leads/${lead.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ [field]: trimmed || null }),
+      })
+      if (!res.ok) throw new Error('Falha ao salvar')
+    } catch (err) {
+      console.error(`Failed to update lead field ${field}`, err)
+      if (onUpdateLead) onUpdateLead(lead.id, { [field]: prevValue } as any)
+    }
+  }
+
   const handleDeleteHistory = async () => {
     if (deletingHistory) return
     if (!confirm(`Apagar todo o histórico de mensagens da conversa com "${formatPhone(lead.title)}"? O contato continua no CRM, só as mensagens somem. Essa ação não pode ser desfeita.`)) return
@@ -346,6 +382,16 @@ export default function LeadDetailsSidebar({
             <div className="flex items-center justify-center flex-wrap gap-1.5 mb-3">
               <LeadBadges lead={lead} size="md" />
             </div>
+          )}
+
+          {onGoToConversation && (
+            <button
+              onClick={onGoToConversation}
+              className="w-full mb-3 flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold bg-[var(--chat-accent)] text-[var(--chat-bg-conversation)] hover:opacity-90 transition-opacity"
+            >
+              <ChatText size={16} weight="bold" />
+              Ver conversa
+            </button>
           )}
 
           <style>{`
@@ -605,36 +651,64 @@ export default function LeadDetailsSidebar({
                 </div>
               </div>
             )}
-            {lead.email && (
-              <div className="flex items-center gap-2.5">
-                <EnvelopeSimple
-                  size={16}
-                  className="text-[var(--chat-text-muted)] flex-shrink-0"
+            <div className="flex items-center gap-2.5">
+              <EnvelopeSimple size={16} className="text-[var(--chat-text-muted)] flex-shrink-0" />
+              <div className="flex-1 min-w-0">
+                <p className="text-[10px] font-bold uppercase tracking-wider text-[var(--chat-text-muted)]">
+                  E-mail
+                </p>
+                <DebouncedInput
+                  type="email"
+                  className="w-full text-sm text-[var(--chat-text-secondary)] border-b border-transparent hover:border-[var(--chat-border)] focus:border-[var(--chat-accent)] focus:outline-none bg-transparent placeholder-[var(--chat-text-tertiary)] pb-0.5 transition-colors"
+                  placeholder="Adicionar e-mail..."
+                  value={lead.email || ''}
+                  onChange={(val) => saveContactField('email', String(val))}
+                  debounceTime={700}
                 />
-                <div>
-                  <p className="text-[10px] font-bold uppercase tracking-wider text-[var(--chat-text-muted)]">
-                    E-mail
-                  </p>
-                  <p className="text-sm text-[var(--chat-text-secondary)] break-all">{lead.email}</p>
-                </div>
               </div>
-            )}
-            {lead.phone && (
-              <div className="flex items-center gap-2.5">
-                <Phone size={16} className="text-[var(--chat-text-muted)] flex-shrink-0" />
-                <div>
-                  <p className="text-[10px] font-bold uppercase tracking-wider text-[var(--chat-text-muted)]">
-                    Telefone
-                  </p>
-                  <p className="text-sm text-[var(--chat-text-secondary)]">{formatPhone(lead.phone)}</p>
-                </div>
+            </div>
+            <div className="flex items-center gap-2.5">
+              <Phone size={16} className="text-[var(--chat-text-muted)] flex-shrink-0" />
+              <div className="flex-1 min-w-0">
+                <p className="text-[10px] font-bold uppercase tracking-wider text-[var(--chat-text-muted)]">
+                  Telefone
+                </p>
+                <DebouncedInput
+                  type="tel"
+                  className="w-full text-sm text-[var(--chat-text-secondary)] border-b border-transparent hover:border-[var(--chat-border)] focus:border-[var(--chat-accent)] focus:outline-none bg-transparent placeholder-[var(--chat-text-tertiary)] pb-0.5 transition-colors"
+                  placeholder="Adicionar telefone..."
+                  value={lead.phone || ''}
+                  onChange={(val) => saveContactField('phone', String(val))}
+                  debounceTime={700}
+                />
               </div>
-            )}
-            {!lead.email && !lead.phone && !lead.custom_attributes?.instagram_username && (
-              <p className="text-sm text-[var(--chat-text-muted)]">
-                Sem informações de contato
-              </p>
-            )}
+            </div>
+          </div>
+        </div>
+
+        <div className="border-t border-[var(--chat-border)]" />
+
+        {/* Endereço */}
+        <div>
+          <p className="text-[10px] font-bold uppercase tracking-wider text-[var(--chat-text-muted)] mb-3">
+            Endereço
+          </p>
+          <div className="space-y-3">
+            {ADDRESS_FIELDS.map(({ key, label, placeholder }) => (
+              <div key={key}>
+                <p className="text-[10px] font-bold uppercase tracking-wider text-[var(--chat-text-muted)] mb-1">
+                  {label}
+                </p>
+                <DebouncedInput
+                  type="text"
+                  className="w-full text-[13px] font-medium border-b border-[var(--chat-border)] pb-1 focus:outline-none focus:border-[var(--chat-accent)] bg-transparent text-[var(--chat-text-secondary)] placeholder-[var(--chat-text-tertiary)]"
+                  placeholder={placeholder}
+                  value={(lead[key] as string) || ''}
+                  onChange={(val) => saveContactField(key, String(val))}
+                  debounceTime={700}
+                />
+              </div>
+            ))}
           </div>
         </div>
 

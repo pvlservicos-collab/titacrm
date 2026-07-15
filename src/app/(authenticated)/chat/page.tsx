@@ -49,6 +49,10 @@ export default function ChatPage() {
     const fromMemory = globalLeads.find(l => l.id === leadIdFromUrl)
     if (fromMemory) {
       setSelectedLead(fromMemory)
+      // Sem isso, um link tipo /chat?leadId=... resolvia o lead certo em segundo plano
+      // mas no celular a tela continuava mostrando a lista de conversas — a pessoa
+      // precisava tocar de novo pra entrar na conversa de verdade.
+      setMobileView('conversation')
       return
     }
 
@@ -57,7 +61,10 @@ export default function ChatPage() {
       const res = await fetch(`/api/leads/${leadIdFromUrl}`)
       if (res.ok) {
         const { data } = await res.json()
-        if (!cancelled && data) setSelectedLead(data as LeadWithOwner)
+        if (!cancelled && data) {
+          setSelectedLead(data as LeadWithOwner)
+          setMobileView('conversation')
+        }
       }
     })()
     return () => { cancelled = true }
