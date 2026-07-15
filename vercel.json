@@ -10,7 +10,7 @@
     },
     {
       "path": "/api/cron/evolution-reconcile",
-      "schedule": "*/15 * * * *"
+      "schedule": "* * * * *"
     }
   ]
 }

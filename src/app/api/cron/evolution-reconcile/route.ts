@@ -16,10 +16,17 @@ import { processEvolutionMessage } from '@/lib/evolutionInbound'
  * mensagem real sem deixar rastro nenhum (uma foto+legenda chegou como
  * "messages.update" em vez de "messages.upsert" — já corrigido — mas webhook é
  * best-effort por natureza: uma falha de rede, um restart da Evolution, etc. podem
- * fazer o mesmo independente de bug no nosso código). Roda a cada 15 min (ver
- * vercel.json) — 300 mensagens mais recentes cobrem várias horas de tráfego mesmo
- * numa instância com bastante volume de grupo, então a janela de 15 min tem folga
- * generosa mesmo se um ciclo atrasar ou falhar.
+ * fazer o mesmo independente de bug no nosso código).
+ *
+ * Roda a cada 1 min (o mínimo que a Vercel permite — ver vercel.json). Intervalo
+ * curto de propósito: confirmamos em 2026-07-15 que áudio enviado direto do WhatsApp
+ * Nº2 nunca chega pelo webhook em tempo real (causa exata não identificada — só a
+ * reconciliação recupera), então o intervalo do cron é literalmente o atraso que o
+ * usuário sente pra ver um áudio enviado direto do celular aparecer no CRM.
+ *
+ * Também: até 2026-07-15 esse cron nunca rodou de verdade (rota faltava em
+ * `publicPaths` do middleware — ver memória do projeto) — se voltar a "não recuperar
+ * nada", checar isso antes de suspeitar de outra causa.
  */
 const PAGE_SIZE = 300
 
