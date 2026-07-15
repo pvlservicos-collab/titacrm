@@ -116,13 +116,24 @@ export default function ChatWindow({ lead, organizationId, onMessageSent }: Chat
     setSendError(null)
     try {
       if (onMessageSent) onMessageSent(qr.content || `[${qr.mediaType}]`)
-      await sendMediaMessage(
-        qr.mediaUrl,
-        qr.mediaType as 'image' | 'video' | 'audio' | 'document' | 'sticker',
-        qr.content,
-        qr.mediaFilename || undefined,
-        qr.mediaMimetype || undefined
-      )
+
+      // Nota de voz não aceita legenda no WhatsApp — mandar texto no campo de legenda
+      // aqui simplesmente some sem chegar no cliente, mesmo aparecendo (errado) como
+      // enviado no histórico do CRM. Pra áudio com texto junto, manda como duas
+      // mensagens reais: o áudio primeiro, depois o texto — igual sairia se alguém
+      // gravasse e mandasse assim manualmente.
+      if (qr.mediaType === 'audio' && qr.content.trim()) {
+        await sendMediaMessage(qr.mediaUrl, 'audio', '', qr.mediaFilename || undefined, qr.mediaMimetype || undefined)
+        await sendHumanMessage(qr.content, 'whatsapp', currentOrganization?.id)
+      } else {
+        await sendMediaMessage(
+          qr.mediaUrl,
+          qr.mediaType as 'image' | 'video' | 'audio' | 'document' | 'sticker',
+          qr.content,
+          qr.mediaFilename || undefined,
+          qr.mediaMimetype || undefined
+        )
+      }
     } catch (error) {
       console.error('Failed to send quick reply media:', error)
       setSendError('Falha ao enviar mídia. Verifique sua conexão e tente novamente.')
