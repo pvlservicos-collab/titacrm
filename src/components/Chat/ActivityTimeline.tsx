@@ -1,7 +1,7 @@
 'use client'
 
 import { useRef, useEffect, useState, useMemo, memo } from 'react'
-import { Sparkle, X, MagnifyingGlassPlus, Play, Pause, Microphone, ArrowBendUpLeft, Check, WarningCircle, Lightning, PushPin, Trash, Prohibit } from '@phosphor-icons/react'
+import { Sparkle, X, MagnifyingGlassPlus, Play, Pause, Microphone, ArrowBendUpLeft, Check, WarningCircle, Lightning, PushPin, Trash, Prohibit, Checks } from '@phosphor-icons/react'
 import { LeadActivityWithActor, LeadWithOwner } from '@/lib/types'
 import { formatTime } from '@/lib/utils'
 import { useAuth } from '@/hooks'
@@ -656,6 +656,14 @@ export default function ActivityTimeline({
   }
   const clearSelection = () => setSelectedIds(new Set())
 
+  // Toda mensagem que já pode ser selecionada individualmente (checkbox só aparece
+  // nas mensagens que a própria empresa mandou — canDeleteActivity já garante isso).
+  // Só alcança o que já está carregado (últimas ~300 mensagens da conversa).
+  const selectableActivityIds = activities
+    .filter((a) => a.type !== 'note' && a.type !== 'call' && a.type !== 'email' && canDeleteActivity(a))
+    .map((a) => a.id)
+  const selectAllEligible = () => setSelectedIds(new Set(selectableActivityIds))
+
   // ChatWindow não remonta ao trocar de lead (sem key={lead.id}) — sem isso a seleção
   // de um lead ficaria pendurada ao abrir outra conversa.
   useEffect(() => {
@@ -852,7 +860,7 @@ export default function ActivityTimeline({
         <div className="flex flex-col flex-1 justify-end">{elements}</div>
       </div>
 
-      {selectedIds.size > 0 && (
+      {selectedIds.size > 0 ? (
         <div className="flex items-center justify-between gap-3 px-4 py-2.5 border-t border-[var(--chat-border)] bg-[var(--chat-bg-panel)] z-10 relative">
           <div className="flex items-center gap-2">
             <button
@@ -866,16 +874,38 @@ export default function ActivityTimeline({
               {selectedIds.size} {selectedIds.size === 1 ? 'selecionada' : 'selecionadas'}
             </span>
           </div>
+          <div className="flex items-center gap-2">
+            {selectedIds.size < selectableActivityIds.length && (
+              <button
+                onClick={selectAllEligible}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[var(--chat-text-muted)] hover:text-[var(--chat-text-primary)] hover:bg-[var(--chat-bg-hover)] text-sm font-medium transition-colors"
+              >
+                <Checks size={14} weight="bold" />
+                Selecionar todas
+              </button>
+            )}
+            <button
+              onClick={() => setBulkDeleteOpen(true)}
+              disabled={bulkDeleting}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-red-500/10 hover:bg-red-500/20 border border-red-500/30 text-red-400 text-sm font-medium transition-colors disabled:opacity-50"
+            >
+              <Trash size={14} weight="bold" />
+              {bulkDeleting ? 'Apagando…' : 'Apagar selecionadas'}
+            </button>
+          </div>
+        </div>
+      ) : selectableActivityIds.length > 0 ? (
+        <div className="flex items-center justify-end px-4 py-1.5 border-t border-[var(--chat-border)] bg-[var(--chat-bg-panel)] z-10 relative">
           <button
-            onClick={() => setBulkDeleteOpen(true)}
-            disabled={bulkDeleting}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-red-500/10 hover:bg-red-500/20 border border-red-500/30 text-red-400 text-sm font-medium transition-colors disabled:opacity-50"
+            onClick={selectAllEligible}
+            className="flex items-center gap-1.5 px-2 py-1 rounded-lg text-xs font-medium text-[var(--chat-text-muted)] hover:text-[var(--chat-text-primary)] hover:bg-[var(--chat-bg-hover)] transition-colors"
+            title="Seleciona as mensagens enviadas pela empresa nesta conversa — mensagens do cliente não podem ser apagadas do lado dele"
           >
-            <Trash size={14} weight="bold" />
-            {bulkDeleting ? 'Apagando…' : 'Apagar selecionadas'}
+            <Checks size={14} weight="bold" />
+            Selecionar todas as mensagens
           </button>
         </div>
-      )}
+      ) : null}
 
       {selectedImage && (
         <div
