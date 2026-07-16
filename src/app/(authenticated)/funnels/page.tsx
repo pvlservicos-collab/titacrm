@@ -9,7 +9,7 @@ import NotAuthorized from '@/components/Shared/NotAuthorized'
 interface FunnelSummary {
   id: string
   name: string
-  trigger: 'novo_pago' | 'novo_recuperacao' | 'geracaowhatsapp' | 'pedido_figurinha' | 'abandono_preco'
+  trigger: 'novo_pago' | 'novo_recuperacao'
   is_active: boolean
   created_at: string
   metrics: {
@@ -24,9 +24,6 @@ interface FunnelSummary {
 const TRIGGER_LABELS: Record<string, string> = {
   novo_pago: 'Novo Pago',
   novo_recuperacao: 'Novo Recuperação',
-  geracaowhatsapp: 'Geração de Figurinha',
-  pedido_figurinha: 'Pedido de Figurinha',
-  abandono_preco: 'Abandono de Preço',
 }
 
 export default function FunnelsPage() {
@@ -38,7 +35,7 @@ export default function FunnelsPage() {
   const [creating, setCreating] = useState(false)
   const [showNewModal, setShowNewModal] = useState(false)
   const [newName, setNewName] = useState('')
-  const [newTrigger, setNewTrigger] = useState<'novo_pago' | 'novo_recuperacao' | 'geracaowhatsapp' | 'pedido_figurinha' | 'abandono_preco'>('novo_recuperacao')
+  const [newTrigger, setNewTrigger] = useState<'novo_pago' | 'novo_recuperacao'>('novo_recuperacao')
 
   const fetchFunnels = async () => {
     setLoading(true)
@@ -217,9 +214,6 @@ export default function FunnelsPage() {
             >
               <option value="novo_recuperacao">Novo Recuperação</option>
               <option value="novo_pago">Novo Pago</option>
-              <option value="pedido_figurinha">Pedido de Figurinha</option>
-              <option value="geracaowhatsapp">Geração de Figurinha</option>
-              <option value="abandono_preco">Abandono de Preço</option>
             </select>
 
             <div className="flex justify-end gap-2">

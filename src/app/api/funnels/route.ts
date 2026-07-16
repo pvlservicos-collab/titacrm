@@ -4,7 +4,7 @@ import { db } from '@/lib/db'
 import { messageFunnels, funnelBlocks, funnelExecutions, leadActivities, funnelClickEvents } from '@/lib/schema'
 import { eq, and, isNull, sql } from 'drizzle-orm'
 
-const VALID_TRIGGERS = ['novo_pago', 'novo_recuperacao', 'geracaowhatsapp', 'pedido_figurinha', 'abandono_preco']
+const VALID_TRIGGERS = ['novo_pago', 'novo_recuperacao']
 
 /**
  * GET /api/funnels

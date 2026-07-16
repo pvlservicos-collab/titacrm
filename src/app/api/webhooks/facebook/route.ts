@@ -18,14 +18,6 @@ import { dispatchOutboundWebhook } from '@/lib/outbound-webhook'
 import { ORGANIZATION_ID } from '@/lib/automated-message'
 import { isUniqueViolation } from '@/lib/db-helpers'
 import { notifyInboundMessage } from '@/lib/push'
-import {
-  FIGURINHA_BUSCANDO_MESSAGE,
-  FIGURINHA_READY_TEST_NUMBERS,
-  buildFigurinhaFlowPreviewMessages,
-  extractFigurinhaNumero,
-  runFigurinhaFunnel,
-  sendFigurinhaAutoMessage,
-} from '@/lib/figurinha'
 
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url)
@@ -469,27 +461,6 @@ export async function POST(req: NextRequest) {
       mediaFilename,
       audioPtt: message.type === 'audio' ? !!message.audio?.voice : undefined,
     })
-
-    // Fluxo de figurinha: cliente pede "Quero minha figurinha Nº#..."
-    if (!isOutboundEcho && orgId === ORGANIZATION_ID) {
-      const numero = extractFigurinhaNumero(content)
-      if (numero) {
-        await runFigurinhaFunnel('pedido_figurinha', leadId, numero, () =>
-          sendFigurinhaAutoMessage(leadId, phone, FIGURINHA_BUSCANDO_MESSAGE, 'geracaowhatsapp_buscando')
-        )
-
-        if (FIGURINHA_READY_TEST_NUMBERS.has(numero)) {
-          // Número de teste/monitoramento: o fluxo único (pedido_figurinha →
-          // geracaowhatsapp → abandono_preco) já cascateia automaticamente,
-          // então só enviamos o log com todas as mensagens do fluxo, uma por
-          // uma, exatamente como seriam enviadas ao cliente, só para uso interno.
-          const previewMessages = await buildFigurinhaFlowPreviewMessages(numero, senderName)
-          for (const message of previewMessages) {
-            await sendFigurinhaAutoMessage(leadId, phone, message, 'geracaowhatsapp_log')
-          }
-        }
-      }
-    }
 
     return Response.json({ status: 'ok' })
   } catch (err: any) {

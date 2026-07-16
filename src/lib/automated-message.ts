@@ -10,16 +10,12 @@ export const ORGANIZATION_ID = 'bdfac9ab-68cd-4434-856c-897199dc267d'
 // Pipeline e tag de origem aplicados quando o lead entra via cada webhook automático.
 const STAGE_NAME_BY_SOURCE: Record<string, string> = {
   recuperacao: 'Novo Reculperação',
-  figurinha_liberada: 'Novo pago',
 }
 const TAG_BY_SOURCE: Record<string, { name: string; color: string }> = {
   recuperacao: { name: 'Recuperação', color: '#f97316' },
-  figurinha_liberada: { name: 'Pago', color: '#22c55e' },
 }
-// Gatilho de funil de mensagens correspondente a cada webhook automático.
 const FUNNEL_TRIGGER_BY_SOURCE: Record<string, 'novo_pago' | 'novo_recuperacao'> = {
   recuperacao: 'novo_recuperacao',
-  figurinha_liberada: 'novo_pago',
 }
 
 /**

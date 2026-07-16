@@ -41,9 +41,6 @@ type FlowNode = Node<FunnelBlockData>
 const TRIGGER_LABELS: Record<string, string> = {
   novo_pago: 'Novo Pago',
   novo_recuperacao: 'Novo Recuperação',
-  geracaowhatsapp: 'Geração de Figurinha',
-  pedido_figurinha: 'Pedido de Figurinha',
-  abandono_preco: 'Abandono de Preço',
 }
 
 const CONDITION_TYPE_LABELS: Record<string, string> = {
@@ -52,19 +49,13 @@ const CONDITION_TYPE_LABELS: Record<string, string> = {
   pagamento: 'Pagamento confirmado',
 }
 
-// Webhook que dispara cada gatilho de funil (ajuda a identificar qual evento externo aciona o bloco).
 const TRIGGER_WEBHOOKS: Record<string, string> = {
-  novo_pago: '/api/webhooks/figurinha-liberada',
+  novo_pago: '/api/webhooks/recuperacao (pago)',
   novo_recuperacao: '/api/webhooks/recuperacao',
-  geracaowhatsapp: '/api/webhooks/figurinha-gerada',
-  pedido_figurinha: '/api/webhooks/facebook (mensagem do cliente)',
-  abandono_preco: '/api/webhooks/figurinha-abandono-preco',
 }
 
-// Webhook que resolve cada tipo de condição (quando aplicável).
 const CONDITION_WEBHOOKS: Record<string, string> = {
-  clique_pagina: '/api/webhooks/figurinha-pagina-vista',
-  pagamento: '/api/webhooks/figurinha-liberada',
+  pagamento: '/api/webhooks/recuperacao (confirmação)',
 }
 
 // ── Custom Nodes ────────────────────────────────────────────────────────────
@@ -211,9 +202,6 @@ function BlockEditorPanel({ node, onChange, onDelete, onClose }: {
             >
               <option value="novo_recuperacao">Novo Recuperação</option>
               <option value="novo_pago">Novo Pago</option>
-              <option value="pedido_figurinha">Pedido de Figurinha</option>
-              <option value="geracaowhatsapp">Geração de Figurinha</option>
-              <option value="abandono_preco">Abandono de Preço</option>
             </select>
           </div>
         )}
@@ -230,7 +218,7 @@ function BlockEditorPanel({ node, onChange, onDelete, onClose }: {
                 className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 resize-none"
               />
               <p className="text-[11px] text-gray-400 mt-1">
-                Use <code className="bg-gray-100 px-1 rounded">{'{nome}'}</code> para o nome do lead, <code className="bg-gray-100 px-1 rounded">{'{link}'}</code> para o link rastreável, <code className="bg-gray-100 px-1 rounded">{'{link_figurinha}'}</code> para o link da figurinha e <code className="bg-gray-100 px-1 rounded">{'{link_desconto}'}</code> para o link de desconto.
+                Use <code className="bg-gray-100 px-1 rounded">{'{nome}'}</code> para o nome do lead e <code className="bg-gray-100 px-1 rounded">{'{link}'}</code> para o link rastreável.
               </p>
             </div>
             <div>
