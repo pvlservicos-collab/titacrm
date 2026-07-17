@@ -38,7 +38,7 @@ export default function InicioPage() {
                     <h1 className="text-3xl font-bold text-ink">
                         {firstName ? `Bem-vindo, ${firstName}` : 'Bem-vindo'}
                     </h1>
-                    <p className="text-sm text-muted">Conecte seu WhatsApp e explore as funções do Follem por aqui.</p>
+                    <p className="text-sm text-muted">Configure essas etapas apenas uma vez e todas as funções ficarão disponíveis!</p>
                 </div>
             </div>
 
