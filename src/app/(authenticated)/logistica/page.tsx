@@ -78,7 +78,7 @@ function formatDateTime(iso: string) {
 
 export default function LogisticaPage() {
   const { loading: authLoading, permissions, isMaster, roleName } = useAuth()
-  const isAdmin = isMaster || roleName?.toLowerCase() === 'administrador' || roleName?.toLowerCase() === 'owner'
+  const isAdmin = isMaster || roleName?.toLowerCase() === 'administrador' || roleName?.toLowerCase() === 'owner' || permissions?.['*']
   const searchParams = useSearchParams()
   const [orders, setOrders] = useState<Order[]>([])
   const [loading, setLoading] = useState(true)

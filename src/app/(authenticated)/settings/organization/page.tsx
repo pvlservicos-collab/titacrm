@@ -25,9 +25,9 @@ async function hashToken(token: string): Promise<string> {
 }
 
 export default function ProfileSettingsPage() {
-    const { organizationId, roleName, isMaster, currentOrganization } = useAuth()
+    const { organizationId, roleName, isMaster, currentOrganization, permissions } = useAuth()
     const fileInputRef = useRef<HTMLInputElement>(null)
-    const isAdmin = isMaster || roleName?.toLowerCase() === 'administrador' || roleName?.toLowerCase() === 'owner'
+    const isAdmin = isMaster || roleName?.toLowerCase() === 'administrador' || roleName?.toLowerCase() === 'owner' || permissions?.['*']
 
     // API Token state
     const [tokens, setTokens] = useState<ApiToken[]>([])

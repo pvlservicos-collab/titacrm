@@ -51,10 +51,8 @@ export const profiles = pgTable('profiles', {
   avatarUrl: text('avatar_url'),
   timezone: text('timezone'),
   isSuperadmin: boolean('is_superadmin').default(false),
-  // Tour guiado em /welcome (conectar WhatsApp, overview de funções) no primeiro
-  // login. Contas criadas antes desta coluna existir nascem com true via backfill
-  // da migration 0115 — só contas novas (via /ativar-conta ou "Novo Membro") caem
-  // no tour.
+  // Não usado pra travar navegação (a página "Início" é livre, sem gate) — mantido
+  // como sinal leve/opcional, sem nenhuma tela dependendo dele hoje.
   onboardingCompleted: boolean('onboarding_completed').default(false),
 })
 

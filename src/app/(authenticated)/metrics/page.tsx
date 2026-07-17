@@ -6,7 +6,7 @@ import NotAuthorized from '@/components/Shared/NotAuthorized'
 
 export default function MetricsPage() {
   const { loading: authLoading, permissions, isMaster, roleName } = useAuth()
-  const isAdmin = isMaster || roleName?.toLowerCase() === 'administrador' || roleName?.toLowerCase() === 'owner'
+  const isAdmin = isMaster || roleName?.toLowerCase() === 'administrador' || roleName?.toLowerCase() === 'owner' || permissions?.['*']
 
   if (!authLoading && !isAdmin && permissions && !permissions.settings?.view_metrics) {
     return <NotAuthorized />

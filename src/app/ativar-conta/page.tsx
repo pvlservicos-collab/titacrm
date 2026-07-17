@@ -71,8 +71,7 @@ function AtivarContaForm() {
                 return
             }
 
-            // Conta nova nasce com onboarding_completed = false — vai direto pro tour.
-            router.push('/welcome')
+            router.push('/')
             router.refresh()
         } catch (err) {
             setError('Ocorreu um erro. Tente novamente.')

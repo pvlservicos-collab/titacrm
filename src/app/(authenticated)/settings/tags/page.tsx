@@ -9,14 +9,14 @@ import LoadingSpinner from '@/components/Shared/LoadingSpinner'
 import NotAuthorized from '@/components/Shared/NotAuthorized'
 
 export default function TagsSettingsPage() {
-    const { organizationId, loading: authLoading, roleName, isMaster } = useAuth()
+    const { organizationId, loading: authLoading, roleName, isMaster, permissions } = useAuth()
     const { tags, loading: tagsLoading, createTag, updateTag, deleteTag } = useTagsSettings(organizationId)
 
     const [editingTagId, setEditingTagId] = useState<string | null>(null)
     const [searchTerm, setSearchTerm] = useState('')
 
     // Apenas Admins e Master podem acessar
-    const isAdmin = isMaster || roleName?.toLowerCase() === 'administrador' || roleName?.toLowerCase() === 'owner'
+    const isAdmin = isMaster || roleName?.toLowerCase() === 'administrador' || roleName?.toLowerCase() === 'owner' || permissions?.['*']
 
     // Filtragem de tags
     const filteredTags = useMemo(() => {

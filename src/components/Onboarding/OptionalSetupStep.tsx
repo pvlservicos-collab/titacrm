@@ -9,7 +9,7 @@ interface OptionalSetupStepProps {
 export default function OptionalSetupStep({ onNavigate }: OptionalSetupStepProps) {
     return (
         <div className="border-t border-line pt-8">
-            <p className="text-[11px] font-bold text-muted uppercase tracking-[0.3em] mb-2">Passo 3 · opcional</p>
+            <p className="text-[11px] font-bold text-muted uppercase tracking-[0.3em] mb-2">Atalhos</p>
             <h3 className="text-lg font-medium text-ink mb-4">Prepare seu funil</h3>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <button

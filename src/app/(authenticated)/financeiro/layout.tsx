@@ -13,7 +13,7 @@ const TABS = [
 export default function FinanceiroLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
   const { loading, permissions, isMaster, roleName } = useAuth()
-  const isAdmin = isMaster || roleName?.toLowerCase() === 'administrador' || roleName?.toLowerCase() === 'owner'
+  const isAdmin = isMaster || roleName?.toLowerCase() === 'administrador' || roleName?.toLowerCase() === 'owner' || permissions?.['*']
 
   if (!loading && !isAdmin && permissions && !permissions.settings?.view_financeiro) {
     return <NotAuthorized />

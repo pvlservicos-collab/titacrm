@@ -11,7 +11,7 @@ export default function PipelinePage() {
   const { filters } = usePipelineFilters()
 
   // Security Check Check
-  const isAdmin = isMaster || roleName?.toLowerCase() === 'administrador' || roleName?.toLowerCase() === 'owner'
+  const isAdmin = isMaster || roleName?.toLowerCase() === 'administrador' || roleName?.toLowerCase() === 'owner' || permissions?.['*']
   if (!loading && !isAdmin && permissions && !permissions.settings?.view_pipeline) {
     return <NotAuthorized />
   }

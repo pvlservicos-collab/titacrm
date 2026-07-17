@@ -215,7 +215,7 @@ export default function ChatPage() {
     setLeads(prev => prev.map(l => l.id === leadId ? { ...l, ...updates } : l))
   }, [setLeads])
 
-  const isAdmin = isMaster || roleName?.toLowerCase() === 'administrador' || roleName?.toLowerCase() === 'owner'
+  const isAdmin = isMaster || roleName?.toLowerCase() === 'administrador' || roleName?.toLowerCase() === 'owner' || permissions?.['*']
   if (!loading && !isAdmin && permissions && !permissions.settings?.view_chat) {
     return <NotAuthorized />
   }

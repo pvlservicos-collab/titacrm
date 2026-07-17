@@ -92,7 +92,7 @@ export default function ConnectWhatsAppStep({ connected, onConnected, onStep2Don
     return (
         <div className="space-y-8">
             <div>
-                <p className="text-[11px] font-bold text-accent-2 uppercase tracking-[0.3em] mb-2">Passo 1</p>
+                <p className="text-[11px] font-bold text-accent-2 uppercase tracking-[0.3em] mb-2">Whatsapp</p>
                 <h2 className="text-2xl sm:text-3xl font-light text-ink tracking-tight mb-2">Conecte seu WhatsApp</h2>
                 <p className="text-sm text-muted max-w-2xl">
                     Você não precisa configurar nenhum webhook — isso já está pronto na nossa plataforma.
@@ -117,8 +117,7 @@ export default function ConnectWhatsAppStep({ connected, onConnected, onStep2Don
 
             {connected && (
                 <div className="border-t border-line pt-6">
-                    <p className="text-[11px] font-bold text-accent-2 uppercase tracking-[0.3em] mb-2">Passo 2</p>
-                    <h3 className="text-lg font-medium text-ink mb-3">Confirme a conexão</h3>
+                    <h3 className="text-lg font-medium text-ink mb-3">Status da conexão</h3>
                     {step2Done ? (
                         <div className="flex items-center gap-2 text-emerald-400 bg-emerald-500/10 border border-emerald-500/30 rounded-lg px-4 py-3 text-sm">
                             <CheckCircle size={18} weight="fill" />

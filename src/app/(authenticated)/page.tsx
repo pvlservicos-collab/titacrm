@@ -1,101 +1,73 @@
 'use client'
 
-import { useEffect } from 'react'
+import { useState } from 'react'
+import { RocketLaunch } from '@phosphor-icons/react'
 import { useAuth } from '@/hooks'
-import NotAuthorized from '@/components/Shared/NotAuthorized'
-import LoadingSpinner from '@/components/Shared/LoadingSpinner'
-import Button from '@/components/Shared/Button'
-import { useNotification } from '@/contexts/NotificationContext'
 import { useRouter } from 'next/navigation'
+import Button from '@/components/Shared/Button'
+import LoadingSpinner from '@/components/Shared/LoadingSpinner'
+import ConnectWhatsAppStep from '@/components/Onboarding/ConnectWhatsAppStep'
+import OptionalSetupStep from '@/components/Onboarding/OptionalSetupStep'
+import FeatureOverviewGrid from '@/components/Onboarding/FeatureOverviewGrid'
 
-export default function Home() {
-  const { loading, permissions, isMaster, roleName } = useAuth()
-  const { addNotification } = useNotification()
-  const router = useRouter()
+/**
+ * Início — página normal (não travada, sem etapas obrigatórias), sempre acessível
+ * pela Navbar. Quem quiser pode ir direto pro Pipeline/Chat a qualquer momento.
+ */
+export default function InicioPage() {
+    const router = useRouter()
+    const { profileName, user, loading } = useAuth()
+    const [connected, setConnected] = useState(false)
 
-  // Abre o chat direto ao acessar o app
-  useEffect(() => {
-    router.replace('/chat')
-  }, [router])
+    const firstName = (profileName || user?.email || '').split(' ')[0] || ''
 
-  // Security Check Check
-  const isAdmin = isMaster || roleName?.toLowerCase() === 'administrador' || roleName?.toLowerCase() === 'owner'
-  if (!loading && !isAdmin && permissions && !permissions.settings?.view_dashboard) {
-    return <NotAuthorized />
-  }
+    if (loading) {
+        return (
+            <div className="flex items-center justify-center h-[calc(100vh-56px)]">
+                <LoadingSpinner text="Carregando..." size="lg" />
+            </div>
+        )
+    }
 
-  if (loading || (!isAdmin && !permissions)) {
     return (
-      <div className="flex items-center justify-center h-[calc(100vh-56px)]">
-        <LoadingSpinner text="Carregando..." size="lg" />
-      </div>
-    )
-  }
+        <div className="min-h-full bg-void relative overflow-hidden">
+            <div className="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden="true">
+                <div className="absolute -top-40 left-1/2 -translate-x-1/2 w-[800px] h-[800px] rounded-full bg-[radial-gradient(circle,rgba(61,123,255,0.12)_0%,transparent_70%)]" />
+                <div className="absolute bottom-0 right-0 w-[500px] h-[500px] rounded-full bg-[radial-gradient(circle,rgba(91,155,255,0.08)_0%,transparent_70%)]" />
+            </div>
 
-  return (
-    <div className="flex flex-col items-center justify-center h-[calc(100vh-56px)] gap-8">
-      <div className="text-center">
-        <img src="/logos/Atlas.svg" alt="Follem Logo" className="h-12 w-auto object-contain mx-auto mb-4 drop-shadow-lg" />
-        <h1 className="text-3xl font-bold text-ink mb-2 font-display">
-          Follem CRM
-        </h1>
-        <p className="text-muted">
-          Sales CRM com AI Insights e Colaboracao em Tempo Real
-        </p>
-      </div>
+            <div className="relative max-w-4xl mx-auto px-4 sm:px-6 py-12 sm:py-16">
+                <div className="text-center mb-12">
+                    <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-panel-2 border border-accent-line mb-6 shadow-glow">
+                        <RocketLaunch size={26} weight="fill" className="text-accent-2" />
+                    </div>
+                    <p className="text-[11px] font-bold text-accent-2 uppercase tracking-[0.32em] mb-3">
+                        {firstName ? `Olá, ${firstName}` : 'Bem-vindo'}
+                    </p>
+                    <h1 className="text-3xl sm:text-4xl font-light text-ink tracking-tight mb-3">Vamos decolar.</h1>
+                    <p className="text-muted max-w-lg mx-auto">
+                        Conecte seu WhatsApp e explore as funções do Follem por aqui, sempre que precisar.
+                    </p>
+                </div>
 
-      <div className="flex gap-4 mb-12">
-        <Button href="/pipeline" variant="primary">Pipeline</Button>
-        <Button href="/chat" variant="secondary">Chats</Button>
-      </div>
+                <div className="bg-panel border border-line rounded-2xl p-6 sm:p-10 mb-12">
+                    <ConnectWhatsAppStep connected={connected} onConnected={() => setConnected(true)} />
+                    <div className="mt-8">
+                        <OptionalSetupStep onNavigate={(href) => router.push(href)} />
+                    </div>
+                </div>
 
-      <div className="mt-8 pt-8 border-t border-line w-full max-w-2xl flex flex-col items-center">
-        <h2 className="text-sm font-bold text-muted uppercase tracking-wider mb-6">Testar Nova Central de Notificações</h2>
-        <div className="flex flex-wrap items-center justify-center gap-4">
-          <button
-            onClick={() => {
-              addNotification({
-                type: 'success',
-                title: 'Novo Lead Recebido!',
-                message: 'Mariana Costa acaba de entrar no funil via WhatsApp.',
-                actionText: 'Visualizar Chat',
-                onAction: () => router.push('/chat')
-              })
-            }}
-            className="px-4 py-2 border border-line bg-panel text-ink hover:bg-panel-2 rounded-lg text-sm font-semibold transition-colors"
-          >
-            Notificação: Novo Lead
-          </button>
+                <div className="mb-4">
+                    <p className="text-[11px] font-bold text-muted uppercase tracking-[0.3em] mb-4 text-center">
+                        O que você vai encontrar por aqui
+                    </p>
+                    <FeatureOverviewGrid />
+                </div>
 
-          <button
-            onClick={() => {
-              addNotification({
-                type: 'message',
-                title: 'Suporte Humano Solicitado',
-                message: 'O lead João Paulo clicou no botão para falar com um atendente.',
-                actionText: 'Assumir Chat',
-                onAction: () => router.push('/chat')
-              })
-            }}
-            className="px-4 py-2 border border-line bg-panel text-ink hover:bg-panel-2 rounded-lg text-sm font-semibold transition-colors"
-          >
-            Notificação: Suporte Humano
-          </button>
-
-          <button
-            onClick={() => {
-              addNotification({
-                type: 'error',
-                title: 'Falha ao Atualizar Senha',
-                message: 'A nova senha deve ser diferente da senha atual.'
-              })
-            }}
-            className="px-4 py-2 border border-line bg-panel text-ink hover:bg-panel-2 rounded-lg text-sm font-semibold transition-colors"
-          >
-            Erro: Atualizar Senha
-          </button>
+                <div className="flex flex-col items-center gap-3 pt-8">
+                    <Button href="/chat" variant="primary" showArrow>Ir para o chat</Button>
+                </div>
+            </div>
         </div>
-      </div>
-    </div>
-  )
+    )
 }

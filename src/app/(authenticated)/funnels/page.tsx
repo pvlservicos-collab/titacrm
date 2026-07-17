@@ -29,7 +29,7 @@ const TRIGGER_LABELS: Record<string, string> = {
 export default function FunnelsPage() {
   const router = useRouter()
   const { loading: authLoading, permissions, isMaster, roleName } = useAuth()
-  const isAdmin = isMaster || roleName?.toLowerCase() === 'administrador' || roleName?.toLowerCase() === 'owner'
+  const isAdmin = isMaster || roleName?.toLowerCase() === 'administrador' || roleName?.toLowerCase() === 'owner' || permissions?.['*']
   const [funnels, setFunnels] = useState<FunnelSummary[]>([])
   const [loading, setLoading] = useState(true)
   const [creating, setCreating] = useState(false)

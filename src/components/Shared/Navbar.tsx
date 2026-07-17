@@ -21,6 +21,7 @@ import {
   Moon,
   List,
   X,
+  House,
 } from '@phosphor-icons/react'
 import { useAuth, usePipeline } from '@/hooks'
 import { useTheme } from '@/contexts/ThemeContext'
@@ -31,6 +32,7 @@ import NotificationDropdown from '@/components/Shared/NotificationDropdown'
 import { usePipelineFilters } from '@/contexts/FilterContext'
 
 const NAV_ITEMS = [
+  { label: 'Início', href: '/', icon: House },
   { label: 'Pipeline', href: '/pipeline', icon: Kanban },
   { label: 'Chat', href: '/chat', icon: ChatCircleDots },
   { label: 'Funil de Mensagens', href: '/funnels', icon: FlowArrow },
@@ -97,8 +99,14 @@ export default function Navbar() {
   const avatarUrl = user?.image
 
   const isItemVisible = (label: string): boolean => {
-    // Superadmins and org Admins see everything
-    if (isMaster || roleName?.toLowerCase() === 'administrador' || roleName?.toLowerCase() === 'owner') return true
+    // Início é a aba de boas-vindas/conexão — sempre visível, sem depender de permissão
+    if (label === 'Início') return true
+
+    // Superadmins e Admins de organização veem tudo. O papel "Admin" criado pelo fluxo
+    // padrão (POST /api/admin/create-workspace) usa permissions: {"*": true} — sem esse
+    // check, contas Admin novas ficavam sem menu nenhum (só reconhecia roleName
+    // "administrador"/"owner", que não é o valor real usado em lugar nenhum do app).
+    if (isMaster || roleName?.toLowerCase() === 'administrador' || roleName?.toLowerCase() === 'owner' || permissions?.['*']) return true
 
     // If permissions aren't loaded yet, default to false (except Dashboard maybe, but safer to hide until loaded)
     if (!permissions) return false

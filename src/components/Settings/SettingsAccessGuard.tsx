@@ -11,7 +11,7 @@ export default function SettingsAccessGuard({ children }: { children: React.Reac
         return <>{children}</>
     }
 
-    const isAdmin = isMaster || roleName?.toLowerCase() === 'administrador' || roleName?.toLowerCase() === 'owner'
+    const isAdmin = isMaster || roleName?.toLowerCase() === 'administrador' || roleName?.toLowerCase() === 'owner' || permissions?.['*']
 
     if (!isAdmin && permissions && !permissions.settings?.view_settings) {
         return (

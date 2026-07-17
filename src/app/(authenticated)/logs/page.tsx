@@ -20,7 +20,7 @@ interface LogEntry {
 
 export default function LogsPage() {
   const { loading: authLoading, permissions, isMaster, roleName } = useAuth()
-  const isAdmin = isMaster || roleName?.toLowerCase() === 'administrador' || roleName?.toLowerCase() === 'owner'
+  const isAdmin = isMaster || roleName?.toLowerCase() === 'administrador' || roleName?.toLowerCase() === 'owner' || permissions?.['*']
   const [logs, setLogs] = useState<LogEntry[]>([])
   const [loading, setLoading] = useState(true)
 
