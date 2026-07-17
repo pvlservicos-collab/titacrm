@@ -27,7 +27,7 @@ export default function PipelinePage() {
   if (!organizationId) {
     return (
       <div className="flex items-center justify-center h-[calc(100vh-56px)]">
-        <p className="text-gray-500">Nenhuma organização encontrada. Execute o seed.sql no Supabase.</p>
+        <p className="text-muted">Nenhuma organização encontrada. Execute o seed.sql no Supabase.</p>
       </div>
     )
   }

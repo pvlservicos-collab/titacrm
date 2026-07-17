@@ -163,30 +163,30 @@ export default function NovoPedidoModal({ onClose, onSuccess }: NovoPedidoModalP
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
-      <div className="bg-white border border-gray-100 rounded-2xl w-full max-w-2xl max-h-[90vh] flex flex-col shadow-2xl">
+      <div className="bg-panel border border-line rounded-2xl w-full max-w-2xl max-h-[90vh] flex flex-col shadow-2xl">
         {/* Header */}
-        <div className="flex items-center justify-between p-5 border-b border-gray-100">
-          <h2 className="text-lg font-bold text-gray-900">Novo pedido</h2>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 transition-colors"><X size={20} /></button>
+        <div className="flex items-center justify-between p-5 border-b border-line">
+          <h2 className="text-lg font-bold text-ink">Novo pedido</h2>
+          <button onClick={onClose} className="text-muted hover:text-muted transition-colors"><X size={20} /></button>
         </div>
 
         <div className="flex-1 overflow-y-auto p-5 space-y-5">
           {/* Data e hora do pedido */}
           <div>
-            <label className="text-[10px] font-bold uppercase tracking-wider text-gray-400 flex items-center gap-1.5 mb-1.5">
+            <label className="text-[10px] font-bold uppercase tracking-wider text-muted flex items-center gap-1.5 mb-1.5">
               <Calendar size={12} /> Data e hora do pedido
             </label>
             <input
               type="datetime-local"
               value={orderDate}
               onChange={e => setOrderDate(e.target.value)}
-              className="px-3 py-2 text-sm bg-white border border-gray-200 rounded-lg text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400"
+              className="px-3 py-2 text-sm bg-panel border border-line rounded-lg text-ink focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent"
             />
           </div>
 
           {/* Produtos */}
           <div>
-            <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400 mb-3">Produtos</p>
+            <p className="text-[10px] font-bold uppercase tracking-wider text-muted mb-3">Produtos</p>
             <div className="space-y-2">
               {items.map((item, idx) => {
                 const filtered = products.filter(p => p.name.toLowerCase().includes((productSearch[idx] || '').toLowerCase()))
@@ -204,39 +204,39 @@ export default function NovoPedidoModal({ onClose, onSuccess }: NovoPedidoModalP
                         }}
                         onFocus={() => setShowProductDropdown(prev => ({ ...prev, [idx]: true }))}
                         onBlur={() => setTimeout(() => setShowProductDropdown(prev => ({ ...prev, [idx]: false })), 150)}
-                        className="w-full px-3 py-2 text-sm bg-white border border-gray-200 rounded-lg text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400"
+                        className="w-full px-3 py-2 text-sm bg-panel border border-line rounded-lg text-ink placeholder-muted focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent"
                       />
                       {showProductDropdown[idx] && filtered.length > 0 && (
-                        <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-10 max-h-40 overflow-y-auto">
+                        <div className="absolute top-full left-0 right-0 mt-1 bg-panel border border-line rounded-lg shadow-lg z-10 max-h-40 overflow-y-auto">
                           {filtered.map(p => (
-                            <button key={p.id} onMouseDown={() => handleItemProductSelect(idx, p)} className="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 flex items-center justify-between">
+                            <button key={p.id} onMouseDown={() => handleItemProductSelect(idx, p)} className="w-full text-left px-3 py-2 text-sm text-muted hover:bg-void flex items-center justify-between">
                               <span>{p.name}</span>
-                              <span className="text-blue-600 text-xs">R$ {Number(p.price).toFixed(2)}</span>
+                              <span className="text-accent-2 text-xs">R$ {Number(p.price).toFixed(2)}</span>
                             </button>
                           ))}
                         </div>
                       )}
                     </div>
                     <div className="flex items-center gap-1 flex-shrink-0">
-                      <button onClick={() => setItems(prev => prev.map((it, i) => i === idx ? { ...it, quantity: Math.max(1, it.quantity - 1) } : it))} className="w-7 h-7 rounded bg-gray-50 border border-gray-200 flex items-center justify-center text-gray-500 hover:text-gray-800">
+                      <button onClick={() => setItems(prev => prev.map((it, i) => i === idx ? { ...it, quantity: Math.max(1, it.quantity - 1) } : it))} className="w-7 h-7 rounded bg-void border border-line flex items-center justify-center text-muted hover:text-ink">
                         <Minus size={12} />
                       </button>
-                      <span className="w-8 text-center text-sm text-gray-900">{item.quantity}</span>
-                      <button onClick={() => setItems(prev => prev.map((it, i) => i === idx ? { ...it, quantity: it.quantity + 1 } : it))} className="w-7 h-7 rounded bg-gray-50 border border-gray-200 flex items-center justify-center text-gray-500 hover:text-gray-800">
+                      <span className="w-8 text-center text-sm text-ink">{item.quantity}</span>
+                      <button onClick={() => setItems(prev => prev.map((it, i) => i === idx ? { ...it, quantity: it.quantity + 1 } : it))} className="w-7 h-7 rounded bg-void border border-line flex items-center justify-center text-muted hover:text-ink">
                         <Plus size={12} />
                       </button>
                     </div>
                     <div className="w-28 flex-shrink-0">
-                      <input type="number" step="0.01" min="0" value={item.unit_price || ''} onChange={e => setItems(prev => prev.map((it, i) => i === idx ? { ...it, unit_price: Number(e.target.value) } : it))} placeholder="R$ 0,00" className="w-full px-3 py-2 text-sm bg-white border border-gray-200 rounded-lg text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400" />
+                      <input type="number" step="0.01" min="0" value={item.unit_price || ''} onChange={e => setItems(prev => prev.map((it, i) => i === idx ? { ...it, unit_price: Number(e.target.value) } : it))} placeholder="R$ 0,00" className="w-full px-3 py-2 text-sm bg-panel border border-line rounded-lg text-ink placeholder-muted focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent" />
                     </div>
                     {items.length > 1 && (
-                      <button onClick={() => setItems(prev => prev.filter((_, i) => i !== idx))} className="w-8 h-8 flex items-center justify-center text-gray-400 hover:text-red-500 flex-shrink-0 mt-0.5"><X size={16} /></button>
+                      <button onClick={() => setItems(prev => prev.filter((_, i) => i !== idx))} className="w-8 h-8 flex items-center justify-center text-muted hover:text-red-500 flex-shrink-0 mt-0.5"><X size={16} /></button>
                     )}
                   </div>
                 )
               })}
             </div>
-            <button onClick={() => setItems(prev => [...prev, { product_id: null, product_name: '', quantity: 1, unit_price: 0 }])} className="mt-2 flex items-center gap-1.5 text-sm text-blue-600 hover:text-blue-700">
+            <button onClick={() => setItems(prev => [...prev, { product_id: null, product_name: '', quantity: 1, unit_price: 0 }])} className="mt-2 flex items-center gap-1.5 text-sm text-accent-2 hover:text-accent-2">
               <Plus size={14} /> Adicionar produto
             </button>
           </div>
@@ -244,8 +244,8 @@ export default function NovoPedidoModal({ onClose, onSuccess }: NovoPedidoModalP
           {/* Pagamento e entrega */}
           <div className="space-y-4">
             <div>
-              <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400 mb-2">
-                Forma de Pagamento <span className="text-gray-400 normal-case font-normal">(selecione até 2)</span>
+              <p className="text-[10px] font-bold uppercase tracking-wider text-muted mb-2">
+                Forma de Pagamento <span className="text-muted normal-case font-normal">(selecione até 2)</span>
               </p>
               <div className="flex flex-wrap gap-2">
                 {PAYMENT_METHODS.map(m => {
@@ -255,7 +255,7 @@ export default function NovoPedidoModal({ onClose, onSuccess }: NovoPedidoModalP
                       key={m.value}
                       onClick={() => toggleMethod(m.value)}
                       className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold border transition-colors ${
-                        selected ? 'bg-blue-50 text-blue-700 border-blue-200' : 'bg-gray-50 text-gray-500 border-gray-200 hover:border-gray-300'
+                        selected ? 'bg-panel-2 text-accent-2 border-accent-line' : 'bg-void text-muted border-line hover:border-line'
                       }`}
                     >
                       {selected && <Check size={10} weight="bold" />}
@@ -265,7 +265,7 @@ export default function NovoPedidoModal({ onClose, onSuccess }: NovoPedidoModalP
                 })}
               </div>
               {selectedMethods.length === 2 && (
-                <p className="text-[10px] text-gray-400 mt-1.5">
+                <p className="text-[10px] text-muted mt-1.5">
                   Pagamento dividido: {selectedMethods.map(m => PAYMENT_METHODS.find(p => p.value === m)?.label).join(' + ')}
                 </p>
               )}
@@ -273,14 +273,14 @@ export default function NovoPedidoModal({ onClose, onSuccess }: NovoPedidoModalP
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400 mb-2">Status do Pagamento</p>
+                <p className="text-[10px] font-bold uppercase tracking-wider text-muted mb-2">Status do Pagamento</p>
                 <div className="flex gap-2">
                   {PAYMENT_STATUS.map(s => (
                     <button
                       key={s.value}
                       onClick={() => setPaymentStatus(s.value)}
                       className={`px-3 py-1.5 rounded-full text-xs font-bold border transition-colors ${
-                        paymentStatus === s.value ? 'bg-green-50 text-green-700 border-green-200' : 'bg-gray-50 text-gray-500 border-gray-200 hover:border-gray-300'
+                        paymentStatus === s.value ? 'bg-green-50 text-green-700 border-green-200' : 'bg-void text-muted border-line hover:border-line'
                       }`}
                     >
                       {paymentStatus === s.value && <Check size={10} weight="bold" className="inline mr-1" />}
@@ -290,11 +290,11 @@ export default function NovoPedidoModal({ onClose, onSuccess }: NovoPedidoModalP
                 </div>
               </div>
               <div>
-                <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400 mb-2">Status de Entrega</p>
+                <p className="text-[10px] font-bold uppercase tracking-wider text-muted mb-2">Status de Entrega</p>
                 <select
                   value={deliveryStatus}
                   onChange={e => setDeliveryStatus(e.target.value)}
-                  className="w-full px-3 py-2 text-xs font-medium border border-gray-200 rounded-lg text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400"
+                  className="w-full px-3 py-2 text-xs font-medium border border-line rounded-lg text-muted focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent"
                 >
                   {DELIVERY_STATUS.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
                 </select>
@@ -304,82 +304,82 @@ export default function NovoPedidoModal({ onClose, onSuccess }: NovoPedidoModalP
 
           {/* Dados do cliente */}
           <div>
-            <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400 mb-3">Dados do Cliente</p>
+            <p className="text-[10px] font-bold uppercase tracking-wider text-muted mb-3">Dados do Cliente</p>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
-                <label className="text-[10px] text-gray-400 font-medium">Nome</label>
-                <input value={customerName} onChange={e => setCustomerName(e.target.value)} className="w-full mt-1 px-3 py-2 text-sm bg-white border border-gray-200 rounded-lg text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400" />
+                <label className="text-[10px] text-muted font-medium">Nome</label>
+                <input value={customerName} onChange={e => setCustomerName(e.target.value)} className="w-full mt-1 px-3 py-2 text-sm bg-panel border border-line rounded-lg text-ink focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent" />
               </div>
               <div>
-                <label className="text-[10px] text-gray-400 font-medium">Telefone</label>
-                <input value={customerPhone} onChange={e => setCustomerPhone(e.target.value)} className="w-full mt-1 px-3 py-2 text-sm bg-white border border-gray-200 rounded-lg text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400" />
+                <label className="text-[10px] text-muted font-medium">Telefone</label>
+                <input value={customerPhone} onChange={e => setCustomerPhone(e.target.value)} className="w-full mt-1 px-3 py-2 text-sm bg-panel border border-line rounded-lg text-ink focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent" />
               </div>
               <div>
-                <label className="text-[10px] text-gray-400 font-medium">E-mail</label>
-                <input value={customerEmail} onChange={e => setCustomerEmail(e.target.value)} className="w-full mt-1 px-3 py-2 text-sm bg-white border border-gray-200 rounded-lg text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400" />
+                <label className="text-[10px] text-muted font-medium">E-mail</label>
+                <input value={customerEmail} onChange={e => setCustomerEmail(e.target.value)} className="w-full mt-1 px-3 py-2 text-sm bg-panel border border-line rounded-lg text-ink focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent" />
               </div>
               <div>
-                <label className="text-[10px] text-gray-400 font-medium">CPF</label>
-                <input value={cpf} onChange={e => setCpf(maskCpf(e.target.value))} placeholder="000.000.000-00" className="w-full mt-1 px-3 py-2 text-sm bg-white border border-gray-200 rounded-lg text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400" />
+                <label className="text-[10px] text-muted font-medium">CPF</label>
+                <input value={cpf} onChange={e => setCpf(maskCpf(e.target.value))} placeholder="000.000.000-00" className="w-full mt-1 px-3 py-2 text-sm bg-panel border border-line rounded-lg text-ink placeholder-muted focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent" />
               </div>
             </div>
           </div>
 
           {/* Endereço */}
           <div>
-            <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400 mb-3 flex items-center gap-1.5">
+            <p className="text-[10px] font-bold uppercase tracking-wider text-muted mb-3 flex items-center gap-1.5">
               <MapPin size={12} /> Endereço de Entrega
             </p>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <div>
-                <label className="text-[10px] text-gray-400 font-medium">CEP</label>
-                <input value={cep} onChange={e => setCep(maskCep(e.target.value))} onBlur={handleCepBlur} placeholder="00000-000" className="w-full mt-1 px-3 py-2 text-sm bg-white border border-gray-200 rounded-lg text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400" />
-                {cepLoading && <span className="text-[10px] text-blue-600">Buscando...</span>}
+                <label className="text-[10px] text-muted font-medium">CEP</label>
+                <input value={cep} onChange={e => setCep(maskCep(e.target.value))} onBlur={handleCepBlur} placeholder="00000-000" className="w-full mt-1 px-3 py-2 text-sm bg-panel border border-line rounded-lg text-ink placeholder-muted focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent" />
+                {cepLoading && <span className="text-[10px] text-accent-2">Buscando...</span>}
               </div>
               <div className="col-span-2">
-                <label className="text-[10px] text-gray-400 font-medium">Endereço</label>
-                <input value={address} onChange={e => setAddress(e.target.value)} placeholder="Rua, Av..." className="w-full mt-1 px-3 py-2 text-sm bg-white border border-gray-200 rounded-lg text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400" />
+                <label className="text-[10px] text-muted font-medium">Endereço</label>
+                <input value={address} onChange={e => setAddress(e.target.value)} placeholder="Rua, Av..." className="w-full mt-1 px-3 py-2 text-sm bg-panel border border-line rounded-lg text-ink placeholder-muted focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent" />
               </div>
               <div>
-                <label className="text-[10px] text-gray-400 font-medium">Número</label>
-                <input value={addressNumber} onChange={e => setAddressNumber(e.target.value)} className="w-full mt-1 px-3 py-2 text-sm bg-white border border-gray-200 rounded-lg text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400" />
+                <label className="text-[10px] text-muted font-medium">Número</label>
+                <input value={addressNumber} onChange={e => setAddressNumber(e.target.value)} className="w-full mt-1 px-3 py-2 text-sm bg-panel border border-line rounded-lg text-ink focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent" />
               </div>
               <div className="col-span-2">
-                <label className="text-[10px] text-gray-400 font-medium">Complemento</label>
-                <input value={addressComplement} onChange={e => setAddressComplement(e.target.value)} placeholder="Apto, Bloco..." className="w-full mt-1 px-3 py-2 text-sm bg-white border border-gray-200 rounded-lg text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400" />
+                <label className="text-[10px] text-muted font-medium">Complemento</label>
+                <input value={addressComplement} onChange={e => setAddressComplement(e.target.value)} placeholder="Apto, Bloco..." className="w-full mt-1 px-3 py-2 text-sm bg-panel border border-line rounded-lg text-ink placeholder-muted focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent" />
               </div>
               <div>
-                <label className="text-[10px] text-gray-400 font-medium">Bairro</label>
-                <input value={neighborhood} onChange={e => setNeighborhood(e.target.value)} className="w-full mt-1 px-3 py-2 text-sm bg-white border border-gray-200 rounded-lg text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400" />
+                <label className="text-[10px] text-muted font-medium">Bairro</label>
+                <input value={neighborhood} onChange={e => setNeighborhood(e.target.value)} className="w-full mt-1 px-3 py-2 text-sm bg-panel border border-line rounded-lg text-ink focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent" />
               </div>
               <div>
-                <label className="text-[10px] text-gray-400 font-medium">Cidade</label>
-                <input value={city} onChange={e => setCity(e.target.value)} className="w-full mt-1 px-3 py-2 text-sm bg-white border border-gray-200 rounded-lg text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400" />
+                <label className="text-[10px] text-muted font-medium">Cidade</label>
+                <input value={city} onChange={e => setCity(e.target.value)} className="w-full mt-1 px-3 py-2 text-sm bg-panel border border-line rounded-lg text-ink focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent" />
               </div>
               <div>
-                <label className="text-[10px] text-gray-400 font-medium">Estado</label>
-                <input value={state} onChange={e => setState(e.target.value)} maxLength={2} placeholder="SP" className="w-full mt-1 px-3 py-2 text-sm bg-white border border-gray-200 rounded-lg text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400" />
+                <label className="text-[10px] text-muted font-medium">Estado</label>
+                <input value={state} onChange={e => setState(e.target.value)} maxLength={2} placeholder="SP" className="w-full mt-1 px-3 py-2 text-sm bg-panel border border-line rounded-lg text-ink placeholder-muted focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent" />
               </div>
             </div>
           </div>
 
           {/* Observações */}
           <div>
-            <label className="text-[10px] font-bold uppercase tracking-wider text-gray-400">Observações</label>
-            <textarea value={notes} onChange={e => setNotes(e.target.value)} rows={2} placeholder="Notas internas..." className="w-full mt-2 px-3 py-2 text-sm bg-white border border-gray-200 rounded-lg text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 placeholder-gray-400 resize-none" />
+            <label className="text-[10px] font-bold uppercase tracking-wider text-muted">Observações</label>
+            <textarea value={notes} onChange={e => setNotes(e.target.value)} rows={2} placeholder="Notas internas..." className="w-full mt-2 px-3 py-2 text-sm bg-panel border border-line rounded-lg text-ink focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent placeholder-muted resize-none" />
           </div>
 
           {error && <div className="px-4 py-2.5 bg-red-50 border border-red-200 rounded-lg text-sm text-red-600">{error}</div>}
         </div>
 
         {/* Footer */}
-        <div className="p-5 border-t border-gray-100 flex items-center justify-between">
-          <p className="text-xl font-bold text-gray-900">
+        <div className="p-5 border-t border-line flex items-center justify-between">
+          <p className="text-xl font-bold text-ink">
             R$ {totalValue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
           </p>
           <div className="flex items-center gap-3">
-            <button onClick={onClose} className="px-5 py-2 rounded-lg text-sm font-medium text-gray-600 hover:text-gray-800 transition-colors">Cancelar</button>
-            <button onClick={handleSubmit} disabled={saving} className="px-6 py-2 rounded-lg text-sm font-bold bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50 disabled:cursor-wait transition-colors">
+            <button onClick={onClose} className="px-5 py-2 rounded-lg text-sm font-medium text-muted hover:text-ink transition-colors">Cancelar</button>
+            <button onClick={handleSubmit} disabled={saving} className="px-6 py-2 rounded-lg text-sm font-bold bg-accent text-white hover:bg-accent-2 disabled:opacity-50 disabled:cursor-wait transition-colors">
               {saving ? 'Salvando...' : 'Salvar pedido'}
             </button>
           </div>

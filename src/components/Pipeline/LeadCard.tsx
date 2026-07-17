@@ -50,7 +50,7 @@ const LeadCard = ({ lead, isDragOverlay, stageColor, onClick, onInfoClick }: Lea
       onClick={onClick}
       style={style}
       className={`
-        bg-white border border-gray-200 rounded-lg p-4 transition-all relative overflow-hidden
+        bg-panel border border-line rounded-lg p-4 transition-all relative overflow-hidden
         outline-none focus:outline-none focus-visible:outline-none
         ${isDragOverlay
           ? 'shadow-xl rotate-2 scale-105 cursor-grabbing'
@@ -80,7 +80,7 @@ const LeadCard = ({ lead, isDragOverlay, stageColor, onClick, onInfoClick }: Lea
         <div className="flex-1 min-w-0 flex flex-col pt-0.5">
           {/* Header row */}
           <div className="flex items-start justify-between mb-0.5">
-            <h4 className="font-semibold text-sm text-gray-900 truncate pr-2">
+            <h4 className="font-semibold text-sm text-ink truncate pr-2">
               {formatPhone(lead.title)}
             </h4>
             {onInfoClick && !isDragOverlay && (
@@ -91,7 +91,7 @@ const LeadCard = ({ lead, isDragOverlay, stageColor, onClick, onInfoClick }: Lea
                   onInfoClick()
                 }}
                 onPointerDown={(e) => e.stopPropagation()}
-                className="text-gray-300 hover:text-gray-500 hover:bg-gray-50 rounded-full p-0.5 flex-shrink-0 transition-colors"
+                className="text-muted hover:text-muted hover:bg-void rounded-full p-0.5 flex-shrink-0 transition-colors"
                 title="Ver detalhes do lead"
               >
                 <Info size={16} />
@@ -100,7 +100,7 @@ const LeadCard = ({ lead, isDragOverlay, stageColor, onClick, onInfoClick }: Lea
           </div>
 
           {/* Last message row */}
-          <div className="text-[12px] text-gray-500 mb-2 truncate">
+          <div className="text-[12px] text-muted mb-2 truncate">
             {description}
           </div>
 
@@ -120,7 +120,7 @@ const LeadCard = ({ lead, isDragOverlay, stageColor, onClick, onInfoClick }: Lea
                 </span>
               ))}
               {lead.lead_tags.length > 3 && (
-                <span className="text-[10px] text-gray-400 self-center">
+                <span className="text-[10px] text-muted self-center">
                   +{lead.lead_tags.length - 3}
                 </span>
               )}

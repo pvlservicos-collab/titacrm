@@ -92,23 +92,23 @@ export default function FunnelsPage() {
   }
 
   return (
-    <div className="h-full bg-white flex flex-col">
-      <div className="sticky top-0 z-10 bg-white border-b border-gray-100 px-6 py-4 flex items-center justify-between">
+    <div className="h-full bg-panel flex flex-col">
+      <div className="sticky top-0 z-10 bg-panel border-b border-line px-6 py-4 flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <FlowArrow size={20} weight="bold" className="text-gray-700" />
-          <h1 className="text-lg font-bold text-gray-900">Funil de Mensagens</h1>
+          <FlowArrow size={20} weight="bold" className="text-muted" />
+          <h1 className="text-lg font-bold text-ink">Funil de Mensagens</h1>
         </div>
         <div className="flex items-center gap-3">
           <button
             onClick={fetchFunnels}
-            className="flex items-center gap-1.5 text-xs font-semibold text-blue-600 hover:text-blue-800 transition-colors uppercase tracking-wide"
+            className="flex items-center gap-1.5 text-xs font-semibold text-accent-2 hover:text-accent-2 transition-colors uppercase tracking-wide"
           >
             <ArrowClockwise size={14} weight="bold" />
             Atualizar
           </button>
           <button
             onClick={() => setShowNewModal(true)}
-            className="flex items-center gap-1.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold px-3 py-1.5 rounded-lg transition-colors"
+            className="flex items-center gap-1.5 bg-accent hover:bg-accent-2 text-white text-sm font-semibold px-3 py-1.5 rounded-lg transition-colors"
           >
             <Plus size={16} weight="bold" />
             Novo Funil
@@ -119,15 +119,15 @@ export default function FunnelsPage() {
       <div className="flex-1 overflow-y-auto">
         {loading ? (
           <div className="flex items-center justify-center py-20">
-            <div className="w-6 h-6 border-2 border-gray-200 border-t-blue-500 rounded-full animate-spin" />
+            <div className="w-6 h-6 border-2 border-line border-t-blue-500 rounded-full animate-spin" />
           </div>
         ) : funnels.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-20 text-gray-400 gap-3">
+          <div className="flex flex-col items-center justify-center py-20 text-muted gap-3">
             <FlowArrow size={48} weight="light" />
             <p className="text-sm font-medium">Nenhum funil criado ainda</p>
             <button
               onClick={() => setShowNewModal(true)}
-              className="flex items-center gap-1.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold px-3 py-1.5 rounded-lg transition-colors"
+              className="flex items-center gap-1.5 bg-accent hover:bg-accent-2 text-white text-sm font-semibold px-3 py-1.5 rounded-lg transition-colors"
             >
               <Plus size={16} weight="bold" />
               Criar primeiro funil
@@ -136,8 +136,8 @@ export default function FunnelsPage() {
         ) : (
           <div className="overflow-x-auto">
           <table className="w-full text-sm">
-            <thead className="sticky top-0 bg-gray-50 border-b border-gray-100">
-              <tr className="text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">
+            <thead className="sticky top-0 bg-void border-b border-line">
+              <tr className="text-left text-xs font-semibold text-muted uppercase tracking-wide">
                 <th className="px-6 py-2.5">Nome</th>
                 <th className="px-6 py-2.5">Gatilho</th>
                 <th className="px-6 py-2.5">Status</th>
@@ -147,41 +147,41 @@ export default function FunnelsPage() {
                 <th className="px-6 py-2.5"></th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-50">
+            <tbody className="divide-y divide-line">
               {funnels.map((funnel) => (
                 <tr
                   key={funnel.id}
-                  className="hover:bg-gray-50/80 cursor-pointer"
+                  className="hover:bg-void cursor-pointer"
                   onClick={() => router.push(`/funnels/${funnel.id}`)}
                 >
-                  <td className="px-6 py-3 font-medium text-gray-900">{funnel.name}</td>
-                  <td className="px-6 py-3 text-gray-700">{TRIGGER_LABELS[funnel.trigger] || funnel.trigger}</td>
+                  <td className="px-6 py-3 font-medium text-ink">{funnel.name}</td>
+                  <td className="px-6 py-3 text-muted">{TRIGGER_LABELS[funnel.trigger] || funnel.trigger}</td>
                   <td className="px-6 py-3">
                     <button
                       onClick={(e) => { e.stopPropagation(); toggleActive(funnel) }}
                       disabled={funnel.trigger === 'geracaowhatsapp'}
                       title={funnel.trigger === 'geracaowhatsapp' ? 'Fluxo padrão: não pode ser desativado' : undefined}
-                      className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${funnel.is_active ? 'bg-emerald-500' : 'bg-gray-300'} ${funnel.trigger === 'geracaowhatsapp' ? 'cursor-not-allowed opacity-80' : ''}`}
+                      className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${funnel.is_active ? 'bg-emerald-500' : 'bg-panel-2'} ${funnel.trigger === 'geracaowhatsapp' ? 'cursor-not-allowed opacity-80' : ''}`}
                     >
-                      <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${funnel.is_active ? 'translate-x-4.5' : 'translate-x-0.5'}`} />
+                      <span className={`inline-block h-4 w-4 transform rounded-full bg-panel transition-transform ${funnel.is_active ? 'translate-x-4.5' : 'translate-x-0.5'}`} />
                     </button>
-                    <span className={`ml-2 text-xs font-semibold ${funnel.is_active ? 'text-emerald-600' : 'text-gray-400'}`}>
+                    <span className={`ml-2 text-xs font-semibold ${funnel.is_active ? 'text-emerald-600' : 'text-muted'}`}>
                       {funnel.is_active ? 'Ativo' : 'Inativo'}
                     </span>
                     {funnel.trigger === 'geracaowhatsapp' && (
-                      <span className="ml-2 text-[10px] text-gray-400">🔒 padrão</span>
+                      <span className="ml-2 text-[10px] text-muted">🔒 padrão</span>
                     )}
                   </td>
-                  <td className="px-6 py-3 text-gray-700">{funnel.metrics.entradas}</td>
-                  <td className="px-6 py-3 text-gray-700">{funnel.metrics.mensagens_enviadas}</td>
-                  <td className="px-6 py-3 text-gray-700">
+                  <td className="px-6 py-3 text-muted">{funnel.metrics.entradas}</td>
+                  <td className="px-6 py-3 text-muted">{funnel.metrics.mensagens_enviadas}</td>
+                  <td className="px-6 py-3 text-muted">
                     {funnel.metrics.cliques}/{funnel.metrics.cliques_total}
                     {funnel.metrics.cliques_total > 0 && (
-                      <span className="text-gray-400 ml-1">({Math.round(funnel.metrics.taxa_clique * 100)}%)</span>
+                      <span className="text-muted ml-1">({Math.round(funnel.metrics.taxa_clique * 100)}%)</span>
                     )}
                   </td>
                   <td className="px-6 py-3 text-right">
-                    <ArrowSquareOut size={16} className="text-gray-400" />
+                    <ArrowSquareOut size={16} className="text-muted" />
                   </td>
                 </tr>
               ))}
@@ -193,24 +193,24 @@ export default function FunnelsPage() {
 
       {showNewModal && (
         <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50" onClick={() => setShowNewModal(false)}>
-          <div className="bg-white rounded-xl shadow-xl p-6 w-full max-w-sm" onClick={(e) => e.stopPropagation()}>
-            <h2 className="text-base font-bold text-gray-900 mb-4">Novo Funil</h2>
+          <div className="bg-panel rounded-xl shadow-xl p-6 w-full max-w-sm" onClick={(e) => e.stopPropagation()}>
+            <h2 className="text-base font-bold text-ink mb-4">Novo Funil</h2>
 
-            <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">Nome</label>
+            <label className="block text-xs font-semibold text-muted uppercase tracking-wide mb-1.5">Nome</label>
             <input
               type="text"
               value={newName}
               onChange={(e) => setNewName(e.target.value)}
               placeholder="Ex: Recuperação PIX"
-              className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm mb-4 focus:outline-none focus:ring-2 focus:ring-blue-400"
+              className="w-full px-3 py-2 border border-line rounded-lg text-sm mb-4 focus:outline-none focus:ring-2 focus:ring-accent"
               autoFocus
             />
 
-            <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">Gatilho</label>
+            <label className="block text-xs font-semibold text-muted uppercase tracking-wide mb-1.5">Gatilho</label>
             <select
               value={newTrigger}
               onChange={(e) => setNewTrigger(e.target.value as any)}
-              className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm mb-6 focus:outline-none focus:ring-2 focus:ring-blue-400"
+              className="w-full px-3 py-2 border border-line rounded-lg text-sm mb-6 focus:outline-none focus:ring-2 focus:ring-accent"
             >
               <option value="novo_recuperacao">Novo Recuperação</option>
               <option value="novo_pago">Novo Pago</option>
@@ -219,14 +219,14 @@ export default function FunnelsPage() {
             <div className="flex justify-end gap-2">
               <button
                 onClick={() => setShowNewModal(false)}
-                className="px-3 py-1.5 text-sm font-semibold text-gray-600 hover:bg-gray-50 rounded-lg transition-colors"
+                className="px-3 py-1.5 text-sm font-semibold text-muted hover:bg-void rounded-lg transition-colors"
               >
                 Cancelar
               </button>
               <button
                 onClick={createFunnel}
                 disabled={creating || !newName.trim()}
-                className="px-3 py-1.5 text-sm font-semibold bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white rounded-lg transition-colors"
+                className="px-3 py-1.5 text-sm font-semibold bg-accent hover:bg-accent-2 disabled:opacity-50 text-white rounded-lg transition-colors"
               >
                 {creating ? 'Criando...' : 'Criar e editar'}
               </button>

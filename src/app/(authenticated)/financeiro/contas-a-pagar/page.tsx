@@ -73,7 +73,7 @@ const STATUS_BADGE: Record<string, { label: string; className: string; icon: any
   pending: { label: 'Pendente', className: 'bg-yellow-50 text-yellow-700 border-yellow-200', icon: Clock },
   overdue: { label: 'Vencida', className: 'bg-red-50 text-red-700 border-red-200', icon: WarningCircle },
   paid: { label: 'Paga', className: 'bg-green-50 text-green-700 border-green-200', icon: CheckCircle },
-  cancelled: { label: 'Cancelada', className: 'bg-gray-100 text-gray-500 border-gray-200', icon: X },
+  cancelled: { label: 'Cancelada', className: 'bg-panel-2 text-muted border-line', icon: X },
 }
 
 export default function ContasAPagarPage() {
@@ -208,13 +208,13 @@ export default function ContasAPagarPage() {
         <div className="flex items-center gap-3">
           <Receipt size={26} className="text-red-500" weight="fill" />
           <div>
-            <h1 className="text-xl font-bold text-gray-900">Contas a pagar</h1>
-            <p className="text-sm text-gray-500 mt-0.5">Gerencie despesas pontuais e recorrentes</p>
+            <h1 className="text-xl font-bold text-ink">Contas a pagar</h1>
+            <p className="text-sm text-muted mt-0.5">Gerencie despesas pontuais e recorrentes</p>
           </div>
         </div>
         <button
           onClick={openCreate}
-          className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors"
+          className="flex items-center gap-2 px-4 py-2 bg-accent text-white rounded-lg text-sm font-medium hover:bg-accent-2 transition-colors"
         >
           <Plus size={16} />
           Nova despesa
@@ -227,7 +227,7 @@ export default function ContasAPagarPage() {
             key={f.id}
             onClick={() => setFilter(f.id)}
             className={`px-3.5 py-1.5 rounded-full text-sm font-medium border transition-colors ${
-              filter === f.id ? 'bg-gray-900 text-white border-gray-900' : 'bg-white text-gray-600 border-gray-200 hover:border-gray-300'
+              filter === f.id ? 'bg-void text-white border-line' : 'bg-panel text-muted border-line hover:border-line'
             }`}
           >
             {f.label}
@@ -236,12 +236,12 @@ export default function ContasAPagarPage() {
       </div>
 
       {loading ? (
-        <div className="flex items-center justify-center h-48 text-gray-400">Carregando...</div>
+        <div className="flex items-center justify-center h-48 text-muted">Carregando...</div>
       ) : filteredExpenses.length === 0 ? (
-        <div className="flex flex-col items-center justify-center h-48 gap-3 bg-white rounded-2xl border border-gray-100">
-          <Receipt size={40} className="text-gray-300" />
-          <p className="text-gray-400">Nenhuma despesa encontrada</p>
-          <button onClick={openCreate} className="text-sm text-blue-600 hover:underline">Lançar primeira despesa</button>
+        <div className="flex flex-col items-center justify-center h-48 gap-3 bg-panel rounded-2xl border border-line">
+          <Receipt size={40} className="text-muted" />
+          <p className="text-muted">Nenhuma despesa encontrada</p>
+          <button onClick={openCreate} className="text-sm text-accent-2 hover:underline">Lançar primeira despesa</button>
         </div>
       ) : (
         <>
@@ -251,18 +251,18 @@ export default function ContasAPagarPage() {
             const badge = STATUS_BADGE[expense.effective_status]
             const BadgeIcon = badge.icon
             return (
-              <div key={expense.id} className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4">
+              <div key={expense.id} className="bg-panel rounded-2xl border border-line shadow-sm p-4">
                 <div className="flex items-start justify-between gap-2">
                   <div className="min-w-0">
                     <div className="flex items-center gap-2">
-                      <p className="font-medium text-gray-900 text-sm truncate">{expense.description}</p>
+                      <p className="font-medium text-ink text-sm truncate">{expense.description}</p>
                       {(expense.is_recurring || expense.parent_expense_id) && (
-                        <ArrowsClockwise size={14} className="text-blue-400 flex-shrink-0" />
+                        <ArrowsClockwise size={14} className="text-accent-2 flex-shrink-0" />
                       )}
                     </div>
-                    <p className="text-xs text-gray-400 mt-0.5">{EXPENSE_CATEGORY_LABELS[expense.category] || expense.category} · vence {formatDate(expense.due_date)}</p>
+                    <p className="text-xs text-muted mt-0.5">{EXPENSE_CATEGORY_LABELS[expense.category] || expense.category} · vence {formatDate(expense.due_date)}</p>
                   </div>
-                  <p className="text-sm font-semibold text-gray-900 flex-shrink-0">{formatCurrency(expense.amount)}</p>
+                  <p className="text-sm font-semibold text-ink flex-shrink-0">{formatCurrency(expense.amount)}</p>
                 </div>
 
                 <div className="flex items-center justify-between mt-3">
@@ -277,7 +277,7 @@ export default function ContasAPagarPage() {
                         disabled={busyId === expense.id}
                         title={expense.status === 'paid' ? 'Reabrir' : 'Marcar como pago'}
                         className={`p-1.5 rounded-lg transition-colors disabled:opacity-40 ${
-                          expense.status === 'paid' ? 'text-gray-400 hover:text-yellow-600 hover:bg-yellow-50' : 'text-gray-400 hover:text-green-600 hover:bg-green-50'
+                          expense.status === 'paid' ? 'text-muted hover:text-yellow-600 hover:bg-yellow-50' : 'text-muted hover:text-green-600 hover:bg-green-50'
                         }`}
                       >
                         {expense.status === 'paid' ? <ArrowCounterClockwise size={16} /> : <CheckCircle size={16} />}
@@ -285,14 +285,14 @@ export default function ContasAPagarPage() {
                     )}
                     <button
                       onClick={() => openEdit(expense)}
-                      className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                      className="p-1.5 text-muted hover:text-accent-2 hover:bg-panel-2 rounded-lg transition-colors"
                     >
                       <PencilSimple size={16} />
                     </button>
                     <button
                       onClick={() => handleDelete(expense)}
                       disabled={busyId === expense.id}
-                      className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-40"
+                      className="p-1.5 text-muted hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-40"
                     >
                       <Trash size={16} />
                     </button>
@@ -304,43 +304,43 @@ export default function ContasAPagarPage() {
         </div>
 
         {/* Desktop: tabela */}
-        <div className="hidden md:block bg-white rounded-2xl border border-gray-100 overflow-hidden shadow-sm">
+        <div className="hidden md:block bg-panel rounded-2xl border border-line overflow-hidden shadow-sm">
           <table className="w-full">
             <thead>
-              <tr className="border-b border-gray-100 bg-gray-50/50">
-                <th className="text-left px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Descrição</th>
-                <th className="text-left px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Categoria</th>
-                <th className="text-left px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Vencimento</th>
-                <th className="text-left px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Valor</th>
-                <th className="text-left px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Status</th>
+              <tr className="border-b border-line bg-void">
+                <th className="text-left px-5 py-3 text-xs font-semibold text-muted uppercase tracking-wide">Descrição</th>
+                <th className="text-left px-5 py-3 text-xs font-semibold text-muted uppercase tracking-wide">Categoria</th>
+                <th className="text-left px-5 py-3 text-xs font-semibold text-muted uppercase tracking-wide">Vencimento</th>
+                <th className="text-left px-5 py-3 text-xs font-semibold text-muted uppercase tracking-wide">Valor</th>
+                <th className="text-left px-5 py-3 text-xs font-semibold text-muted uppercase tracking-wide">Status</th>
                 <th className="px-5 py-3"></th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-50">
+            <tbody className="divide-y divide-line">
               {filteredExpenses.map(expense => {
                 const badge = STATUS_BADGE[expense.effective_status]
                 const BadgeIcon = badge.icon
                 return (
-                  <tr key={expense.id} className="hover:bg-gray-50/50 transition-colors">
+                  <tr key={expense.id} className="hover:bg-void transition-colors">
                     <td className="px-5 py-4">
                       <div className="flex items-center gap-2">
-                        <p className="font-medium text-gray-900 text-sm">{expense.description}</p>
+                        <p className="font-medium text-ink text-sm">{expense.description}</p>
                         {(expense.is_recurring || expense.parent_expense_id) && (
                           <span title={expense.is_recurring ? `Recorrente (${RECURRENCE_LABELS[expense.recurrence_interval || ''] || ''})` : 'Parcela de despesa recorrente'}>
-                            <ArrowsClockwise size={14} className="text-blue-400" />
+                            <ArrowsClockwise size={14} className="text-accent-2" />
                           </span>
                         )}
                       </div>
-                      {expense.payee && <p className="text-xs text-gray-400 mt-0.5">{expense.payee}</p>}
+                      {expense.payee && <p className="text-xs text-muted mt-0.5">{expense.payee}</p>}
                     </td>
                     <td className="px-5 py-4">
-                      <p className="text-sm text-gray-600">{EXPENSE_CATEGORY_LABELS[expense.category] || expense.category}</p>
+                      <p className="text-sm text-muted">{EXPENSE_CATEGORY_LABELS[expense.category] || expense.category}</p>
                     </td>
                     <td className="px-5 py-4">
-                      <p className="text-sm text-gray-600">{formatDate(expense.due_date)}</p>
+                      <p className="text-sm text-muted">{formatDate(expense.due_date)}</p>
                     </td>
                     <td className="px-5 py-4">
-                      <p className="text-sm font-semibold text-gray-900">{formatCurrency(expense.amount)}</p>
+                      <p className="text-sm font-semibold text-ink">{formatCurrency(expense.amount)}</p>
                     </td>
                     <td className="px-5 py-4">
                       <span className={`inline-flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-full border ${badge.className}`}>
@@ -356,7 +356,7 @@ export default function ContasAPagarPage() {
                             disabled={busyId === expense.id}
                             title={expense.status === 'paid' ? 'Reabrir' : 'Marcar como pago'}
                             className={`p-1.5 rounded-lg transition-colors disabled:opacity-40 ${
-                              expense.status === 'paid' ? 'text-gray-400 hover:text-yellow-600 hover:bg-yellow-50' : 'text-gray-400 hover:text-green-600 hover:bg-green-50'
+                              expense.status === 'paid' ? 'text-muted hover:text-yellow-600 hover:bg-yellow-50' : 'text-muted hover:text-green-600 hover:bg-green-50'
                             }`}
                           >
                             {expense.status === 'paid' ? <ArrowCounterClockwise size={16} /> : <CheckCircle size={16} />}
@@ -364,14 +364,14 @@ export default function ContasAPagarPage() {
                         )}
                         <button
                           onClick={() => openEdit(expense)}
-                          className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                          className="p-1.5 text-muted hover:text-accent-2 hover:bg-panel-2 rounded-lg transition-colors"
                         >
                           <PencilSimple size={16} />
                         </button>
                         <button
                           onClick={() => handleDelete(expense)}
                           disabled={busyId === expense.id}
-                          className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-40"
+                          className="p-1.5 text-muted hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-40"
                         >
                           <Trash size={16} />
                         </button>
@@ -388,69 +388,69 @@ export default function ContasAPagarPage() {
 
       {showModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
-          <div className="bg-white rounded-2xl w-full max-w-md shadow-2xl border border-gray-100 max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between p-5 border-b border-gray-100">
-              <h2 className="text-base font-bold text-gray-900">
+          <div className="bg-panel rounded-2xl w-full max-w-md shadow-2xl border border-line max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between p-5 border-b border-line">
+              <h2 className="text-base font-bold text-ink">
                 {editing ? 'Editar despesa' : 'Nova despesa'}
               </h2>
-              <button onClick={() => setShowModal(false)} className="text-gray-400 hover:text-gray-600 transition-colors">
+              <button onClick={() => setShowModal(false)} className="text-muted hover:text-muted transition-colors">
                 <X size={20} />
               </button>
             </div>
 
             <div className="p-5 space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Descrição *</label>
+                <label className="block text-sm font-medium text-muted mb-1">Descrição *</label>
                 <input
                   value={form.description}
                   onChange={e => setForm(p => ({ ...p, description: e.target.value }))}
                   placeholder="Ex: Aluguel loja centro"
-                  className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400"
+                  className="w-full px-3 py-2 text-sm border border-line rounded-lg focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent"
                 />
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Categoria</label>
+                  <label className="block text-sm font-medium text-muted mb-1">Categoria</label>
                   <input
                     list="category-options"
                     value={form.category}
                     onChange={e => setForm(p => ({ ...p, category: e.target.value }))}
-                    className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400"
+                    className="w-full px-3 py-2 text-sm border border-line rounded-lg focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent"
                   />
                   <datalist id="category-options">
                     {EXPENSE_CATEGORY_OPTIONS.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
                   </datalist>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Valor (R$) *</label>
+                  <label className="block text-sm font-medium text-muted mb-1">Valor (R$) *</label>
                   <input
                     type="number" step="0.01" min="0"
                     value={form.amount}
                     onChange={e => setForm(p => ({ ...p, amount: e.target.value }))}
                     placeholder="0,00"
-                    className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400"
+                    className="w-full px-3 py-2 text-sm border border-line rounded-lg focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent"
                   />
                 </div>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Vencimento *</label>
+                  <label className="block text-sm font-medium text-muted mb-1">Vencimento *</label>
                   <input
                     type="date"
                     value={form.due_date}
                     onChange={e => setForm(p => ({ ...p, due_date: e.target.value }))}
-                    className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400"
+                    className="w-full px-3 py-2 text-sm border border-line rounded-lg focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Fornecedor/Beneficiário</label>
+                  <label className="block text-sm font-medium text-muted mb-1">Fornecedor/Beneficiário</label>
                   <input
                     value={form.payee}
                     onChange={e => setForm(p => ({ ...p, payee: e.target.value }))}
                     placeholder="Opcional"
-                    className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400"
+                    className="w-full px-3 py-2 text-sm border border-line rounded-lg focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent"
                   />
                 </div>
               </div>
@@ -463,9 +463,9 @@ export default function ContasAPagarPage() {
                         type="checkbox"
                         checked={form.is_recurring}
                         onChange={e => setForm(p => ({ ...p, is_recurring: e.target.checked }))}
-                        className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                        className="w-4 h-4 rounded border-line text-accent-2 focus:ring-accent"
                       />
-                      <span className="text-sm font-medium text-gray-700">Despesa recorrente</span>
+                      <span className="text-sm font-medium text-muted">Despesa recorrente</span>
                     </label>
                   )}
                   {!form.is_recurring && (
@@ -474,23 +474,23 @@ export default function ContasAPagarPage() {
                         type="checkbox"
                         checked={form.already_paid}
                         onChange={e => setForm(p => ({ ...p, already_paid: e.target.checked }))}
-                        className="w-4 h-4 rounded border-gray-300 text-green-600 focus:ring-green-500"
+                        className="w-4 h-4 rounded border-line text-green-600 focus:ring-green-500"
                       />
-                      <span className="text-sm font-medium text-gray-700">Já paguei essa despesa</span>
+                      <span className="text-sm font-medium text-muted">Já paguei essa despesa</span>
                     </label>
                   )}
                 </div>
               )}
 
               {(form.is_recurring && !editing) || (editing?.is_recurring) ? (
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pl-1 border-l-2 border-blue-100">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pl-1 border-l-2 border-accent-line">
                   <div className="pl-3">
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Intervalo</label>
+                    <label className="block text-sm font-medium text-muted mb-1">Intervalo</label>
                     <select
                       value={form.recurrence_interval}
                       onChange={e => setForm(p => ({ ...p, recurrence_interval: e.target.value }))}
                       disabled={!!editing}
-                      className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 disabled:bg-gray-50 disabled:text-gray-400"
+                      className="w-full px-3 py-2 text-sm border border-line rounded-lg focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent disabled:bg-void disabled:text-muted"
                     >
                       <option value="weekly">Semanal</option>
                       <option value="monthly">Mensal</option>
@@ -498,40 +498,40 @@ export default function ContasAPagarPage() {
                     </select>
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Repetir até</label>
+                    <label className="block text-sm font-medium text-muted mb-1">Repetir até</label>
                     <input
                       type="date"
                       value={form.recurrence_end_date}
                       onChange={e => setForm(p => ({ ...p, recurrence_end_date: e.target.value }))}
                       placeholder="Sem fim"
-                      className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400"
+                      className="w-full px-3 py-2 text-sm border border-line rounded-lg focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent"
                     />
                   </div>
                 </div>
               ) : null}
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Observações</label>
+                <label className="block text-sm font-medium text-muted mb-1">Observações</label>
                 <textarea
                   value={form.notes}
                   onChange={e => setForm(p => ({ ...p, notes: e.target.value }))}
                   rows={2}
                   placeholder="Opcional..."
-                  className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 resize-none"
+                  className="w-full px-3 py-2 text-sm border border-line rounded-lg focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent resize-none"
                 />
               </div>
 
               {error && <p className="text-sm text-red-500">{error}</p>}
             </div>
 
-            <div className="flex items-center justify-end gap-3 p-5 border-t border-gray-100">
-              <button onClick={() => setShowModal(false)} className="px-4 py-2 text-sm text-gray-600 hover:text-gray-800 transition-colors">
+            <div className="flex items-center justify-end gap-3 p-5 border-t border-line">
+              <button onClick={() => setShowModal(false)} className="px-4 py-2 text-sm text-muted hover:text-ink transition-colors">
                 Cancelar
               </button>
               <button
                 onClick={handleSave}
                 disabled={saving}
-                className="flex items-center gap-2 px-5 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 disabled:opacity-50 transition-colors"
+                className="flex items-center gap-2 px-5 py-2 bg-accent text-white rounded-lg text-sm font-medium hover:bg-accent-2 disabled:opacity-50 transition-colors"
               >
                 <Check size={16} />
                 {saving ? 'Salvando...' : 'Salvar'}

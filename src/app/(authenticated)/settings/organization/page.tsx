@@ -234,8 +234,8 @@ export default function ProfileSettingsPage() {
             {/* Header */}
             <div className="flex justify-between items-start">
                 <div>
-                    <h1 className="text-2xl font-bold text-gray-900 pb-1">Perfil da Organização</h1>
-                    <p className="text-sm text-gray-500">Gerencie os detalhes públicos e de contato da sua empresa.</p>
+                    <h1 className="text-2xl font-bold text-ink pb-1">Perfil da Organização</h1>
+                    <p className="text-sm text-muted">Gerencie os detalhes públicos e de contato da sua empresa.</p>
                 </div>
                 {message && (
                     <div className={`px-4 py-2 rounded-lg text-sm font-medium ${message.type === 'success' ? 'bg-green-50 text-green-700 border border-green-200' : 'bg-red-50 text-red-700 border border-red-200'
@@ -246,9 +246,9 @@ export default function ProfileSettingsPage() {
             </div>
 
             {/* Logo Section */}
-            <div className="bg-white border border-gray-200 rounded-xl p-6 flex items-center gap-6 shadow-sm">
+            <div className="bg-panel border border-line rounded-xl p-6 flex items-center gap-6 shadow-sm">
                 <div className="relative">
-                    <div className="w-24 h-24 bg-gray-50 border-2 border-dashed border-gray-200 rounded-xl flex items-center justify-center text-gray-300 overflow-hidden">
+                    <div className="w-24 h-24 bg-void border-2 border-dashed border-line rounded-xl flex items-center justify-center text-muted overflow-hidden">
                         {displayLogo ? (
                             // eslint-disable-next-line @next/next/no-img-element
                             <img src={displayLogo} alt="Logo" className="w-full h-full object-cover" />
@@ -256,8 +256,8 @@ export default function ProfileSettingsPage() {
                             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 21h18"></path><path d="M9 8h1v1H9z"></path><path d="M9 12h1v1H9z"></path><path d="M9 16h1v1H9z"></path><path d="M14 8h1v1h-1z"></path><path d="M14 12h1v1h-1z"></path><path d="M14 16h1v1h-1z"></path><path d="M5 21V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16"></path></svg>
                         )}
                         {isLoading && (
-                            <div className="absolute inset-0 bg-white/50 flex items-center justify-center rounded-xl">
-                                <SpinnerGap className="animate-spin text-blue-600" size={24} weight="bold" />
+                            <div className="absolute inset-0 bg-panel flex items-center justify-center rounded-xl">
+                                <SpinnerGap className="animate-spin text-accent-2" size={24} weight="bold" />
                             </div>
                         )}
                     </div>
@@ -265,7 +265,7 @@ export default function ProfileSettingsPage() {
                         onClick={() => fileInputRef.current?.click()}
                         disabled={isLoading}
                         type="button"
-                        className="absolute -bottom-2 -right-2 bg-white border border-gray-200 text-gray-600 rounded-lg p-1.5 shadow-sm hover:bg-gray-50 transition-colors disabled:opacity-50"
+                        className="absolute -bottom-2 -right-2 bg-panel border border-line text-muted rounded-lg p-1.5 shadow-sm hover:bg-void transition-colors disabled:opacity-50"
                     >
                         <PencilSimple size={16} weight="bold" />
                     </button>
@@ -279,13 +279,13 @@ export default function ProfileSettingsPage() {
                 </div>
 
                 <div>
-                    <h3 className="text-sm font-semibold text-gray-900 mb-1">Logo da Organização</h3>
-                    <p className="text-xs text-gray-500 mb-3">Formatos aceitos: PNG, JPG. Máximo 2MB.</p>
+                    <h3 className="text-sm font-semibold text-ink mb-1">Logo da Organização</h3>
+                    <p className="text-xs text-muted mb-3">Formatos aceitos: PNG, JPG. Máximo 2MB.</p>
                     <button
                         type="button"
                         onClick={() => fileInputRef.current?.click()}
                         disabled={isLoading}
-                        className="text-sm font-semibold text-blue-600 hover:text-blue-700 transition-colors disabled:opacity-50 flex items-center gap-1.5"
+                        className="text-sm font-semibold text-accent-2 hover:text-accent-2 transition-colors disabled:opacity-50 flex items-center gap-1.5"
                     >
                         <UploadSimple size={16} />
                         Alterar Foto
@@ -294,14 +294,14 @@ export default function ProfileSettingsPage() {
             </div>
 
             {/* General Information Section */}
-            <div className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm space-y-6">
-                <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider">Informações Gerais</h3>
+            <div className="bg-panel border border-line rounded-xl p-6 shadow-sm space-y-6">
+                <h3 className="text-xs font-bold text-muted uppercase tracking-wider">Informações Gerais</h3>
 
                 <div className="space-y-4">
 
                     {/* Organization Name */}
                     <div>
-                        <label className="block text-sm font-semibold text-gray-700 mb-1.5">
+                        <label className="block text-sm font-semibold text-muted mb-1.5">
                             Nome da Organização
                         </label>
                         <input
@@ -309,14 +309,14 @@ export default function ProfileSettingsPage() {
                             value={profileData.name}
                             onChange={(e) => setProfileData({ ...profileData, name: e.target.value })}
                             disabled={isLoading}
-                            className="w-full px-4 py-2 border border-gray-200 rounded-lg text-sm text-gray-800 disabled:bg-gray-50 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-colors"
+                            className="w-full px-4 py-2 border border-line rounded-lg text-sm text-ink disabled:bg-void focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent transition-colors"
                         />
                     </div>
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         {/* Corporate Email */}
                         <div>
-                            <label className="block text-sm font-semibold text-gray-700 mb-1.5">
+                            <label className="block text-sm font-semibold text-muted mb-1.5">
                                 E-mail Corporativo
                             </label>
                             <input
@@ -324,13 +324,13 @@ export default function ProfileSettingsPage() {
                                 value={profileData.corporate_email}
                                 onChange={(e) => setProfileData({ ...profileData, corporate_email: e.target.value })}
                                 disabled={isLoading}
-                                className="w-full px-4 py-2 border border-gray-200 rounded-lg text-sm text-gray-800 disabled:bg-gray-50 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-colors"
+                                className="w-full px-4 py-2 border border-line rounded-lg text-sm text-ink disabled:bg-void focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent transition-colors"
                             />
                         </div>
 
                         {/* Phone */}
                         <div>
-                            <label className="block text-sm font-semibold text-gray-700 mb-1.5">
+                            <label className="block text-sm font-semibold text-muted mb-1.5">
                                 Telefone
                             </label>
                             <input
@@ -338,7 +338,7 @@ export default function ProfileSettingsPage() {
                                 value={profileData.phone}
                                 onChange={(e) => setProfileData({ ...profileData, phone: e.target.value })}
                                 disabled={isLoading}
-                                className="w-full px-4 py-2 border border-gray-200 rounded-lg text-sm text-gray-800 disabled:bg-gray-50 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-colors"
+                                className="w-full px-4 py-2 border border-line rounded-lg text-sm text-ink disabled:bg-void focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent transition-colors"
                             />
                         </div>
                     </div>
@@ -347,7 +347,7 @@ export default function ProfileSettingsPage() {
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         {/* Website */}
                         <div>
-                            <label className="block text-sm font-semibold text-gray-700 mb-1.5">
+                            <label className="block text-sm font-semibold text-muted mb-1.5">
                                 Website
                             </label>
                             <input
@@ -355,13 +355,13 @@ export default function ProfileSettingsPage() {
                                 value={profileData.website}
                                 onChange={(e) => setProfileData({ ...profileData, website: e.target.value })}
                                 disabled={isLoading}
-                                className="w-full px-4 py-2 border border-gray-200 rounded-lg text-sm text-gray-800 disabled:bg-gray-50 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-colors"
+                                className="w-full px-4 py-2 border border-line rounded-lg text-sm text-ink disabled:bg-void focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent transition-colors"
                             />
                         </div>
 
                         {/* Foundation Date */}
                         <div>
-                            <label className="block text-sm font-semibold text-gray-700 mb-1.5">
+                            <label className="block text-sm font-semibold text-muted mb-1.5">
                                 Data de fundação da empresa
                             </label>
                             <input
@@ -369,7 +369,7 @@ export default function ProfileSettingsPage() {
                                 value={profileData.foundation_date}
                                 onChange={(e) => setProfileData({ ...profileData, foundation_date: e.target.value })}
                                 disabled={isLoading}
-                                className="w-full px-4 py-2 border border-gray-200 rounded-lg text-sm text-gray-800 disabled:bg-gray-50 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-colors"
+                                className="w-full px-4 py-2 border border-line rounded-lg text-sm text-ink disabled:bg-void focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent transition-colors"
                             />
                         </div>
                     </div>
@@ -380,7 +380,7 @@ export default function ProfileSettingsPage() {
                     <button
                         onClick={handleSave}
                         disabled={isLoading || isSaving}
-                        className="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-lg transition-colors shadow-sm disabled:opacity-50 flex items-center gap-2"
+                        className="px-5 py-2 bg-accent hover:bg-accent-2 text-white text-sm font-semibold rounded-lg transition-colors shadow-sm disabled:opacity-50 flex items-center gap-2"
                     >
                         {(isLoading || isSaving) && <SpinnerGap className="animate-spin" weight="bold" />}
                         Salvar Alterações
@@ -390,23 +390,23 @@ export default function ProfileSettingsPage() {
 
             {/* API Tokens Section — Admin Only */}
             {isAdmin && (
-                <div className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm space-y-5">
+                <div className="bg-panel border border-line rounded-xl p-6 shadow-sm space-y-5">
                     <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2">
-                            <Key size={18} weight="bold" className="text-blue-600" />
-                            <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider">Tokens de API</h3>
+                            <Key size={18} weight="bold" className="text-accent-2" />
+                            <h3 className="text-xs font-bold text-muted uppercase tracking-wider">Tokens de API</h3>
                         </div>
                         <button
                             onClick={() => { setShowTokenForm(!showTokenForm); setGeneratedToken(null) }}
-                            className="text-sm font-semibold text-blue-600 hover:text-blue-700 transition-colors flex items-center gap-1.5"
+                            className="text-sm font-semibold text-accent-2 hover:text-accent-2 transition-colors flex items-center gap-1.5"
                         >
                             <Plus size={16} weight="bold" />
                             Gerar novo token
                         </button>
                     </div>
 
-                    <p className="text-xs text-gray-500">
-                        Tokens de API permitem que sistemas externos (agentes IA, automações, webhooks) acessem a API do Atlas Eye em nome desta organização. <strong>O token é exibido apenas uma vez</strong> — copie e guarde em local seguro.
+                    <p className="text-xs text-muted">
+                        Tokens de API permitem que sistemas externos (agentes IA, automações, webhooks) acessem a API do Follem em nome desta organização. <strong>O token é exibido apenas uma vez</strong> — copie e guarde em local seguro.
                     </p>
 
                     {/* Generated Token Alert */}
@@ -415,14 +415,14 @@ export default function ProfileSettingsPage() {
                             <p className="text-sm font-semibold text-green-800">✅ Token gerado com sucesso!</p>
                             <p className="text-xs text-green-700">Copie agora — ele não será exibido novamente.</p>
                             <div className="flex items-center gap-2">
-                                <code className="flex-1 bg-white border border-green-300 rounded px-3 py-2 text-xs font-mono text-gray-800 break-all select-all">
+                                <code className="flex-1 bg-panel border border-green-300 rounded px-3 py-2 text-xs font-mono text-ink break-all select-all">
                                     {generatedToken}
                                 </code>
                                 <button
                                     onClick={() => copyToken(generatedToken)}
                                     className={`px-3 py-2 rounded-lg text-xs font-semibold transition-all flex items-center gap-1 ${tokenCopied
                                         ? 'bg-green-600 text-white'
-                                        : 'bg-white border border-green-300 text-green-700 hover:bg-green-50'
+                                        : 'bg-panel border border-green-300 text-green-700 hover:bg-green-50'
                                         }`}
                                 >
                                     <Copy size={14} />
@@ -434,27 +434,27 @@ export default function ProfileSettingsPage() {
 
                     {/* New Token Form */}
                     {showTokenForm && (
-                        <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 space-y-3">
-                            <label className="block text-sm font-semibold text-gray-700">Nome do token</label>
+                        <div className="bg-void border border-line rounded-lg p-4 space-y-3">
+                            <label className="block text-sm font-semibold text-muted">Nome do token</label>
                             <input
                                 type="text"
                                 value={newTokenName}
                                 onChange={(e) => setNewTokenName(e.target.value)}
                                 placeholder="Ex: Agente IA, n8n, Zapier..."
-                                className="w-full px-4 py-2 border border-gray-200 rounded-lg text-sm text-gray-800 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-colors"
+                                className="w-full px-4 py-2 border border-line rounded-lg text-sm text-ink focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent transition-colors"
                             />
                             <div className="flex gap-2">
                                 <button
                                     onClick={generateToken}
                                     disabled={isGenerating}
-                                    className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-lg transition-colors disabled:opacity-50 flex items-center gap-2"
+                                    className="px-4 py-2 bg-accent hover:bg-accent-2 text-white text-sm font-semibold rounded-lg transition-colors disabled:opacity-50 flex items-center gap-2"
                                 >
                                     {isGenerating && <SpinnerGap className="animate-spin" weight="bold" size={14} />}
                                     Gerar Token
                                 </button>
                                 <button
                                     onClick={() => setShowTokenForm(false)}
-                                    className="px-4 py-2 bg-white border border-gray-200 text-gray-600 text-sm font-semibold rounded-lg hover:bg-gray-50 transition-colors"
+                                    className="px-4 py-2 bg-panel border border-line text-muted text-sm font-semibold rounded-lg hover:bg-void transition-colors"
                                 >
                                     Cancelar
                                 </button>
@@ -465,10 +465,10 @@ export default function ProfileSettingsPage() {
                     {/* Token List */}
                     {tokensLoading ? (
                         <div className="flex items-center justify-center py-8">
-                            <SpinnerGap className="animate-spin text-blue-600" size={24} weight="bold" />
+                            <SpinnerGap className="animate-spin text-accent-2" size={24} weight="bold" />
                         </div>
                     ) : tokens.length === 0 ? (
-                        <div className="text-center py-8 text-sm text-gray-400">
+                        <div className="text-center py-8 text-sm text-muted">
                             Nenhum token de API criado ainda.
                         </div>
                     ) : (
@@ -476,20 +476,20 @@ export default function ProfileSettingsPage() {
                             {tokens.map((token) => (
                                 <div
                                     key={token.id}
-                                    className="rounded-lg border border-gray-200 bg-white transition-colors overflow-hidden"
+                                    className="rounded-lg border border-line bg-panel transition-colors overflow-hidden"
                                 >
                                     <div className="flex items-center justify-between p-3">
                                         <div className="flex items-center gap-3">
-                                            <Key size={16} weight="bold" className="text-blue-500" />
+                                            <Key size={16} weight="bold" className="text-accent-2" />
                                             <div>
-                                                <p className="text-sm font-semibold text-gray-800">{token.name}</p>
-                                                <p className="text-xs text-gray-400 font-mono">
+                                                <p className="text-sm font-semibold text-ink">{token.name}</p>
+                                                <p className="text-xs text-muted font-mono">
                                                     {token.token_prefix}{'•'.repeat(24)}
                                                 </p>
                                             </div>
                                         </div>
                                         <div className="flex items-center gap-3">
-                                            <span className="text-xs text-gray-400">
+                                            <span className="text-xs text-muted">
                                                 Criado em {new Date(token.created_at).toLocaleDateString('pt-BR')}
                                             </span>
                                             <button
@@ -509,7 +509,7 @@ export default function ProfileSettingsPage() {
                                             <div className="flex items-center gap-2">
                                                 <button
                                                     onClick={() => setConfirmingDeleteId(null)}
-                                                    className="px-3 py-1.5 text-xs font-semibold text-gray-600 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
+                                                    className="px-3 py-1.5 text-xs font-semibold text-muted bg-panel border border-line rounded-lg hover:bg-void transition-colors"
                                                 >
                                                     Cancelar
                                                 </button>

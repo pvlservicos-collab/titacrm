@@ -180,7 +180,7 @@ export default function ChatEvolutionPage() {
   if (!organizationId) {
     return (
       <div className="flex items-center justify-center h-full" style={{ backgroundColor: 'var(--chat-bg-conversation)' }}>
-        <p className="text-gray-500">Nenhuma organização encontrada.</p>
+        <p className="text-muted">Nenhuma organização encontrada.</p>
       </div>
     )
   }

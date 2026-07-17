@@ -1,5 +1,5 @@
 /**
- * Drizzle ORM Schema — Atlas Eye CRM
+ * Drizzle ORM Schema — Follem CRM
  * Espelha exatamente as migrations SQL do Supabase (database/001_init_schema.sql + seguintes)
  * compatível com Neon (PostgreSQL)
  */
@@ -51,6 +51,11 @@ export const profiles = pgTable('profiles', {
   avatarUrl: text('avatar_url'),
   timezone: text('timezone'),
   isSuperadmin: boolean('is_superadmin').default(false),
+  // Tour guiado em /welcome (conectar WhatsApp, overview de funções) no primeiro
+  // login. Contas criadas antes desta coluna existir nascem com true via backfill
+  // da migration 0115 — só contas novas (via /ativar-conta ou "Novo Membro") caem
+  // no tour.
+  onboardingCompleted: boolean('onboarding_completed').default(false),
 })
 
 // Tabela de sessões NextAuth (necessária para estratégia database)

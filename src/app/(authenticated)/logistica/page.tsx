@@ -46,7 +46,7 @@ const TONE_CLASSES: Record<StatusTone, string> = {
   warning: 'text-yellow-400 bg-yellow-400/10 border-yellow-400/30',
   success: 'text-green-400 bg-green-400/10 border-green-400/30',
   danger: 'text-red-400 bg-red-400/10 border-red-400/30',
-  info: 'text-blue-400 bg-blue-400/10 border-blue-400/30',
+  info: 'text-accent-2 bg-accent/10 border-accent/30',
 }
 
 const PAYMENT_STATUS_LABELS: Record<string, { label: string; color: string }> = Object.fromEntries(
@@ -186,20 +186,20 @@ export default function LogisticaPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 p-4 sm:p-6">
+    <div className="min-h-screen bg-void p-4 sm:p-6">
       <div className="max-w-7xl mx-auto space-y-6">
         {/* Header */}
         <div className="flex items-center justify-between gap-3 flex-wrap">
           <div className="flex items-center gap-3">
-            <Truck size={28} className="text-blue-600" weight="fill" />
+            <Truck size={28} className="text-accent-2" weight="fill" />
             <div>
-              <h1 className="text-2xl font-bold text-gray-900">Logística</h1>
-              <p className="text-sm text-gray-500">Gerencie os pedidos e entregas</p>
+              <h1 className="text-2xl font-bold text-ink">Logística</h1>
+              <p className="text-sm text-muted">Gerencie os pedidos e entregas</p>
             </div>
           </div>
           <button
             onClick={() => setShowNewOrder(true)}
-            className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors"
+            className="flex items-center gap-2 px-4 py-2 bg-accent text-white rounded-lg text-sm font-medium hover:bg-accent-2 transition-colors"
           >
             <Plus size={16} weight="bold" />
             Novo pedido
@@ -208,41 +208,41 @@ export default function LogisticaPage() {
 
         {/* Summary Cards */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <div className="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm">
+          <div className="bg-panel rounded-2xl p-5 border border-line shadow-sm">
             <div className="flex items-center gap-3 mb-2">
               <div className="w-10 h-10 bg-orange-50 rounded-xl flex items-center justify-center">
                 <Truck size={20} className="text-orange-500" />
               </div>
-              <span className="text-sm font-medium text-gray-500">Entregas pendentes</span>
+              <span className="text-sm font-medium text-muted">Entregas pendentes</span>
             </div>
-            <p className="text-3xl font-bold text-gray-900">{pendingDeliveries}</p>
+            <p className="text-3xl font-bold text-ink">{pendingDeliveries}</p>
           </div>
-          <div className="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm">
+          <div className="bg-panel rounded-2xl p-5 border border-line shadow-sm">
             <div className="flex items-center gap-3 mb-2">
               <div className="w-10 h-10 bg-green-50 rounded-xl flex items-center justify-center">
                 <CurrencyDollar size={20} className="text-green-500" />
               </div>
-              <span className="text-sm font-medium text-gray-500">Faturamento (pago)</span>
+              <span className="text-sm font-medium text-muted">Faturamento (pago)</span>
             </div>
-            <p className="text-3xl font-bold text-gray-900">{formatCurrency(totalRevenue)}</p>
+            <p className="text-3xl font-bold text-ink">{formatCurrency(totalRevenue)}</p>
           </div>
-          <div className="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm">
+          <div className="bg-panel rounded-2xl p-5 border border-line shadow-sm">
             <div className="flex items-center gap-3 mb-2">
-              <div className="w-10 h-10 bg-blue-50 rounded-xl flex items-center justify-center">
-                <Package size={20} className="text-blue-500" />
+              <div className="w-10 h-10 bg-panel-2 rounded-xl flex items-center justify-center">
+                <Package size={20} className="text-accent-2" />
               </div>
-              <span className="text-sm font-medium text-gray-500">Total de pedidos</span>
+              <span className="text-sm font-medium text-muted">Total de pedidos</span>
             </div>
-            <p className="text-3xl font-bold text-gray-900">{orders.length}</p>
+            <p className="text-3xl font-bold text-ink">{orders.length}</p>
           </div>
-          <div className="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm">
+          <div className="bg-panel rounded-2xl p-5 border border-line shadow-sm">
             <div className="flex items-center gap-3 mb-2">
               <div className="w-10 h-10 bg-red-50 rounded-xl flex items-center justify-center">
                 <XCircle size={20} className="text-red-500" />
               </div>
-              <span className="text-sm font-medium text-gray-500">Taxa de cancelamento</span>
+              <span className="text-sm font-medium text-muted">Taxa de cancelamento</span>
             </div>
-            <p className="text-3xl font-bold text-gray-900">{cancellationRate.toFixed(1).replace('.', ',')}%</p>
+            <p className="text-3xl font-bold text-ink">{cancellationRate.toFixed(1).replace('.', ',')}%</p>
           </div>
         </div>
 
@@ -251,12 +251,12 @@ export default function LogisticaPage() {
         {/* Abas: pendentes (padrão) / entregues / cancelados — evita misturar pedido já
             resolvido (entregue ou cancelado) com o que ainda falta entregar, que era o
             que confundia o entregador. */}
-        <div className="flex items-center gap-6 border-b border-gray-200">
+        <div className="flex items-center gap-6 border-b border-line">
           <button
             onClick={() => setActiveTab('pending')}
             className={`pb-3 text-sm font-medium transition-colors border-b-2 ${activeTab === 'pending'
-              ? 'border-blue-600 text-blue-600'
-              : 'border-transparent text-gray-500 hover:text-gray-900'
+              ? 'border-accent text-accent-2'
+              : 'border-transparent text-muted hover:text-ink'
               }`}
           >
             Pendentes ({pendingOrders.length})
@@ -264,8 +264,8 @@ export default function LogisticaPage() {
           <button
             onClick={() => setActiveTab('delivered')}
             className={`pb-3 text-sm font-medium transition-colors border-b-2 ${activeTab === 'delivered'
-              ? 'border-blue-600 text-blue-600'
-              : 'border-transparent text-gray-500 hover:text-gray-900'
+              ? 'border-accent text-accent-2'
+              : 'border-transparent text-muted hover:text-ink'
               }`}
           >
             Entregues ({deliveredOrders.length})
@@ -273,8 +273,8 @@ export default function LogisticaPage() {
           <button
             onClick={() => setActiveTab('cancelled')}
             className={`pb-3 text-sm font-medium transition-colors border-b-2 ${activeTab === 'cancelled'
-              ? 'border-blue-600 text-blue-600'
-              : 'border-transparent text-gray-500 hover:text-gray-900'
+              ? 'border-accent text-accent-2'
+              : 'border-transparent text-muted hover:text-ink'
               }`}
           >
             Cancelados ({cancelledOrders.length})
@@ -282,25 +282,25 @@ export default function LogisticaPage() {
         </div>
 
         {/* Filters */}
-        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4">
+        <div className="bg-panel rounded-2xl border border-line shadow-sm p-4">
           <div className="flex items-center gap-4 flex-wrap">
             <div className="relative flex-1 min-w-[200px]">
-              <MagnifyingGlass className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
+              <MagnifyingGlass className="absolute left-3 top-1/2 -translate-y-1/2 text-muted w-4 h-4" />
               <input
                 type="text"
                 value={search}
                 onChange={e => setSearch(e.target.value)}
                 placeholder="Buscar por cliente ou produto..."
-                className="w-full pl-9 pr-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400"
+                className="w-full pl-9 pr-3 py-2 text-sm border border-line rounded-lg focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent"
               />
             </div>
             <div className="flex items-center gap-2 flex-wrap">
-              <span className="text-xs font-medium text-gray-500">Pagamento:</span>
+              <span className="text-xs font-medium text-muted">Pagamento:</span>
               {['', 'pending', 'paid', 'refunded'].map(s => (
                 <button
                   key={s}
                   onClick={() => setPaymentFilter(s)}
-                  className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${paymentFilter === s ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
+                  className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${paymentFilter === s ? 'bg-accent text-white' : 'bg-panel-2 text-muted hover:bg-panel-2'}`}
                 >
                   {s === '' ? 'Todos' : PAYMENT_STATUS_LABELS[s]?.label || s}
                 </button>
@@ -311,35 +311,35 @@ export default function LogisticaPage() {
 
         {/* Table (desktop) / Cards (mobile) */}
         {loading ? (
-          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm flex items-center justify-center h-48 text-gray-400">Carregando...</div>
+          <div className="bg-panel rounded-2xl border border-line shadow-sm flex items-center justify-center h-48 text-muted">Carregando...</div>
         ) : filtered.length === 0 ? (
-          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm flex flex-col items-center justify-center h-48 gap-2">
-            <Package size={32} className="text-gray-300" />
-            <p className="text-gray-400 text-sm">Nenhum pedido encontrado</p>
+          <div className="bg-panel rounded-2xl border border-line shadow-sm flex flex-col items-center justify-center h-48 gap-2">
+            <Package size={32} className="text-muted" />
+            <p className="text-muted text-sm">Nenhum pedido encontrado</p>
           </div>
         ) : (
           <>
           {/* Mobile: lista de cartões */}
           <div className="md:hidden space-y-3">
             {filtered.map(order => {
-              const payStatus = PAYMENT_STATUS_LABELS[order.payment_status] || { label: order.payment_status, color: 'text-gray-400 bg-gray-100 border-gray-200' }
-              const delStatus = DELIVERY_STATUS_LABELS[order.delivery_status] || { label: order.delivery_status, color: 'text-gray-400 bg-gray-100 border-gray-200' }
+              const payStatus = PAYMENT_STATUS_LABELS[order.payment_status] || { label: order.payment_status, color: 'text-muted bg-panel-2 border-line' }
+              const delStatus = DELIVERY_STATUS_LABELS[order.delivery_status] || { label: order.delivery_status, color: 'text-muted bg-panel-2 border-line' }
               const mainProduct = order.items[0]?.product_name || '—'
               const extraItems = order.items.length > 1 ? `+${order.items.length - 1}` : ''
               const whatsappLink = buildDeliveryWhatsAppLink(order)
               return (
-                <div key={order.id} className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4">
+                <div key={order.id} className="bg-panel rounded-2xl border border-line shadow-sm p-4">
                   <div className="flex items-start justify-between gap-2">
                     <button onClick={() => setSelectedOrder(order)} className="text-left min-w-0" title="Ver dados completos do cliente">
-                      <p className="font-medium text-gray-900 text-sm truncate">{order.customer_name || '—'}</p>
-                      <p className="text-xs text-gray-400">{order.customer_phone || ''}</p>
+                      <p className="font-medium text-ink text-sm truncate">{order.customer_name || '—'}</p>
+                      <p className="text-xs text-muted">{order.customer_phone || ''}</p>
                     </button>
-                    <p className="text-sm font-semibold text-gray-900 flex-shrink-0">{formatCurrency(order.total_value)}</p>
+                    <p className="text-sm font-semibold text-ink flex-shrink-0">{formatCurrency(order.total_value)}</p>
                   </div>
 
                   <div className="mt-2">
-                    <p className="text-sm text-gray-700">{mainProduct}{extraItems ? ` +${extraItems.replace('+', '')}` : ''}</p>
-                    <p className="text-xs text-gray-400">{PAYMENT_METHOD_LABELS[order.payment_method] || order.payment_method} · {formatDate(order.created_at)}</p>
+                    <p className="text-sm text-muted">{mainProduct}{extraItems ? ` +${extraItems.replace('+', '')}` : ''}</p>
+                    <p className="text-xs text-muted">{PAYMENT_METHOD_LABELS[order.payment_method] || order.payment_method} · {formatDate(order.created_at)}</p>
                   </div>
 
                   <div className="flex items-center gap-2 mt-3 flex-wrap">
@@ -350,7 +350,7 @@ export default function LogisticaPage() {
                       className={`text-xs font-medium px-2 py-1 rounded-full border bg-transparent focus:outline-none cursor-pointer ${payStatus.color}`}
                     >
                       {Object.entries(PAYMENT_STATUS_LABELS).map(([val, { label }]) => (
-                        <option key={val} value={val} className="bg-white text-gray-700">{label}</option>
+                        <option key={val} value={val} className="bg-panel text-muted">{label}</option>
                       ))}
                     </select>
                     <select
@@ -360,15 +360,15 @@ export default function LogisticaPage() {
                       className={`text-xs font-medium px-2 py-1 rounded-full border bg-transparent focus:outline-none cursor-pointer ${delStatus.color}`}
                     >
                       {Object.entries(DELIVERY_STATUS_LABELS).map(([val, { label }]) => (
-                        <option key={val} value={val} className="bg-white text-gray-700">{label}</option>
+                        <option key={val} value={val} className="bg-panel text-muted">{label}</option>
                       ))}
                     </select>
                   </div>
                   {order.delivered_at && (
-                    <p className="text-[10px] text-gray-400 mt-1">Entregue em {formatDateTime(order.delivered_at)}</p>
+                    <p className="text-[10px] text-muted mt-1">Entregue em {formatDateTime(order.delivered_at)}</p>
                   )}
 
-                  <div className="flex items-center gap-2 mt-3 pt-3 border-t border-gray-50">
+                  <div className="flex items-center gap-2 mt-3 pt-3 border-t border-line">
                     {whatsappLink && (
                       <a
                         href={whatsappLink}
@@ -395,39 +395,39 @@ export default function LogisticaPage() {
           </div>
 
           {/* Desktop: tabela */}
-          <div className="hidden md:block bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+          <div className="hidden md:block bg-panel rounded-2xl border border-line shadow-sm overflow-hidden">
             <table className="w-full">
               <thead>
-                <tr className="border-b border-gray-100 bg-gray-50/50">
-                  <th className="text-left px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Cliente</th>
-                  <th className="text-left px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Produto</th>
-                  <th className="text-left px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Valor</th>
-                  <th className="text-left px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Pagamento</th>
-                  <th className="text-left px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Entrega</th>
-                  <th className="text-left px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Data</th>
+                <tr className="border-b border-line bg-void">
+                  <th className="text-left px-5 py-3 text-xs font-semibold text-muted uppercase tracking-wide">Cliente</th>
+                  <th className="text-left px-5 py-3 text-xs font-semibold text-muted uppercase tracking-wide">Produto</th>
+                  <th className="text-left px-5 py-3 text-xs font-semibold text-muted uppercase tracking-wide">Valor</th>
+                  <th className="text-left px-5 py-3 text-xs font-semibold text-muted uppercase tracking-wide">Pagamento</th>
+                  <th className="text-left px-5 py-3 text-xs font-semibold text-muted uppercase tracking-wide">Entrega</th>
+                  <th className="text-left px-5 py-3 text-xs font-semibold text-muted uppercase tracking-wide">Data</th>
                   <th className="px-5 py-3"></th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-50">
+              <tbody className="divide-y divide-line">
                 {filtered.map(order => {
-                  const payStatus = PAYMENT_STATUS_LABELS[order.payment_status] || { label: order.payment_status, color: 'text-gray-400 bg-gray-100 border-gray-200' }
-                  const delStatus = DELIVERY_STATUS_LABELS[order.delivery_status] || { label: order.delivery_status, color: 'text-gray-400 bg-gray-100 border-gray-200' }
+                  const payStatus = PAYMENT_STATUS_LABELS[order.payment_status] || { label: order.payment_status, color: 'text-muted bg-panel-2 border-line' }
+                  const delStatus = DELIVERY_STATUS_LABELS[order.delivery_status] || { label: order.delivery_status, color: 'text-muted bg-panel-2 border-line' }
                   const mainProduct = order.items[0]?.product_name || '—'
                   const extraItems = order.items.length > 1 ? `+${order.items.length - 1}` : ''
                   const whatsappLink = buildDeliveryWhatsAppLink(order)
                   return (
-                    <tr key={order.id} className="hover:bg-gray-50/50 transition-colors">
-                      <td className="px-5 py-4 cursor-pointer hover:bg-blue-50/50 transition-colors" onClick={() => setSelectedOrder(order)} title="Ver dados completos do cliente">
-                        <p className="font-medium text-gray-900 text-sm">{order.customer_name || '—'}</p>
-                        <p className="text-xs text-gray-400">{order.customer_phone || ''}</p>
+                    <tr key={order.id} className="hover:bg-void transition-colors">
+                      <td className="px-5 py-4 cursor-pointer hover:bg-panel-2 transition-colors" onClick={() => setSelectedOrder(order)} title="Ver dados completos do cliente">
+                        <p className="font-medium text-ink text-sm">{order.customer_name || '—'}</p>
+                        <p className="text-xs text-muted">{order.customer_phone || ''}</p>
                       </td>
                       <td className="px-5 py-4">
-                        <p className="text-sm text-gray-700">{mainProduct}</p>
-                        {extraItems && <p className="text-xs text-gray-400">{extraItems} mais</p>}
+                        <p className="text-sm text-muted">{mainProduct}</p>
+                        {extraItems && <p className="text-xs text-muted">{extraItems} mais</p>}
                       </td>
                       <td className="px-5 py-4">
-                        <p className="text-sm font-semibold text-gray-900">{formatCurrency(order.total_value)}</p>
-                        <p className="text-xs text-gray-400">{PAYMENT_METHOD_LABELS[order.payment_method] || order.payment_method}</p>
+                        <p className="text-sm font-semibold text-ink">{formatCurrency(order.total_value)}</p>
+                        <p className="text-xs text-muted">{PAYMENT_METHOD_LABELS[order.payment_method] || order.payment_method}</p>
                       </td>
                       <td className="px-5 py-4">
                         <select
@@ -437,7 +437,7 @@ export default function LogisticaPage() {
                           className={`text-xs font-medium px-2 py-1 rounded-full border bg-transparent focus:outline-none cursor-pointer ${payStatus.color}`}
                         >
                           {Object.entries(PAYMENT_STATUS_LABELS).map(([val, { label }]) => (
-                            <option key={val} value={val} className="bg-white text-gray-700">{label}</option>
+                            <option key={val} value={val} className="bg-panel text-muted">{label}</option>
                           ))}
                         </select>
                       </td>
@@ -449,14 +449,14 @@ export default function LogisticaPage() {
                           className={`text-xs font-medium px-2 py-1 rounded-full border bg-transparent focus:outline-none cursor-pointer ${delStatus.color}`}
                         >
                           {Object.entries(DELIVERY_STATUS_LABELS).map(([val, { label }]) => (
-                            <option key={val} value={val} className="bg-white text-gray-700">{label}</option>
+                            <option key={val} value={val} className="bg-panel text-muted">{label}</option>
                           ))}
                         </select>
                         {order.delivered_at && (
-                          <p className="text-[10px] text-gray-400 mt-1">Entregue em {formatDateTime(order.delivered_at)}</p>
+                          <p className="text-[10px] text-muted mt-1">Entregue em {formatDateTime(order.delivered_at)}</p>
                         )}
                       </td>
-                      <td className="px-5 py-4 text-sm text-gray-500">{formatDate(order.created_at)}</td>
+                      <td className="px-5 py-4 text-sm text-muted">{formatDate(order.created_at)}</td>
                       <td className="px-5 py-4">
                         <div className="flex items-center gap-1.5 justify-end">
                           {whatsappLink && (
@@ -466,7 +466,7 @@ export default function LogisticaPage() {
                               rel="noopener noreferrer"
                               onClick={e => e.stopPropagation()}
                               title="Avisar cliente no WhatsApp"
-                              className="p-1.5 text-gray-400 hover:text-green-600 hover:bg-green-50 rounded-lg transition-colors"
+                              className="p-1.5 text-muted hover:text-green-600 hover:bg-green-50 rounded-lg transition-colors"
                             >
                               <WhatsappLogo size={16} weight="fill" />
                             </a>
@@ -475,7 +475,7 @@ export default function LogisticaPage() {
                             onClick={e => { e.stopPropagation(); handleDelete(order) }}
                             disabled={deletingOrder === order.id}
                             title="Excluir pedido"
-                            className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-40"
+                            className="p-1.5 text-muted hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-40"
                           >
                             <Trash size={16} />
                           </button>
@@ -491,7 +491,7 @@ export default function LogisticaPage() {
         )}
 
         {filtered.length > 0 && (
-          <p className="text-xs text-gray-400 text-right">{filtered.length} pedido{filtered.length !== 1 ? 's' : ''} encontrado{filtered.length !== 1 ? 's' : ''}</p>
+          <p className="text-xs text-muted text-right">{filtered.length} pedido{filtered.length !== 1 ? 's' : ''} encontrado{filtered.length !== 1 ? 's' : ''}</p>
         )}
       </div>
 

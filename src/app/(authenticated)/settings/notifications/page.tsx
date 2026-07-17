@@ -72,11 +72,11 @@ function Toggle({ enabled, onChange }: { enabled: boolean; onChange: (v: boolean
         <button
             type="button"
             onClick={() => onChange(!enabled)}
-            className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${enabled ? 'bg-blue-600' : 'bg-gray-200'
+            className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${enabled ? 'bg-accent' : 'bg-panel-2'
                 }`}
         >
             <span
-                className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-lg ring-0 transition duration-200 ease-in-out ${enabled ? 'translate-x-5' : 'translate-x-0'
+                className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-panel shadow-lg ring-0 transition duration-200 ease-in-out ${enabled ? 'translate-x-5' : 'translate-x-0'
                     }`}
             />
         </button>
@@ -96,12 +96,12 @@ function CopyableId({ value }: { value: string }) {
 
     return (
         <div className="flex items-center gap-2">
-            <div className="flex-1 px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-600 font-mono tracking-wide">
+            <div className="flex-1 px-3 py-2 bg-void border border-line rounded-lg text-sm text-muted font-mono tracking-wide">
                 {value}
             </div>
             <button
                 onClick={handleCopy}
-                className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+                className="p-2 text-muted hover:text-muted hover:bg-panel-2 rounded-lg transition-colors"
                 title="Copiar ID"
             >
                 {copied ? <Check size={16} weight="bold" className="text-green-500" /> : <Copy size={16} />}
@@ -134,7 +134,7 @@ function ApiNotificationCard({
     const Icon = AVAILABLE_ICONS[notification.iconName] || Lightning
 
     return (
-        <div className={`bg-white border rounded-2xl shadow-sm transition-all ${notification.enabled ? 'border-gray-200' : 'border-gray-100 opacity-75'}`}>
+        <div className={`bg-panel border rounded-2xl shadow-sm transition-all ${notification.enabled ? 'border-line' : 'border-line opacity-75'}`}>
             <div className="px-5 py-4 flex items-center justify-between">
                 <div className="flex items-center gap-3">
                     <div
@@ -143,29 +143,29 @@ function ApiNotificationCard({
                     >
                         <Icon size={18} weight="duotone" style={{ color: notification.color }} />
                     </div>
-                    <span className="text-sm font-semibold text-gray-900">{notification.label}</span>
+                    <span className="text-sm font-semibold text-ink">{notification.label}</span>
                 </div>
                 <Toggle enabled={notification.enabled} onChange={onToggle} />
             </div>
 
             {notification.enabled && (
-                <div className="px-5 pb-5 space-y-4 border-t border-gray-100 pt-4">
+                <div className="px-5 pb-5 space-y-4 border-t border-line pt-4">
                     {/* Name Input */}
                     <div>
-                        <label className="block text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-2">
+                        <label className="block text-[11px] font-bold text-muted uppercase tracking-wider mb-2">
                             Nome da Notificação
                         </label>
                         <input
                             type="text"
                             value={notification.label}
                             onChange={(e) => onNameChange(e.target.value)}
-                            className="block w-full px-3 py-2 text-sm bg-white border border-gray-200 rounded-lg focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-colors"
+                            className="block w-full px-3 py-2 text-sm bg-panel border border-line rounded-lg focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent transition-colors"
                         />
                     </div>
 
                     {/* Description Input */}
                     <div>
-                        <label className="block text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-2">
+                        <label className="block text-[11px] font-bold text-muted uppercase tracking-wider mb-2">
                             Descrição (Opcional)
                         </label>
                         <input
@@ -173,13 +173,13 @@ function ApiNotificationCard({
                             value={notification.description || ''}
                             onChange={(e) => onDescriptionChange(e.target.value)}
                             placeholder="Ex: Um novo negócio foi fechado na sua equipe"
-                            className="block w-full px-3 py-2 text-sm bg-white border border-gray-200 rounded-lg focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-colors"
+                            className="block w-full px-3 py-2 text-sm bg-panel border border-line rounded-lg focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent transition-colors"
                         />
                     </div>
 
                     {/* Icon picker */}
                     <div>
-                        <label className="block text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-2.5">
+                        <label className="block text-[11px] font-bold text-muted uppercase tracking-wider mb-2.5">
                             Ícone
                         </label>
                         <div className="flex flex-wrap items-center gap-1.5">
@@ -188,12 +188,12 @@ function ApiNotificationCard({
                                     key={iconName}
                                     onClick={() => onIconChange(iconName)}
                                     className={`w-9 h-9 rounded-xl flex items-center justify-center transition-all ${notification.iconName === iconName
-                                        ? 'bg-gray-100 ring-2 ring-gray-100'
-                                        : 'hover:bg-gray-50'
+                                        ? 'bg-panel-2 ring-2 ring-line'
+                                        : 'hover:bg-void'
                                         }`}
                                     title="Selecionar ícone"
                                 >
-                                    <IconOption size={18} weight={notification.iconName === iconName ? "fill" : "duotone"} className={notification.iconName === iconName ? "text-gray-800" : "text-gray-500"} />
+                                    <IconOption size={18} weight={notification.iconName === iconName ? "fill" : "duotone"} className={notification.iconName === iconName ? "text-ink" : "text-muted"} />
                                 </button>
                             ))}
                         </div>
@@ -201,7 +201,7 @@ function ApiNotificationCard({
 
                     {/* Color picker */}
                     <div>
-                        <label className="block text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-2.5">
+                        <label className="block text-[11px] font-bold text-muted uppercase tracking-wider mb-2.5">
                             Cor do alerta
                         </label>
                         <div className="flex items-center gap-2.5">
@@ -225,7 +225,7 @@ function ApiNotificationCard({
 
                     {/* Event ID */}
                     <div>
-                        <label className="block text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-2">
+                        <label className="block text-[11px] font-bold text-muted uppercase tracking-wider mb-2">
                             ID da notificação
                         </label>
                         <CopyableId value={notification.eventId} />
@@ -235,14 +235,14 @@ function ApiNotificationCard({
                     <div className="flex justify-between items-center pt-2">
                         <button
                             onClick={onTest}
-                            className="flex items-center gap-1.5 text-xs font-semibold text-blue-600 hover:text-blue-700 hover:bg-blue-50 px-3 py-1.5 rounded-lg transition-colors uppercase tracking-wide"
+                            className="flex items-center gap-1.5 text-xs font-semibold text-accent-2 hover:text-accent-2 hover:bg-panel-2 px-3 py-1.5 rounded-lg transition-colors uppercase tracking-wide"
                         >
                             <Play size={14} weight="fill" />
                             Testar
                         </button>
                         <button
                             onClick={onDelete}
-                            className="flex items-center gap-1.5 text-xs font-semibold text-gray-400 hover:text-red-500 hover:bg-red-50 px-3 py-1.5 rounded-lg transition-colors uppercase tracking-wide"
+                            className="flex items-center gap-1.5 text-xs font-semibold text-muted hover:text-red-500 hover:bg-red-50 px-3 py-1.5 rounded-lg transition-colors uppercase tracking-wide"
                         >
                             <Trash size={14} />
                             Excluir
@@ -260,35 +260,35 @@ function PushNotificationsCard() {
     const { status, subscribe, unsubscribe } = usePushNotifications()
 
     return (
-        <div className="bg-white border border-gray-200 rounded-2xl shadow-sm">
-            <div className="px-5 py-4 flex items-center gap-2.5 border-b border-gray-100">
-                <DeviceMobile size={18} weight="duotone" className="text-gray-600" />
-                <span className="text-xs font-bold text-gray-700 uppercase tracking-wider">
+        <div className="bg-panel border border-line rounded-2xl shadow-sm">
+            <div className="px-5 py-4 flex items-center gap-2.5 border-b border-line">
+                <DeviceMobile size={18} weight="duotone" className="text-muted" />
+                <span className="text-xs font-bold text-muted uppercase tracking-wider">
                     Notificações no Celular
                 </span>
             </div>
             <div className="px-5 py-4">
                 {status === 'ios-not-installed' ? (
                     <div>
-                        <p className="text-sm font-semibold text-gray-900">Instale o app pra receber notificações</p>
-                        <p className="text-xs text-gray-500 mt-1 flex items-center gap-1 flex-wrap">
+                        <p className="text-sm font-semibold text-ink">Instale o app pra receber notificações</p>
+                        <p className="text-xs text-muted mt-1 flex items-center gap-1 flex-wrap">
                             No iPhone, o Safari só manda notificação push pra apps adicionados à tela de início. Toque em{' '}
-                            <ShareFat size={14} weight="bold" className="text-blue-500" /> Compartilhar e depois em
+                            <ShareFat size={14} weight="bold" className="text-accent-2" /> Compartilhar e depois em
                             &quot;Adicionar à Tela de Início&quot;, e volte aqui.
                         </p>
                     </div>
                 ) : status === 'unsupported' ? (
-                    <p className="text-sm text-gray-500">Seu navegador não é compatível com notificações push.</p>
+                    <p className="text-sm text-muted">Seu navegador não é compatível com notificações push.</p>
                 ) : status === 'denied' ? (
-                    <p className="text-sm text-gray-500">
-                        As notificações estão bloqueadas pro Atlas Eye neste navegador. Ative de novo nas
+                    <p className="text-sm text-muted">
+                        As notificações estão bloqueadas pro Follem neste navegador. Ative de novo nas
                         configurações de site do seu navegador/celular pra poder ligar aqui.
                     </p>
                 ) : (
                     <div className="flex items-center justify-between">
                         <div>
-                            <p className="text-sm font-semibold text-gray-900">Avisar quando chegar mensagem nova</p>
-                            <p className="text-xs text-gray-500 mt-0.5">
+                            <p className="text-sm font-semibold text-ink">Avisar quando chegar mensagem nova</p>
+                            <p className="text-xs text-muted mt-0.5">
                                 Notificação com prévia da mensagem, mesmo com o app fechado.
                             </p>
                         </div>
@@ -400,13 +400,13 @@ export default function NotificationSettingsPage() {
         <div className="max-w-3xl mx-auto space-y-8">
             {/* Breadcrumb */}
             <div>
-                <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-1">
+                <p className="text-[11px] font-bold text-muted uppercase tracking-wider mb-1">
                     Configurações &gt; Notificações
                 </p>
-                <h1 className="text-2xl font-bold text-gray-900">
+                <h1 className="text-2xl font-bold text-ink">
                     Configurações de Notificações
                 </h1>
-                <p className="text-sm text-gray-500 mt-1">
+                <p className="text-sm text-muted mt-1">
                     Gerencie como e quando você deseja receber alertas do CRM.
                 </p>
             </div>
@@ -415,19 +415,19 @@ export default function NotificationSettingsPage() {
             <PushNotificationsCard />
 
             {/* System Notifications */}
-            <div className="bg-white border border-gray-200 rounded-2xl shadow-sm">
-                <div className="px-5 py-4 flex items-center gap-2.5 border-b border-gray-100">
-                    <ChatCircleDots size={18} weight="duotone" className="text-gray-600" />
-                    <span className="text-xs font-bold text-gray-700 uppercase tracking-wider">
+            <div className="bg-panel border border-line rounded-2xl shadow-sm">
+                <div className="px-5 py-4 flex items-center gap-2.5 border-b border-line">
+                    <ChatCircleDots size={18} weight="duotone" className="text-muted" />
+                    <span className="text-xs font-bold text-muted uppercase tracking-wider">
                         Notificações do Sistema
                     </span>
                 </div>
-                <div className="divide-y divide-gray-50">
+                <div className="divide-y divide-line">
                     {systemNotifications.map((item) => (
                         <div key={item.id} className="px-5 py-4 flex items-center justify-between">
                             <div>
-                                <p className="text-sm font-semibold text-gray-900">{item.label}</p>
-                                <p className="text-xs text-gray-500 mt-0.5">{item.description}</p>
+                                <p className="text-sm font-semibold text-ink">{item.label}</p>
+                                <p className="text-xs text-muted mt-0.5">{item.description}</p>
                             </div>
                             <Toggle enabled={item.enabled} onChange={() => toggleSystem(item.id)} />
                         </div>
@@ -439,20 +439,20 @@ export default function NotificationSettingsPage() {
             <div className="space-y-4">
                 <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2.5">
-                        <Lightning size={18} weight="duotone" className="text-gray-600" />
-                        <span className="text-xs font-bold text-gray-700 uppercase tracking-wider">
+                        <Lightning size={18} weight="duotone" className="text-muted" />
+                        <span className="text-xs font-bold text-muted uppercase tracking-wider">
                             Notificações via API
                         </span>
                     </div>
                     <button
                         onClick={createApiNotification}
-                        className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-lg transition-colors shadow-sm flex items-center gap-2"
+                        className="px-4 py-2 bg-accent hover:bg-accent-2 text-white text-sm font-semibold rounded-lg transition-colors shadow-sm flex items-center gap-2"
                     >
                         <Plus size={16} weight="bold" />
                         Criar nova notificação
                     </button>
                 </div>
-                <p className="text-sm text-gray-500 -mt-2">
+                <p className="text-sm text-muted -mt-2">
                     Configure eventos que serão disparados via API externa para notificar sua equipe.
                 </p>
 
@@ -472,14 +472,14 @@ export default function NotificationSettingsPage() {
                     ))}
 
                     {apiNotifications.length === 0 && (
-                        <div className="text-center py-12 bg-white rounded-2xl border border-gray-100 shadow-sm">
-                            <div className="w-12 h-12 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-3">
-                                <Bell size={24} className="text-gray-400" />
+                        <div className="text-center py-12 bg-panel rounded-2xl border border-line shadow-sm">
+                            <div className="w-12 h-12 bg-void rounded-full flex items-center justify-center mx-auto mb-3">
+                                <Bell size={24} className="text-muted" />
                             </div>
-                            <h3 className="text-sm font-medium text-gray-900 mb-1">
+                            <h3 className="text-sm font-medium text-ink mb-1">
                                 Nenhuma notificação via API
                             </h3>
-                            <p className="text-sm text-gray-500 max-w-sm mx-auto">
+                            <p className="text-sm text-muted max-w-sm mx-auto">
                                 Configure eventos que serão disparados via API externa para notificar sua equipe.
                             </p>
                         </div>

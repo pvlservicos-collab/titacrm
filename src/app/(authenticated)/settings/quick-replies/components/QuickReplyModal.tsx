@@ -29,7 +29,7 @@ function mediaTypeFromFile(file: File): string {
 }
 
 function MediaIcon({ mediaType, size = 18 }: { mediaType: string | null; size?: number }) {
-  const props = { size, className: 'text-gray-400 flex-shrink-0' }
+  const props = { size, className: 'text-muted flex-shrink-0' }
   if (mediaType === 'image') return <ImageIcon {...props} />
   if (mediaType === 'video') return <VideoCamera {...props} />
   if (mediaType === 'audio') return <FileAudio {...props} />
@@ -72,10 +72,10 @@ function MediaAttachField({
   return (
     <div>
       {mediaUrl ? (
-        <div className="flex items-center gap-3 px-3 py-2 border border-gray-200 rounded-lg">
+        <div className="flex items-center gap-3 px-3 py-2 border border-line rounded-lg">
           <MediaIcon mediaType={mediaType} />
-          <span className="flex-1 text-sm text-gray-700 truncate">{mediaFilename || 'Arquivo anexado'}</span>
-          <button type="button" onClick={onRemove} className="text-gray-400 hover:text-red-500">
+          <span className="flex-1 text-sm text-muted truncate">{mediaFilename || 'Arquivo anexado'}</span>
+          <button type="button" onClick={onRemove} className="text-muted hover:text-red-500">
             <Trash size={16} />
           </button>
         </div>
@@ -84,7 +84,7 @@ function MediaAttachField({
           type="button"
           onClick={() => fileInputRef.current?.click()}
           disabled={uploading}
-          className="w-full px-3 py-2 border border-dashed border-gray-300 rounded-lg text-sm text-gray-500 hover:border-gray-400 hover:text-gray-600 transition-colors disabled:opacity-50"
+          className="w-full px-3 py-2 border border-dashed border-line rounded-lg text-sm text-muted hover:border-line hover:text-muted transition-colors disabled:opacity-50"
         >
           {uploading ? 'Enviando...' : 'Anexar foto, vídeo, áudio ou documento'}
         </button>
@@ -109,10 +109,10 @@ function StepPreviewChip({ step, index }: { step: QuickReplyStepInput; index: nu
     ? (step.content.length > 40 ? step.content.slice(0, 40) + '…' : step.content)
     : null
   return (
-    <div className="flex items-center gap-1.5 px-2.5 py-1.5 bg-gray-50 border border-gray-200 rounded-lg text-xs text-gray-600">
-      <span className="font-mono text-gray-400">{index + 1}</span>
+    <div className="flex items-center gap-1.5 px-2.5 py-1.5 bg-void border border-line rounded-lg text-xs text-muted">
+      <span className="font-mono text-muted">{index + 1}</span>
       {step.mediaType && <MediaIcon mediaType={step.mediaType} size={13} />}
-      {label ? <span className="truncate max-w-[220px]">{label}</span> : !step.mediaType && <span className="italic text-gray-300">vazio</span>}
+      {label ? <span className="truncate max-w-[220px]">{label}</span> : !step.mediaType && <span className="italic text-muted">vazio</span>}
       {!!step.delaySeconds && (
         <span className="flex items-center gap-0.5 text-amber-600">
           <Clock size={12} weight="bold" /> {step.delaySeconds}s
@@ -345,14 +345,14 @@ export default function QuickReplyModal({ scope, quickReply, existingCategories,
   return (
     <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4" onClick={onClose}>
       <div
-        className={`bg-white rounded-2xl shadow-xl w-full ${mode === 'sequence' ? 'max-w-2xl' : 'max-w-lg'} max-h-[90dvh] overflow-y-auto transition-[max-width]`}
+        className={`bg-panel rounded-2xl shadow-xl w-full ${mode === 'sequence' ? 'max-w-2xl' : 'max-w-lg'} max-h-[90dvh] overflow-y-auto transition-[max-width]`}
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
-          <h3 className="text-lg font-bold text-gray-900">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-line">
+          <h3 className="text-lg font-bold text-ink">
             {isEditing ? 'Editar resposta rápida' : scope === 'shared' ? 'Nova resposta compartilhada' : 'Novo atalho pessoal'}
           </h3>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
+          <button onClick={onClose} className="text-muted hover:text-muted">
             <X size={20} />
           </button>
         </div>
@@ -364,9 +364,9 @@ export default function QuickReplyModal({ scope, quickReply, existingCategories,
 
           <div className="flex gap-4">
             <div className="flex-1">
-              <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">Atalho</label>
-              <div className="flex items-center gap-1.5 px-3 py-2 border border-gray-200 rounded-lg focus-within:ring-2 focus-within:ring-blue-500/20 focus-within:border-blue-500">
-                <span className="text-gray-400 font-mono text-sm">/</span>
+              <label className="block text-xs font-semibold text-muted uppercase tracking-wide mb-1.5">Atalho</label>
+              <div className="flex items-center gap-1.5 px-3 py-2 border border-line rounded-lg focus-within:ring-2 focus-within:ring-accent focus-within:border-accent">
+                <span className="text-muted font-mono text-sm">/</span>
                 <input
                   value={shortcut}
                   onChange={(e) => setShortcut(e.target.value)}
@@ -376,13 +376,13 @@ export default function QuickReplyModal({ scope, quickReply, existingCategories,
               </div>
             </div>
             <div className="flex-1">
-              <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">Categoria (opcional)</label>
+              <label className="block text-xs font-semibold text-muted uppercase tracking-wide mb-1.5">Categoria (opcional)</label>
               <input
                 list="quick-reply-categories"
                 value={category}
                 onChange={(e) => setCategory(e.target.value)}
                 placeholder="Ex: Vendas, Pós-venda..."
-                className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+                className="w-full px-3 py-2 border border-line rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent"
               />
               <datalist id="quick-reply-categories">
                 {existingCategories.map((c) => (
@@ -393,13 +393,13 @@ export default function QuickReplyModal({ scope, quickReply, existingCategories,
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">Tipo de resposta</label>
-            <div className="inline-flex rounded-lg border border-gray-200 p-0.5 bg-gray-50">
+            <label className="block text-xs font-semibold text-muted uppercase tracking-wide mb-1.5">Tipo de resposta</label>
+            <div className="inline-flex rounded-lg border border-line p-0.5 bg-void">
               <button
                 type="button"
                 onClick={switchToSingle}
                 className={`px-3 py-1.5 text-sm font-semibold rounded-md transition-colors ${
-                  mode === 'single' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'
+                  mode === 'single' ? 'bg-panel text-ink shadow-sm' : 'text-muted hover:text-muted'
                 }`}
               >
                 Mensagem única
@@ -408,14 +408,14 @@ export default function QuickReplyModal({ scope, quickReply, existingCategories,
                 type="button"
                 onClick={switchToSequence}
                 className={`px-3 py-1.5 text-sm font-semibold rounded-md transition-colors ${
-                  mode === 'sequence' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'
+                  mode === 'sequence' ? 'bg-panel text-ink shadow-sm' : 'text-muted hover:text-muted'
                 }`}
               >
                 Sequência de mensagens
               </button>
             </div>
             {mode === 'sequence' && (
-              <p className="mt-1.5 text-xs text-gray-500">
+              <p className="mt-1.5 text-xs text-muted">
                 Manda tudo em ordem, com um clique só — cada passo vira uma mensagem separada no WhatsApp (ex: áudio de apresentação + foto do produto).
               </p>
             )}
@@ -425,7 +425,7 @@ export default function QuickReplyModal({ scope, quickReply, existingCategories,
             <>
               <div>
                 <div className="flex items-center justify-between mb-1.5">
-                  <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide">Mensagem</label>
+                  <label className="block text-xs font-semibold text-muted uppercase tracking-wide">Mensagem</label>
                   <div className="flex gap-1">
                     {QUICK_REPLY_VARIABLES.map((v) => (
                       <button
@@ -433,7 +433,7 @@ export default function QuickReplyModal({ scope, quickReply, existingCategories,
                         type="button"
                         onClick={() => insertVariable(v.token)}
                         title={v.label}
-                        className="px-2 py-0.5 text-[11px] font-mono bg-gray-100 hover:bg-gray-200 text-gray-600 rounded transition-colors"
+                        className="px-2 py-0.5 text-[11px] font-mono bg-panel-2 hover:bg-panel-2 text-muted rounded transition-colors"
                       >
                         {v.token}
                       </button>
@@ -446,15 +446,15 @@ export default function QuickReplyModal({ scope, quickReply, existingCategories,
                   onChange={(e) => setContent(e.target.value)}
                   rows={4}
                   placeholder="Digite a mensagem..."
-                  className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 resize-none"
+                  className="w-full px-3 py-2 border border-line rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent resize-none"
                 />
                 {content.trim() && (
-                  <p className="mt-1.5 text-xs text-gray-500 italic truncate">Prévia: &quot;{preview}&quot;</p>
+                  <p className="mt-1.5 text-xs text-muted italic truncate">Prévia: &quot;{preview}&quot;</p>
                 )}
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">Mídia (opcional)</label>
+                <label className="block text-xs font-semibold text-muted uppercase tracking-wide mb-1.5">Mídia (opcional)</label>
                 <MediaAttachField
                   mediaUrl={mediaUrl}
                   mediaType={mediaType}
@@ -467,21 +467,21 @@ export default function QuickReplyModal({ scope, quickReply, existingCategories,
             </>
           ) : (
             <div className="space-y-3">
-              <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide">
+              <label className="block text-xs font-semibold text-muted uppercase tracking-wide">
                 Passos ({steps.length})
               </label>
               {steps.map((step, i) => (
-                <div key={i} className="border border-gray-200 rounded-xl p-3 space-y-2 bg-gray-50/50">
+                <div key={i} className="border border-line rounded-xl p-3 space-y-2 bg-void">
                   <div className="flex items-center justify-between">
-                    <span className="text-xs font-bold text-gray-400">Passo {i + 1}</span>
+                    <span className="text-xs font-bold text-muted">Passo {i + 1}</span>
                     <div className="flex items-center gap-1">
-                      <button type="button" onClick={() => moveStep(i, -1)} disabled={i === 0} className="p-1 text-gray-400 hover:text-gray-700 disabled:opacity-25 disabled:hover:text-gray-400">
+                      <button type="button" onClick={() => moveStep(i, -1)} disabled={i === 0} className="p-1 text-muted hover:text-muted disabled:opacity-25 disabled:hover:text-muted">
                         <ArrowUp size={14} />
                       </button>
-                      <button type="button" onClick={() => moveStep(i, 1)} disabled={i === steps.length - 1} className="p-1 text-gray-400 hover:text-gray-700 disabled:opacity-25 disabled:hover:text-gray-400">
+                      <button type="button" onClick={() => moveStep(i, 1)} disabled={i === steps.length - 1} className="p-1 text-muted hover:text-muted disabled:opacity-25 disabled:hover:text-muted">
                         <ArrowDown size={14} />
                       </button>
-                      <button type="button" onClick={() => removeStep(i)} className="p-1 text-gray-400 hover:text-red-500">
+                      <button type="button" onClick={() => removeStep(i)} className="p-1 text-muted hover:text-red-500">
                         <Trash size={14} />
                       </button>
                     </div>
@@ -491,7 +491,7 @@ export default function QuickReplyModal({ scope, quickReply, existingCategories,
                     onChange={(e) => updateStepContent(i, e.target.value)}
                     rows={2}
                     placeholder="Texto (opcional)..."
-                    className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 resize-none"
+                    className="w-full px-3 py-2 border border-line rounded-lg text-sm bg-panel focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent resize-none"
                   />
                   <MediaAttachField
                     mediaUrl={step.mediaUrl || null}
@@ -503,17 +503,17 @@ export default function QuickReplyModal({ scope, quickReply, existingCategories,
                   />
                   {i < steps.length - 1 && (
                     <div className="flex items-center gap-1.5 pt-1">
-                      <Clock size={13} className="text-gray-400 flex-shrink-0" />
-                      <span className="text-xs text-gray-500">Aguardar</span>
+                      <Clock size={13} className="text-muted flex-shrink-0" />
+                      <span className="text-xs text-muted">Aguardar</span>
                       <input
                         type="number"
                         min={0}
                         max={MAX_STEP_DELAY_SECONDS}
                         value={step.delaySeconds || 0}
                         onChange={(e) => updateStepDelay(i, Number(e.target.value))}
-                        className="w-16 px-2 py-1 border border-gray-200 rounded-md text-sm text-center bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+                        className="w-16 px-2 py-1 border border-line rounded-md text-sm text-center bg-panel focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent"
                       />
-                      <span className="text-xs text-gray-500">segundos antes do próximo passo</span>
+                      <span className="text-xs text-muted">segundos antes do próximo passo</span>
                     </div>
                   )}
                 </div>
@@ -523,7 +523,7 @@ export default function QuickReplyModal({ scope, quickReply, existingCategories,
                 <button
                   type="button"
                   onClick={addStep}
-                  className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 border border-dashed border-gray-300 rounded-lg text-sm font-semibold text-gray-500 hover:border-blue-400 hover:text-blue-600 transition-colors"
+                  className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 border border-dashed border-line rounded-lg text-sm font-semibold text-muted hover:border-accent hover:text-accent-2 transition-colors"
                 >
                   <Plus size={14} weight="bold" /> Adicionar mensagem
                 </button>
@@ -533,8 +533,8 @@ export default function QuickReplyModal({ scope, quickReply, existingCategories,
                     onClick={() => setReusePickerOpen((v) => !v)}
                     className={`flex-1 flex items-center justify-center gap-1.5 px-3 py-2 border rounded-lg text-sm font-semibold transition-colors ${
                       reusePickerOpen
-                        ? 'border-blue-400 text-blue-600 bg-blue-50'
-                        : 'border-dashed border-gray-300 text-gray-500 hover:border-blue-400 hover:text-blue-600'
+                        ? 'border-accent text-accent-2 bg-panel-2'
+                        : 'border-dashed border-line text-muted hover:border-accent hover:text-accent-2'
                     }`}
                   >
                     <Stack size={14} weight="bold" /> Usar resposta pronta
@@ -543,9 +543,9 @@ export default function QuickReplyModal({ scope, quickReply, existingCategories,
               </div>
 
               {reusePickerOpen && (
-                <div className="border border-gray-200 rounded-xl p-2 space-y-2 bg-white">
-                  <div className="flex items-center gap-1.5 px-2 py-1.5 border border-gray-200 rounded-lg">
-                    <MagnifyingGlass size={14} className="text-gray-400 flex-shrink-0" />
+                <div className="border border-line rounded-xl p-2 space-y-2 bg-panel">
+                  <div className="flex items-center gap-1.5 px-2 py-1.5 border border-line rounded-lg">
+                    <MagnifyingGlass size={14} className="text-muted flex-shrink-0" />
                     <input
                       autoFocus
                       value={reuseFilter}
@@ -556,22 +556,22 @@ export default function QuickReplyModal({ scope, quickReply, existingCategories,
                   </div>
                   <div className="max-h-[180px] overflow-y-auto space-y-0.5">
                     {reuseMatches.length === 0 ? (
-                      <p className="px-2 py-3 text-xs text-gray-400 text-center">Nenhuma resposta encontrada.</p>
+                      <p className="px-2 py-3 text-xs text-muted text-center">Nenhuma resposta encontrada.</p>
                     ) : (
                       reuseMatches.map((qr) => (
                         <button
                           key={qr.id}
                           type="button"
                           onClick={() => insertFromExisting(qr)}
-                          className="w-full flex items-center gap-2 px-2 py-1.5 text-left rounded-lg hover:bg-gray-50 transition-colors"
+                          className="w-full flex items-center gap-2 px-2 py-1.5 text-left rounded-lg hover:bg-void transition-colors"
                         >
                           {qr.steps && qr.steps.length > 0 ? (
-                            <Stack size={14} className="text-gray-400 flex-shrink-0" />
+                            <Stack size={14} className="text-muted flex-shrink-0" />
                           ) : (
                             <MediaIcon mediaType={qr.mediaType} size={14} />
                           )}
-                          <span className="text-sm font-semibold text-gray-800">/{qr.shortcut}</span>
-                          <span className="text-xs text-gray-400 truncate flex-1">
+                          <span className="text-sm font-semibold text-ink">/{qr.shortcut}</span>
+                          <span className="text-xs text-muted truncate flex-1">
                             {qr.steps && qr.steps.length > 0 ? `${qr.steps.length} passos` : qr.content}
                           </span>
                         </button>
@@ -583,7 +583,7 @@ export default function QuickReplyModal({ scope, quickReply, existingCategories,
 
               {steps.length > 0 && (
                 <div>
-                  <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">Prévia da ordem de envio</label>
+                  <label className="block text-xs font-semibold text-muted uppercase tracking-wide mb-1.5">Prévia da ordem de envio</label>
                   <div className="flex flex-col gap-1">
                     {steps.map((s, i) => (
                       <StepPreviewChip key={i} step={s} index={i} />
@@ -595,14 +595,14 @@ export default function QuickReplyModal({ scope, quickReply, existingCategories,
           )}
         </div>
 
-        <div className="flex justify-end gap-2 px-6 py-4 border-t border-gray-100">
-          <button onClick={onClose} className="px-4 py-2 text-sm font-semibold text-gray-600 hover:bg-gray-50 rounded-lg transition-colors">
+        <div className="flex justify-end gap-2 px-6 py-4 border-t border-line">
+          <button onClick={onClose} className="px-4 py-2 text-sm font-semibold text-muted hover:bg-void rounded-lg transition-colors">
             Cancelar
           </button>
           <button
             onClick={handleSubmit}
             disabled={saving || uploading || uploadingSteps.size > 0}
-            className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-lg transition-colors disabled:opacity-50"
+            className="px-4 py-2 bg-accent hover:bg-accent-2 text-white text-sm font-semibold rounded-lg transition-colors disabled:opacity-50"
           >
             {saving ? 'Salvando...' : 'Salvar'}
           </button>

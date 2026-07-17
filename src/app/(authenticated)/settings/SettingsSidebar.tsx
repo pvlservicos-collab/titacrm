@@ -40,11 +40,11 @@ export default function SettingsSidebar() {
                         key={section.href}
                         href={section.href}
                         className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${isActive
-                            ? 'bg-blue-50 text-blue-700'
-                            : 'text-gray-700 hover:bg-gray-100'
+                            ? 'bg-panel-2 text-accent-2'
+                            : 'text-muted hover:bg-panel-2'
                             }`}
                     >
-                        <Icon size={20} weight={isActive ? "fill" : "regular"} className={isActive ? "text-blue-600" : "text-gray-500"} />
+                        <Icon size={20} weight={isActive ? "fill" : "regular"} className={isActive ? "text-accent-2" : "text-muted"} />
                         {section.label}
                     </Link>
                 )

@@ -207,7 +207,7 @@ export default function FilterButton({ organizationId, onFilterChange }: FilterB
       <div className="flex items-center gap-3 flex-wrap">
         <button
           onClick={() => setIsOpen(true)}
-          className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 active:bg-blue-800 transition-all shadow-sm"
+          className="flex items-center gap-1.5 px-3 py-1.5 bg-accent text-white rounded-lg text-sm font-medium hover:bg-accent-2 active:bg-accent-2 transition-all shadow-sm"
         >
           <Funnel size={16} weight="fill" />
           Filtrar
@@ -216,7 +216,7 @@ export default function FilterButton({ organizationId, onFilterChange }: FilterB
         {activeFilters.map((filter, idx) => (
           <div
             key={idx}
-            className="group flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 text-blue-600 rounded-full text-xs font-bold hover:bg-blue-100 transition-all cursor-pointer"
+            className="group flex items-center gap-1.5 px-3 py-1.5 bg-panel-2 border border-accent-line text-accent-2 rounded-full text-xs font-bold hover:border-accent transition-all cursor-pointer"
           >
             <span className="whitespace-nowrap">{filter.label}</span>
             <button
@@ -224,7 +224,7 @@ export default function FilterButton({ organizationId, onFilterChange }: FilterB
                 e.stopPropagation()
                 removeActiveFilter(filter.type, filter.value)
               }}
-              className="opacity-0 group-hover:opacity-100 hover:bg-blue-200 rounded-full p-0.5 transition-all"
+              className="opacity-0 group-hover:opacity-100 hover:bg-panel rounded-full p-0.5 transition-all"
             >
               <X size={12} weight="bold" />
             </button>
@@ -236,27 +236,27 @@ export default function FilterButton({ organizationId, onFilterChange }: FilterB
       {isOpen && (
         <div
           className="fixed inset-0 z-50 flex items-start justify-center pt-20 px-4"
-          style={{ backgroundColor: 'rgba(15, 23, 42, 0.12)', backdropFilter: 'blur(2px)' }}
+          style={{ backgroundColor: 'rgba(2, 3, 6, 0.5)', backdropFilter: 'blur(2px)' }}
           onClick={(e) => {
             if (e.target === e.currentTarget) setIsOpen(false)
           }}
         >
           <div
             ref={modalRef}
-            className="bg-white rounded-2xl shadow-2xl w-full max-w-[1100px] overflow-hidden filter-modal-enter"
+            className="bg-panel border border-line rounded-2xl shadow-2xl w-full max-w-[1100px] overflow-hidden filter-modal-enter"
           >
             {/* ===== GRID: 4 columns (Custom widths for calendar space) ===== */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-[0.8fr_1.4fr_1fr_0.8fr] p-8 pb-6 gap-y-6">
               {/* ── COL 1: CANAIS ── */}
-              <div className="lg:pr-6 lg:border-r lg:border-gray-100">
+              <div className="lg:pr-6 lg:border-r lg:border-line">
                 <FilterSection title="Canais">
                   <div className="space-y-0.5">
                     {integrationsLoading ? (
-                      <p className="text-sm text-gray-400 animate-pulse">Carregando...</p>
+                      <p className="text-sm text-muted animate-pulse">Carregando...</p>
                     ) : integrations.length === 0 ? (
                       <div className="py-4 text-center">
-                        <p className="text-sm text-gray-400">Nenhum canal configurado</p>
-                        <p className="text-xs text-blue-500 mt-1 cursor-pointer hover:underline">
+                        <p className="text-sm text-muted">Nenhum canal configurado</p>
+                        <p className="text-xs text-accent-2 mt-1 cursor-pointer hover:underline">
                           + Adicionar canal
                         </p>
                       </div>
@@ -275,7 +275,7 @@ export default function FilterButton({ organizationId, onFilterChange }: FilterB
               </div>
 
               {/* ── COL 2: PERÍODO ── */}
-              <div className="lg:px-6 lg:border-r lg:border-gray-100">
+              <div className="lg:px-6 lg:border-r lg:border-line">
                 <FilterSection title="Período">
                   <PeriodSelector
                     selectedType={tempDateType}
@@ -288,15 +288,15 @@ export default function FilterButton({ organizationId, onFilterChange }: FilterB
               </div>
 
               {/* ── COL 3: VENDEDOR ── */}
-              <div className="lg:px-6 lg:border-r lg:border-gray-100">
+              <div className="lg:px-6 lg:border-r lg:border-line">
                 <FilterSection title="Vendedor">
                   <div className="space-y-0.5">
                     {membersLoading ? (
-                      <p className="text-sm text-gray-400 animate-pulse">Carregando...</p>
+                      <p className="text-sm text-muted animate-pulse">Carregando...</p>
                     ) : members.length === 0 ? (
                       <div className="py-4 text-center">
-                        <p className="text-sm text-gray-400">Nenhum vendedor cadastrado</p>
-                        <p className="text-xs text-blue-500 mt-1 cursor-pointer hover:underline">
+                        <p className="text-sm text-muted">Nenhum vendedor cadastrado</p>
+                        <p className="text-xs text-accent-2 mt-1 cursor-pointer hover:underline">
                           + Cadastrar vendedor
                         </p>
                       </div>

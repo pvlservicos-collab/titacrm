@@ -90,7 +90,7 @@ export default function MembersPanel({ organizationId }: MembersPanelProps) {
                 <tr key={member.id} className="hover:bg-gray-50/50 transition-colors group">
                   <td className="px-6 py-4">
                     <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0 text-blue-700 font-bold uppercase overflow-hidden">
+                      <div className="w-10 h-10 rounded-full bg-panel-2 flex items-center justify-center flex-shrink-0 text-accent-2 font-bold uppercase overflow-hidden">
                         {member.profiles?.avatar_url ? (
                           <img src={member.profiles.avatar_url} alt="" className="w-full h-full object-cover" />
                         ) : (member.profiles?.full_name?.substring(0, 2) || 'US')}

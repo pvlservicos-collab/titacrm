@@ -111,7 +111,7 @@ export default function RolePermissionsPanel({ organizationId, selectedRoleId }:
   if (roleName.toLowerCase() === 'master') {
     return (
       <div className="h-64 flex flex-col pt-8 items-center justify-center text-gray-500 bg-gray-50/50 rounded-xl border border-dashed border-gray-200">
-        <SpinnerGap className="w-8 h-8 mb-3 text-gray-300" />
+        <SpinnerGap className="w-8 h-8 mb-3 text-muted" />
         <p className="text-sm font-medium text-gray-900">Cargo do Sistema Restrito</p>
         <p className="text-xs mt-1 text-gray-500">O cargo Master possui acesso global e não pode ser configurado por organização.</p>
       </div>
@@ -153,7 +153,7 @@ export default function RolePermissionsPanel({ organizationId, selectedRoleId }:
   if (!selectedRoleId) {
     return (
       <div className="h-64 flex flex-col pt-8 items-center text-gray-500 bg-gray-50/50 rounded-xl border border-dashed border-gray-200">
-        <SpinnerGap className="w-8 h-8 mb-3 text-gray-300" />
+        <SpinnerGap className="w-8 h-8 mb-3 text-muted" />
         <p className="text-sm font-medium text-gray-900">Nenhum cargo selecionado</p>
         <p className="text-xs mt-1 text-gray-500">Selecione um cargo na lista ao lado ou crie um novo.</p>
       </div>

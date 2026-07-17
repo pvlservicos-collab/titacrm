@@ -62,7 +62,7 @@ export function TagCard({ tag, isEditing, onStartEdit, onCancelEdit, onSave, onD
 
     if (isEditing) {
         return (
-            <div className="flex flex-col sm:flex-row sm:items-center gap-4 p-5 bg-white border border-blue-200 rounded-2xl shadow-sm transition-all">
+            <div className="flex flex-col sm:flex-row sm:items-center gap-4 p-5 bg-panel border border-accent-line rounded-2xl shadow-sm transition-all">
                 <div className="flex-1 flex flex-col gap-3.5">
                     <input
                         ref={inputRef}
@@ -71,7 +71,7 @@ export function TagCard({ tag, isEditing, onStartEdit, onCancelEdit, onSave, onD
                         onChange={(e) => setName(e.target.value)}
                         onKeyDown={handleKeyDown}
                         placeholder="Nome da tag..."
-                        className="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all placeholder:text-gray-400"
+                        className="w-full px-4 py-2.5 bg-panel border border-line rounded-xl text-sm text-ink focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent transition-all placeholder:text-muted"
                     />
 
                     <div className="flex items-center gap-2 overflow-x-visible pb-2 pt-1 px-1 custom-scrollbar">
@@ -81,7 +81,7 @@ export function TagCard({ tag, isEditing, onStartEdit, onCancelEdit, onSave, onD
                                 onClick={() => setColor(c.value)}
                                 className={`
                                     w-7 h-7 rounded-full flex-shrink-0 flex items-center justify-center transition-all
-                                    ${color === c.value ? 'ring-2 ring-offset-2 ring-blue-400 scale-105 shadow-sm' : 'hover:scale-110 hover:shadow-sm opacity-90 hover:opacity-100'}
+                                    ${color === c.value ? 'ring-2 ring-offset-2 ring-accent scale-105 shadow-sm' : 'hover:scale-110 hover:shadow-sm opacity-90 hover:opacity-100'}
                                 `}
                                 style={{ backgroundColor: c.value }}
                                 title={c.label}
@@ -96,7 +96,7 @@ export function TagCard({ tag, isEditing, onStartEdit, onCancelEdit, onSave, onD
                     <button
                         onClick={onCancelEdit}
                         disabled={isSaving}
-                        className="p-1 text-gray-400 hover:text-gray-600 transition-colors"
+                        className="p-1 text-muted hover:text-muted transition-colors"
                         title="Cancelar"
                     >
                         <X size={20} weight="bold" />
@@ -104,7 +104,7 @@ export function TagCard({ tag, isEditing, onStartEdit, onCancelEdit, onSave, onD
                     <button
                         onClick={handleSave}
                         disabled={isSaving || !name.trim()}
-                        className="px-5 py-2.5 bg-blue-500 hover:bg-blue-600 text-white text-sm font-medium rounded-xl transition-colors shadow-sm disabled:opacity-50 flex items-center gap-2"
+                        className="px-5 py-2.5 bg-accent hover:bg-accent text-white text-sm font-medium rounded-xl transition-colors shadow-sm disabled:opacity-50 flex items-center gap-2"
                     >
                         {isSaving ? <SpinnerGap size={18} className="animate-spin" /> : <Check size={18} weight="bold" />}
                         Salvar
@@ -117,7 +117,7 @@ export function TagCard({ tag, isEditing, onStartEdit, onCancelEdit, onSave, onD
     if (!tag) return null
 
     return (
-        <div className="flex items-center justify-between p-4 bg-white border border-gray-100 rounded-2xl hover:border-blue-100 hover:shadow-sm transition-all group">
+        <div className="flex items-center justify-between p-4 bg-panel border border-line rounded-2xl hover:border-accent-line hover:shadow-sm transition-all group">
             <div className="flex flex-col gap-1.5 min-w-0">
                 <div className="flex items-center gap-2">
                     {/* Status Dot */}
@@ -139,7 +139,7 @@ export function TagCard({ tag, isEditing, onStartEdit, onCancelEdit, onSave, onD
                 </div>
 
                 {/* Active Leads Count */}
-                <div className="text-xs text-gray-400 pl-4.5">
+                <div className="text-xs text-muted pl-4.5">
                     {tag.activeLeadsCount} {tag.activeLeadsCount === 1 ? 'lead ativo' : 'leads ativos'}
                 </div>
             </div>
@@ -148,7 +148,7 @@ export function TagCard({ tag, isEditing, onStartEdit, onCancelEdit, onSave, onD
                 {onStartEdit && (
                     <button
                         onClick={onStartEdit}
-                        className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                        className="p-2 text-muted hover:text-accent-2 hover:bg-panel-2 rounded-lg transition-colors"
                         title="Editar Tag"
                     >
                         <PencilSimple size={18} weight="bold" />
@@ -157,7 +157,7 @@ export function TagCard({ tag, isEditing, onStartEdit, onCancelEdit, onSave, onD
                 {onDelete && (
                     <button
                         onClick={onDelete}
-                        className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                        className="p-2 text-muted hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
                         title="Excluir Tag"
                     >
                         <Trash size={18} weight="bold" />

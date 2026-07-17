@@ -19,11 +19,11 @@ export default function LoadingSpinner({ text, size = 'md', className = '' }: Lo
         <div className={`flex items-center justify-center gap-2 ${className}`}>
             <SpinnerGap
                 size={s.icon}
-                className="animate-spin text-blue-500"
+                className="animate-spin text-accent"
                 weight="bold"
             />
             {text && (
-                <span className={`${s.text} text-gray-500 font-medium`}>{text}</span>
+                <span className={`${s.text} text-muted font-medium`}>{text}</span>
             )}
         </div>
     )

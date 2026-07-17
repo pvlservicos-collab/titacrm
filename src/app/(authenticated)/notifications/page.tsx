@@ -74,7 +74,7 @@ function groupNotifications(notifications: Notification[]): Record<TimeGroup, No
 /* ─── Icon by type ─── */
 
 const typeConfig: Record<string, { icon: React.ElementType; color: string; bg: string; actionColor: string }> = {
-    message: { icon: ChatCircleDots, color: 'text-blue-600', bg: 'bg-blue-50', actionColor: 'bg-blue-600 hover:bg-blue-700 text-white' },
+    message: { icon: ChatCircleDots, color: 'text-accent-2', bg: 'bg-panel-2', actionColor: 'bg-accent hover:bg-accent-2 text-white' },
     success: { icon: CheckCircle, color: 'text-emerald-600', bg: 'bg-emerald-50', actionColor: 'bg-emerald-600 hover:bg-emerald-700 text-white' },
     warning: { icon: Warning, color: 'text-amber-600', bg: 'bg-amber-50', actionColor: 'bg-amber-600 hover:bg-amber-700 text-white' },
     error: { icon: Warning, color: 'text-red-600', bg: 'bg-red-50', actionColor: 'bg-red-600 hover:bg-red-700 text-white' },
@@ -82,11 +82,11 @@ const typeConfig: Record<string, { icon: React.ElementType; color: string; bg: s
     lead: { icon: UserPlus, color: 'text-cyan-600', bg: 'bg-cyan-50', actionColor: 'bg-cyan-700 hover:bg-cyan-800 text-white' },
     meeting: { icon: CalendarBlank, color: 'text-violet-600', bg: 'bg-violet-50', actionColor: 'text-violet-700 border border-violet-200 hover:bg-violet-50' },
     report: { icon: ChartBar, color: 'text-teal-600', bg: 'bg-teal-50', actionColor: 'bg-teal-600 hover:bg-teal-700 text-white' },
-    note: { icon: Notebook, color: 'text-gray-600', bg: 'bg-gray-100', actionColor: 'text-gray-700 border border-gray-200 hover:bg-gray-50' },
+    note: { icon: Notebook, color: 'text-muted', bg: 'bg-panel-2', actionColor: 'text-muted border border-line hover:bg-void' },
     support: { icon: Headset, color: 'text-purple-600', bg: 'bg-purple-50', actionColor: 'bg-purple-600 hover:bg-purple-700 text-white' },
 }
 
-const defaultConfig = { icon: Bell, color: 'text-gray-500', bg: 'bg-gray-100', actionColor: 'text-gray-700 border border-gray-200 hover:bg-gray-50' }
+const defaultConfig = { icon: Bell, color: 'text-muted', bg: 'bg-panel-2', actionColor: 'text-muted border border-line hover:bg-void' }
 
 function getConfig(type?: string) {
     return typeConfig[type || ''] || defaultConfig
@@ -117,7 +117,7 @@ function NotificationPageItem({
 
     return (
         <div
-            className={`flex items-start gap-4 px-6 py-4 transition-colors cursor-pointer hover:bg-gray-50/80 ${!notification.is_read ? 'bg-blue-50/30' : ''}`}
+            className={`flex items-start gap-4 px-6 py-4 transition-colors cursor-pointer hover:bg-void ${!notification.is_read ? 'bg-panel-2' : ''}`}
             onClick={() => { if (!notification.is_read) onMark(notification.id) }}
         >
             {/* Icon */}
@@ -128,10 +128,10 @@ function NotificationPageItem({
             {/* Content */}
             <div className="flex-1 min-w-0">
                 <p className="text-sm leading-snug">
-                    <span className="font-semibold text-gray-900">{notification.title || 'Notificação'}</span>
+                    <span className="font-semibold text-ink">{notification.title || 'Notificação'}</span>
                 </p>
                 {notification.content && (
-                    <p className="text-sm text-gray-500 mt-0.5 line-clamp-2">{notification.content}</p>
+                    <p className="text-sm text-muted mt-0.5 line-clamp-2">{notification.content}</p>
                 )}
                 {actionText && (
                     <button
@@ -145,11 +145,11 @@ function NotificationPageItem({
 
             {/* Time + unread dot */}
             <div className="shrink-0 flex flex-col items-end gap-1.5 pt-0.5">
-                <span className="text-[11px] font-medium text-gray-400 tracking-wide uppercase">
+                <span className="text-[11px] font-medium text-muted tracking-wide uppercase">
                     {formatRelativeTime(notification.created_at)}
                 </span>
                 {!notification.is_read && (
-                    <div className="w-2 h-2 rounded-full bg-blue-500" />
+                    <div className="w-2 h-2 rounded-full bg-accent" />
                 )}
             </div>
         </div>
@@ -196,19 +196,19 @@ export default function NotificationsPage() {
     const groupOrder: TimeGroup[] = ['Hoje', 'Ontem', 'Esta semana', 'Mais antigas']
 
     return (
-        <div className="h-full bg-white">
+        <div className="h-full bg-panel">
             {/* Sticky Header */}
-            <div className="sticky top-0 z-10 bg-white border-b border-gray-100">
+            <div className="sticky top-0 z-10 bg-panel border-b border-line">
                 {/* Top bar */}
                 <div className="flex items-center justify-between px-6 py-4">
                     <div className="flex items-center gap-3">
                         <button
                             onClick={() => router.back()}
-                            className="p-1.5 rounded-lg text-gray-500 hover:text-gray-800 hover:bg-gray-100 transition-colors"
+                            className="p-1.5 rounded-lg text-muted hover:text-ink hover:bg-panel-2 transition-colors"
                         >
                             <ArrowLeft size={20} weight="bold" />
                         </button>
-                        <h1 className="text-lg font-bold text-gray-900">Notificações</h1>
+                        <h1 className="text-lg font-bold text-ink">Notificações</h1>
                         {unreadCount > 0 && (
                             <span className="inline-flex items-center justify-center min-w-[22px] h-[22px] px-1.5 text-[11px] font-bold text-white bg-red-500 rounded-full">
                                 {unreadCount > 99 ? '99+' : unreadCount}
@@ -218,7 +218,7 @@ export default function NotificationsPage() {
                     {unreadCount > 0 && (
                         <button
                             onClick={() => markAllAsRead()}
-                            className="text-xs font-semibold text-blue-600 hover:text-blue-800 transition-colors uppercase tracking-wide flex items-center gap-1.5"
+                            className="text-xs font-semibold text-accent-2 hover:text-accent-2 transition-colors uppercase tracking-wide flex items-center gap-1.5"
                         >
                             <CheckCircle size={14} weight="bold" />
                             Marcar todas como lidas
@@ -231,26 +231,26 @@ export default function NotificationsPage() {
                     <div className="relative">
                         <MagnifyingGlass
                             size={16}
-                            className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
+                            className="absolute left-3 top-1/2 -translate-y-1/2 text-muted"
                         />
                         <input
                             type="text"
                             placeholder="Buscar nas notificações..."
                             value={search}
                             onChange={(e) => setSearch(e.target.value)}
-                            className="w-full pl-9 pr-4 py-2.5 text-sm bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 transition-all placeholder:text-gray-400"
+                            className="w-full pl-9 pr-4 py-2.5 text-sm bg-void border border-line rounded-xl focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent transition-all placeholder:text-muted"
                         />
                     </div>
                 </div>
 
                 {/* Tabs */}
                 <div className="px-6 pb-0">
-                    <div className="flex border-b border-gray-200">
+                    <div className="flex border-b border-line">
                         <button
                             onClick={() => setTab('all')}
                             className={`flex-1 text-center py-2.5 text-sm font-semibold transition-colors border-b-2 ${tab === 'all'
-                                ? 'text-gray-900 border-gray-900'
-                                : 'text-gray-400 border-transparent hover:text-gray-600'
+                                ? 'text-ink border-line'
+                                : 'text-muted border-transparent hover:text-muted'
                                 }`}
                         >
                             Todas
@@ -258,13 +258,13 @@ export default function NotificationsPage() {
                         <button
                             onClick={() => setTab('unread')}
                             className={`flex-1 text-center py-2.5 text-sm font-semibold transition-colors border-b-2 ${tab === 'unread'
-                                ? 'text-blue-600 border-blue-600'
-                                : 'text-gray-400 border-transparent hover:text-gray-600'
+                                ? 'text-accent-2 border-accent'
+                                : 'text-muted border-transparent hover:text-muted'
                                 }`}
                         >
                             Não lidas
                             {unreadCount > 0 && (
-                                <span className="ml-1.5 inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 text-[10px] font-bold text-blue-600 bg-blue-100 rounded-full">
+                                <span className="ml-1.5 inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 text-[10px] font-bold text-accent-2 bg-panel-2 rounded-full">
                                     {unreadCount}
                                 </span>
                             )}
@@ -277,16 +277,16 @@ export default function NotificationsPage() {
             <div className="overflow-y-auto pb-16" style={{ maxHeight: 'calc(100vh - 220px)' }}>
                 {loading ? (
                     <div className="flex items-center justify-center py-20">
-                        <div className="w-6 h-6 border-2 border-gray-200 border-t-blue-500 rounded-full animate-spin" />
+                        <div className="w-6 h-6 border-2 border-line border-t-blue-500 rounded-full animate-spin" />
                     </div>
                 ) : filtered.length === 0 ? (
-                    <div className="flex flex-col items-center justify-center py-20 text-gray-400 gap-3">
+                    <div className="flex flex-col items-center justify-center py-20 text-muted gap-3">
                         <BellSlash size={48} weight="light" />
                         <p className="text-sm font-medium">
                             {tab === 'unread' ? 'Nenhuma notificação não lida' : 'Nenhuma notificação'}
                         </p>
                         {search && (
-                            <p className="text-xs text-gray-400">
+                            <p className="text-xs text-muted">
                                 Nenhum resultado para &quot;{search}&quot;
                             </p>
                         )}
@@ -297,12 +297,12 @@ export default function NotificationsPage() {
                         if (items.length === 0) return null
                         return (
                             <div key={group}>
-                                <div className="sticky top-0 z-[5] bg-gray-50/95 backdrop-blur-sm px-6 py-2 border-b border-gray-100">
-                                    <span className="text-xs font-bold text-gray-500 uppercase tracking-wider">
+                                <div className="sticky top-0 z-[5] bg-void backdrop-blur-sm px-6 py-2 border-b border-line">
+                                    <span className="text-xs font-bold text-muted uppercase tracking-wider">
                                         {group}
                                     </span>
                                 </div>
-                                <div className="divide-y divide-gray-50">
+                                <div className="divide-y divide-line">
                                     {items.map((notification) => (
                                         <NotificationPageItem
                                             key={notification.id}

@@ -21,7 +21,7 @@ export default function AuthGuard({ children }: { children: ReactNode }) {
 
   if (status === 'loading') {
     return (
-      <div className="flex items-center justify-center h-screen bg-gray-50">
+      <div className="flex items-center justify-center h-screen bg-void">
         <LoadingSpinner text="Carregando..." size="lg" />
       </div>
     )

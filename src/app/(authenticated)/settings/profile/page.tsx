@@ -141,19 +141,19 @@ export default function UserProfileSettingsPage() {
         <div className="max-w-4xl pb-20">
             {/* Header */}
             <div className="mb-8">
-                <h1 className="text-2xl font-bold font-display text-gray-900">Configurações do Perfil</h1>
-                <p className="text-gray-500 mt-1">Gerencie suas informações pessoais e preferências de conta.</p>
+                <h1 className="text-2xl font-bold font-display text-ink">Configurações do Perfil</h1>
+                <p className="text-muted mt-1">Gerencie suas informações pessoais e preferências de conta.</p>
             </div>
 
             <div className="space-y-6">
 
                 {/* Foto do Perfil Section */}
-                <section className="bg-white border border-gray-200 rounded-2xl overflow-hidden shadow-sm">
-                    <div className="px-6 py-4 border-b border-gray-100 bg-gray-50/50">
-                        <h2 className="text-xs font-bold text-gray-400 uppercase tracking-wider font-display">FOTO DO PERFIL</h2>
+                <section className="bg-panel border border-line rounded-2xl overflow-hidden shadow-sm">
+                    <div className="px-6 py-4 border-b border-line bg-void">
+                        <h2 className="text-xs font-bold text-muted uppercase tracking-wider font-display">FOTO DO PERFIL</h2>
                     </div>
                     <div className="p-6 flex items-center gap-6">
-                        <div className="w-24 h-24 rounded-full bg-[#E5E5CA] flex items-center justify-center border-4 border-white shadow-md overflow-hidden shrink-0 relative">
+                        <div className="w-24 h-24 rounded-full bg-[#E5E5CA] flex items-center justify-center border-4 border-panel shadow-md overflow-hidden shrink-0 relative">
                             {avatarUrl ? (
                                 <Image
                                     src={avatarUrl}
@@ -182,23 +182,23 @@ export default function UserProfileSettingsPage() {
                             <button
                                 onClick={() => fileInputRef.current?.click()}
                                 disabled={isUploading}
-                                className="px-4 py-2 border border-gray-200 hover:bg-gray-50 text-gray-700 text-sm font-semibold rounded-lg transition-colors mb-2 disabled:opacity-50"
+                                className="px-4 py-2 border border-line hover:bg-void text-muted text-sm font-semibold rounded-lg transition-colors mb-2 disabled:opacity-50"
                             >
                                 {isUploading ? 'Enviando...' : 'Alterar Foto'}
                             </button>
-                            <p className="text-xs text-gray-400 font-medium">JPG, GIF ou PNG. Tamanho máx. 2MB.</p>
+                            <p className="text-xs text-muted font-medium">JPG, GIF ou PNG. Tamanho máx. 2MB.</p>
                         </div>
                     </div>
                 </section>
 
                 {/* Informações Pessoais Section */}
-                <section className="bg-white border border-gray-200 rounded-2xl overflow-hidden shadow-sm">
-                    <div className="px-6 py-4 border-b border-gray-100 bg-gray-50/50 flex justify-between items-center">
-                        <h2 className="text-xs font-bold text-gray-400 uppercase tracking-wider font-display">INFORMAÇÕES PESSOAIS</h2>
+                <section className="bg-panel border border-line rounded-2xl overflow-hidden shadow-sm">
+                    <div className="px-6 py-4 border-b border-line bg-void flex justify-between items-center">
+                        <h2 className="text-xs font-bold text-muted uppercase tracking-wider font-display">INFORMAÇÕES PESSOAIS</h2>
                         <button
                             onClick={handleSavePersonalInfo}
                             disabled={isSaving}
-                            className="text-sm font-semibold text-blue-600 hover:text-blue-700 disabled:opacity-50"
+                            className="text-sm font-semibold text-accent-2 hover:text-accent-2 disabled:opacity-50"
                         >
                             {isSaving ? 'Salvando...' : 'Salvar'}
                         </button>
@@ -206,42 +206,42 @@ export default function UserProfileSettingsPage() {
                     <div className="p-6 space-y-6">
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <div className="space-y-1.5">
-                                <label className="text-sm font-semibold text-gray-700">Nome Completo</label>
+                                <label className="text-sm font-semibold text-muted">Nome Completo</label>
                                 <input
                                     type="text"
                                     value={name}
                                     onChange={(e) => setName(e.target.value)}
                                     placeholder="Seu nome"
-                                    className="w-full h-11 px-4 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all font-medium text-gray-900"
+                                    className="w-full h-11 px-4 bg-void border border-line rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent transition-all font-medium text-ink"
                                 />
                             </div>
                             <div className="space-y-1.5">
-                                <label className="text-sm font-semibold text-gray-700">E-mail Pessoal</label>
+                                <label className="text-sm font-semibold text-muted">E-mail Pessoal</label>
                                 <input
                                     type="email"
                                     value={email}
                                     disabled
-                                    className="w-full h-11 px-4 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-500 font-medium cursor-not-allowed"
+                                    className="w-full h-11 px-4 bg-void border border-line rounded-xl text-sm text-muted font-medium cursor-not-allowed"
                                 />
                             </div>
                         </div>
 
                         <div className="space-y-1.5">
-                            <label className="text-sm font-semibold text-gray-700">Cargo</label>
+                            <label className="text-sm font-semibold text-muted">Cargo</label>
                             <input
                                 type="text"
                                 value={role}
                                 disabled
-                                className="w-full h-11 px-4 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-500 font-medium cursor-not-allowed"
+                                className="w-full h-11 px-4 bg-void border border-line rounded-xl text-sm text-muted font-medium cursor-not-allowed"
                             />
                         </div>
                     </div>
                 </section>
 
                 {/* Segurança Section */}
-                <section className="bg-white border border-gray-200 rounded-2xl overflow-hidden shadow-sm">
-                    <div className="px-6 py-4 border-b border-gray-100 bg-gray-50/50 flex justify-between items-center">
-                        <h2 className="text-xs font-bold text-gray-400 uppercase tracking-wider font-display">SEGURANÇA</h2>
+                <section className="bg-panel border border-line rounded-2xl overflow-hidden shadow-sm">
+                    <div className="px-6 py-4 border-b border-line bg-void flex justify-between items-center">
+                        <h2 className="text-xs font-bold text-muted uppercase tracking-wider font-display">SEGURANÇA</h2>
                         <div className="flex items-center gap-3">
                             <span className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-green-700 bg-green-100 px-2 py-1 rounded-md">
                                 <ShieldCheck size={14} weight="fill" />
@@ -251,34 +251,34 @@ export default function UserProfileSettingsPage() {
                     </div>
                     <div className="p-6 space-y-6">
                         <div className="space-y-1.5">
-                            <label className="text-sm font-semibold text-gray-700">Senha Atual</label>
+                            <label className="text-sm font-semibold text-muted">Senha Atual</label>
                             <input
                                 type="password"
                                 value={currentPassword}
                                 onChange={(e) => setCurrentPassword(e.target.value)}
                                 placeholder="••••••••"
-                                className="w-full h-11 px-4 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-gray-900"
+                                className="w-full h-11 px-4 bg-void border border-line rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent transition-all text-ink"
                             />
                         </div>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <div className="space-y-1.5">
-                                <label className="text-sm font-semibold text-gray-700">Nova Senha</label>
+                                <label className="text-sm font-semibold text-muted">Nova Senha</label>
                                 <input
                                     type="password"
                                     value={newPassword}
                                     onChange={(e) => setNewPassword(e.target.value)}
                                     placeholder="Nova senha"
-                                    className="w-full h-11 px-4 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-gray-900"
+                                    className="w-full h-11 px-4 bg-void border border-line rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent transition-all text-ink"
                                 />
                             </div>
                             <div className="space-y-1.5">
-                                <label className="text-sm font-semibold text-gray-700">Confirmar Nova Senha</label>
+                                <label className="text-sm font-semibold text-muted">Confirmar Nova Senha</label>
                                 <input
                                     type="password"
                                     value={confirmPassword}
                                     onChange={(e) => setConfirmPassword(e.target.value)}
                                     placeholder="Confirme a senha"
-                                    className="w-full h-11 px-4 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-gray-900"
+                                    className="w-full h-11 px-4 bg-void border border-line rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent transition-all text-ink"
                                 />
                             </div>
                         </div>
@@ -287,7 +287,7 @@ export default function UserProfileSettingsPage() {
                             <button
                                 onClick={handleUpdatePassword}
                                 disabled={isSaving || !newPassword || newPassword !== confirmPassword}
-                                className="px-5 py-2.5 bg-gray-900 hover:bg-black text-white text-sm font-medium rounded-xl transition-colors shadow-sm disabled:opacity-50 flex items-center gap-2"
+                                className="px-5 py-2.5 bg-void hover:bg-black text-white text-sm font-medium rounded-xl transition-colors shadow-sm disabled:opacity-50 flex items-center gap-2"
                             >
                                 {isSaving ? <SpinnerGap size={18} className="animate-spin" /> : null}
                                 Atualizar Senha
@@ -297,25 +297,25 @@ export default function UserProfileSettingsPage() {
                 </section>
 
                 {/* Preferências Section */}
-                <section className="bg-white border border-gray-200 rounded-2xl overflow-hidden shadow-sm">
-                    <div className="px-6 py-4 border-b border-gray-100 bg-gray-50/50">
-                        <h2 className="text-xs font-bold text-gray-400 uppercase tracking-wider font-display">PREFERÊNCIAS</h2>
+                <section className="bg-panel border border-line rounded-2xl overflow-hidden shadow-sm">
+                    <div className="px-6 py-4 border-b border-line bg-void">
+                        <h2 className="text-xs font-bold text-muted uppercase tracking-wider font-display">PREFERÊNCIAS</h2>
                     </div>
                     <div className="p-6">
                         <div className="flex items-center justify-between">
                             <div>
-                                <h3 className="text-sm font-semibold text-gray-900">Notificações por E-mail</h3>
-                                <p className="text-sm text-gray-500 mt-0.5">Receba resumos semanais e alertas de novos leads.</p>
+                                <h3 className="text-sm font-semibold text-ink">Notificações por E-mail</h3>
+                                <p className="text-sm text-muted mt-0.5">Receba resumos semanais e alertas de novos leads.</p>
                             </div>
                             <button
                                 onClick={() => setEmailNotifications(!emailNotifications)}
-                                className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${emailNotifications ? 'bg-blue-600' : 'bg-gray-200'}`}
+                                className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${emailNotifications ? 'bg-accent' : 'bg-panel-2'}`}
                                 role="switch"
                                 aria-checked={emailNotifications}
                             >
                                 <span
                                     aria-hidden="true"
-                                    className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${emailNotifications ? 'translate-x-5' : 'translate-x-0'}`}
+                                    className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-panel shadow ring-0 transition duration-200 ease-in-out ${emailNotifications ? 'translate-x-5' : 'translate-x-0'}`}
                                 ></span>
                             </button>
                         </div>

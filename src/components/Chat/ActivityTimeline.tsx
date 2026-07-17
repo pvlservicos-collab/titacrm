@@ -173,8 +173,8 @@ function CustomAudioPlayer({ url, isOutgoing, senderAvatar }: { url: string; isO
           {senderAvatar ? (
             <img src={senderAvatar} alt="Avatar" className="w-full h-full object-cover" />
           ) : (
-            <div className={`w-full h-full flex items-center justify-center ${isOutgoing ? 'bg-blue-100' : 'bg-[var(--chat-bg-hover)]'}`}>
-              <span className={`text-[10px] font-bold ${isOutgoing ? 'text-blue-500' : 'text-[var(--chat-text-muted)]'}`}>👤</span>
+            <div className={`w-full h-full flex items-center justify-center ${isOutgoing ? 'bg-panel-2' : 'bg-[var(--chat-bg-hover)]'}`}>
+              <span className={`text-[10px] font-bold ${isOutgoing ? 'text-accent-2' : 'text-[var(--chat-text-muted)]'}`}>👤</span>
             </div>
           )}
         </div>
@@ -256,7 +256,7 @@ function MediaRenderer({ metadata, isOutgoing, onImageClick, senderAvatar }: { m
           } transition-colors max-w-[240px]`}
         title="Baixar Documento"
       >
-        <div className={`p-2 rounded ${isOutgoing ? 'bg-white/20' : 'bg-[var(--chat-bg-hover)] shadow-sm'}`}>
+        <div className={`p-2 rounded ${isOutgoing ? 'bg-panel' : 'bg-[var(--chat-bg-hover)] shadow-sm'}`}>
           <span className="text-lg">📄</span>
         </div>
         <div className="flex-1 min-w-0">
@@ -774,10 +774,10 @@ export default function ActivityTimeline({
       }
       elements.push(
         <div key={activity.id} className="mt-4 flex justify-center">
-          <div className="bg-blue-50 dark:bg-[#0f2733] border border-blue-200 dark:border-[#1e4356] rounded-2xl p-4 max-w-md w-full shadow-sm">
-            <p className="text-sm font-semibold text-blue-800 dark:text-blue-200">📧 Email</p>
-            <p className="text-sm text-blue-900 dark:text-blue-100 mt-2 whitespace-pre-wrap bg-black/5 dark:bg-black/15 p-3 rounded-xl border border-blue-200 dark:border-blue-900/40">{activity.content}</p>
-            <p className="text-[10px] text-blue-700 dark:text-blue-300 mt-2 text-right uppercase font-semibold tracking-wide">
+          <div className="bg-panel-2 dark:bg-[#0f2733] border border-accent-line dark:border-[#1e4356] rounded-2xl p-4 max-w-md w-full shadow-sm">
+            <p className="text-sm font-semibold text-accent-2 dark:text-blue-200">📧 Email</p>
+            <p className="text-sm text-accent-2 dark:text-blue-100 mt-2 whitespace-pre-wrap bg-black/5 dark:bg-black/15 p-3 rounded-xl border border-accent-line dark:border-blue-900/40">{activity.content}</p>
+            <p className="text-[10px] text-accent-2 dark:text-blue-300 mt-2 text-right uppercase font-semibold tracking-wide">
               {formatTime(activity.created_at)}
             </p>
           </div>

@@ -63,11 +63,11 @@ export default function TagsSettingsPage() {
             {/* Header Area */}
             <div className="flex flex-col gap-4">
                 <div className="flex items-center justify-between">
-                    <h1 className="text-2xl font-bold text-gray-900">Tags</h1>
+                    <h1 className="text-2xl font-bold text-ink">Tags</h1>
                     <button
                         onClick={handleCreateTagClick}
                         disabled={editingTagId === 'new'}
-                        className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-lg transition-colors shadow-sm flex items-center justify-center gap-2 disabled:opacity-50"
+                        className="px-4 py-2 bg-accent hover:bg-accent-2 text-white text-sm font-semibold rounded-lg transition-colors shadow-sm flex items-center justify-center gap-2 disabled:opacity-50"
                     >
                         <Plus size={16} weight="bold" />
                         Criar nova
@@ -77,14 +77,14 @@ export default function TagsSettingsPage() {
                 {/* Search Input */}
                 <div className="relative">
                     <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                        <MagnifyingGlass className="text-gray-400" size={18} />
+                        <MagnifyingGlass className="text-muted" size={18} />
                     </div>
                     <input
                         type="text"
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
                         placeholder="Buscar tags..."
-                        className="block w-full pl-10 pr-3 py-2.5 border border-gray-200 rounded-xl leading-5 bg-white placeholder-gray-400 focus:outline-none focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 sm:text-sm transition-all shadow-sm"
+                        className="block w-full pl-10 pr-3 py-2.5 border border-line rounded-xl leading-5 bg-panel placeholder-muted focus:outline-none focus:bg-panel focus:ring-2 focus:ring-accent focus:border-accent sm:text-sm transition-all shadow-sm"
                     />
                 </div>
             </div>
@@ -100,7 +100,7 @@ export default function TagsSettingsPage() {
                 )}
 
                 {tagsLoading ? (
-                    <div className="py-12 flex justify-center bg-white rounded-2xl border border-gray-100 shadow-sm">
+                    <div className="py-12 flex justify-center bg-panel rounded-2xl border border-line shadow-sm">
                         <LoadingSpinner text="Carregando tags..." />
                     </div>
                 ) : filteredTags.length > 0 ? (
@@ -116,14 +116,14 @@ export default function TagsSettingsPage() {
                         />
                     ))
                 ) : editingTagId !== 'new' ? (
-                    <div className="text-center py-12 bg-white rounded-2xl border border-gray-100 shadow-sm">
-                        <div className="w-12 h-12 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-3">
-                            <MagnifyingGlass size={24} className="text-gray-400" />
+                    <div className="text-center py-12 bg-panel rounded-2xl border border-line shadow-sm">
+                        <div className="w-12 h-12 bg-void rounded-full flex items-center justify-center mx-auto mb-3">
+                            <MagnifyingGlass size={24} className="text-muted" />
                         </div>
-                        <h3 className="text-sm font-medium text-gray-900 mb-1">
+                        <h3 className="text-sm font-medium text-ink mb-1">
                             {searchTerm ? 'Nenhuma tag encontrada' : 'Nenhuma tag criada'}
                         </h3>
-                        <p className="text-sm text-gray-500 max-w-sm mx-auto">
+                        <p className="text-sm text-muted max-w-sm mx-auto">
                             {searchTerm
                                 ? `Não encontramos resultados para "${searchTerm}".`
                                 : 'Crie tags para categorizar e organizar seus leads de forma visual.'}

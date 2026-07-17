@@ -49,7 +49,7 @@ export default function WorkspacesPage() {
   }, [status])
 
   const handleSelectWorkspace = (orgId: string) => {
-    if (typeof window !== 'undefined') localStorage.setItem('atlas_active_org', orgId)
+    if (typeof window !== 'undefined') localStorage.setItem('follem_active_org', orgId)
     router.push('/')
   }
 

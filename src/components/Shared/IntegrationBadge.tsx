@@ -91,7 +91,7 @@ const IntegrationBadge = ({ lead, size = 'md' }: IntegrationBadgeProps) => {
 
     return (
         <div
-            className={`absolute ${sizeConfig.offset} z-10 flex items-center justify-center border border-white shadow-sm ${sizeConfig.container} ${bg}`}
+            className={`absolute ${sizeConfig.offset} z-10 flex items-center justify-center border border-panel shadow-sm ${sizeConfig.container} ${bg}`}
             title={title}
         >
             <Icon size={sizeConfig.icon} weight="fill" className="text-white" />

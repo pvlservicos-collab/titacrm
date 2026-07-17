@@ -89,7 +89,7 @@ export default function StageColumn({
           >
             {stage.name}
           </h3>
-          <button className="text-gray-300 hover:text-gray-500 p-1 rounded transition-colors focus:outline-none">
+          <button className="text-muted hover:text-muted p-1 rounded transition-colors focus:outline-none">
             <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
               <circle cx="8" cy="3" r="1.5" />
               <circle cx="8" cy="8" r="1.5" />
@@ -98,8 +98,8 @@ export default function StageColumn({
           </button>
         </div>
 
-        <div className="flex items-baseline gap-1 text-[11px] text-gray-400 font-medium">
-          <span className="text-[17px] font-black text-gray-900 leading-none">
+        <div className="flex items-baseline gap-1 text-[11px] text-muted font-medium">
+          <span className="text-[17px] font-black text-ink leading-none">
             {displayCount.toString().padStart(2, '0')}
           </span>
           <span>
@@ -108,7 +108,7 @@ export default function StageColumn({
         </div>
         {/* Progress bar / Underline */}
         {isGoalsEnabled && goalLeads > 0 ? (
-          <div className="w-full h-[3px] bg-gray-200/60 rounded-full overflow-hidden mt-3 mb-1">
+          <div className="w-full h-[3px] bg-panel-2 rounded-full overflow-hidden mt-3 mb-1">
             <div
               className="h-full rounded-full transition-all duration-500 ease-out"
               style={{
@@ -135,7 +135,7 @@ export default function StageColumn({
           className="space-y-3 flex-1 min-h-0 px-1 overflow-y-auto"
         >
           {visibleLeads.length === 0 ? (
-            <div className="text-center py-8 text-gray-400 text-sm">
+            <div className="text-center py-8 text-muted text-sm">
               Sem leads
             </div>
           ) : (

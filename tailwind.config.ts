@@ -11,12 +11,31 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        accent: '#3B82F6',
+        // accent era '#3B82F6' e não tinha nenhum uso real no projeto (confirmado via
+        // grep) — reaproveitada pra virar o azul da marca nova. NÃO declarar uma chave
+        // `blue` aqui: 50+ arquivos usam a escala padrão do Tailwind (bg-blue-600 etc)
+        // e sobrescrever `blue` quebraria todos eles silenciosamente (merge raso).
+        accent: {
+          DEFAULT: 'var(--blue)',
+          2: 'var(--blue-2)',
+          line: 'var(--blue-line)',
+        },
+        void: 'var(--void)',
+        panel: {
+          DEFAULT: 'var(--panel)',
+          2: 'var(--panel-2)',
+        },
+        ink: 'var(--ink)',
+        muted: 'var(--muted)',
+        line: 'var(--line)',
       },
       fontFamily: {
         sans: ['"Inter"', 'system-ui', 'sans-serif'],
         display: ['"Darker Grotesque"', 'system-ui', 'sans-serif'],
         neuehaas: ['"Neue Haas Grotesk Display Pro"', 'system-ui', 'sans-serif'],
+      },
+      boxShadow: {
+        glow: '0 0 40px rgba(61,123,255,.35)',
       },
     },
   },

@@ -84,13 +84,13 @@ export default function CustomFieldsSettingsPage() {
         <div className="max-w-4xl pb-20">
             <div className="flex items-center justify-between mb-8">
                 <div>
-                    <h1 className="text-2xl font-bold font-display text-gray-900">Campos Customizados</h1>
-                    <p className="text-gray-500 mt-1">Crie e organize as propriedades dos seus leads.</p>
+                    <h1 className="text-2xl font-bold font-display text-ink">Campos Customizados</h1>
+                    <p className="text-muted mt-1">Crie e organize as propriedades dos seus leads.</p>
                 </div>
                 <button
                     onClick={openNewField}
                     disabled={editingFieldId === 'new'}
-                    className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="flex items-center gap-2 px-4 py-2 bg-accent text-white rounded-lg text-sm font-medium hover:bg-accent-2 transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                     <Plus size={16} weight="bold" />
                     Criar
@@ -150,12 +150,12 @@ export default function CustomFieldsSettingsPage() {
                         setEditingCategory(null)
                         setIsCategoryModalOpen(true)
                     }}
-                    className="w-full py-4 mt-6 border-2 border-dashed border-gray-300 rounded-xl text-gray-500 text-sm font-medium hover:text-blue-600 hover:border-blue-400 hover:bg-blue-50 transition-colors flex items-center justify-center gap-2"
+                    className="w-full py-4 mt-6 border-2 border-dashed border-line rounded-xl text-muted text-sm font-medium hover:text-accent-2 hover:border-accent hover:bg-panel-2 transition-colors flex items-center justify-center gap-2"
                 >
                     <Plus size={16} />
                     Adicionar nova categoria
                 </button>
-                <p className="text-xs text-gray-400 text-center mt-3">
+                <p className="text-xs text-muted text-center mt-3">
                     Crie novos agrupamentos para organizar melhor os campos de seus clientes.
                 </p>
 
@@ -222,20 +222,20 @@ function PositionDropdown({ value, onChange, disabled }: { value: 'chat' | 'side
                 ref={triggerRef}
                 type="button"
                 onClick={() => !disabled && setOpen(!open)}
-                className="w-full bg-gray-50 border border-gray-200 text-gray-900 text-sm rounded-lg p-2.5 outline-none transition-colors cursor-pointer flex items-center justify-between hover:border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                className="w-full bg-void border border-line text-ink text-sm rounded-lg p-2.5 outline-none transition-colors cursor-pointer flex items-center justify-between hover:border-line focus:ring-2 focus:ring-accent focus:border-accent"
                 tabIndex={disabled ? -1 : 0}
             >
                 <span>{selected.label}</span>
-                <CaretDown size={16} weight="bold" className={`text-gray-400 transition-transform duration-200 ${open ? 'rotate-180' : ''}`} />
+                <CaretDown size={16} weight="bold" className={`text-muted transition-transform duration-200 ${open ? 'rotate-180' : ''}`} />
             </button>
             {open && typeof document !== 'undefined' && ReactDOM.createPortal(
-                <div ref={panelRef} style={getPortalStyle()} className="bg-white border border-gray-200 rounded-lg shadow-lg overflow-hidden">
+                <div ref={panelRef} style={getPortalStyle()} className="bg-panel border border-line rounded-lg shadow-lg overflow-hidden">
                     {POSITION_OPTIONS.map((option) => (
                         <button
                             key={option.value}
                             type="button"
                             onClick={() => { onChange(option.value); setOpen(false) }}
-                            className={`w-full text-left px-3 py-2.5 text-sm transition-colors ${option.value === value ? 'bg-blue-50 text-blue-700 font-medium' : 'text-gray-700 hover:bg-gray-50'}`}
+                            className={`w-full text-left px-3 py-2.5 text-sm transition-colors ${option.value === value ? 'bg-panel-2 text-accent-2 font-medium' : 'text-muted hover:bg-void'}`}
                         >
                             {option.label}
                         </button>
@@ -261,20 +261,20 @@ function ChatButtonTogglesSection() {
     if (loading) return null
 
     return (
-        <div className="mt-10 pt-8 border-t border-gray-200">
+        <div className="mt-10 pt-8 border-t border-line">
             <div className="mb-6">
-                <h2 className="text-lg font-bold text-gray-900">Botões do Chat</h2>
-                <p className="text-gray-500 text-sm mt-1">Ative ou desative os botões de ação exibidos na janela de conversa com o lead.</p>
+                <h2 className="text-lg font-bold text-ink">Botões do Chat</h2>
+                <p className="text-muted text-sm mt-1">Ative ou desative os botões de ação exibidos na janela de conversa com o lead.</p>
             </div>
             <div className="space-y-1">
                 {toggles.map((toggle) => {
                     const config = settings[toggle.key]
                     return (
-                        <div key={toggle.key} className="bg-white border border-gray-100 rounded-xl overflow-hidden hover:bg-gray-50 transition-colors group">
+                        <div key={toggle.key} className="bg-panel border border-line rounded-xl overflow-hidden hover:bg-void transition-colors group">
                             <label className="flex items-center justify-between px-4 py-3.5 cursor-pointer">
                                 <div>
-                                    <p className="text-sm font-semibold text-gray-800">{toggle.label}</p>
-                                    <p className="text-xs text-gray-400 mt-0.5">{toggle.description}</p>
+                                    <p className="text-sm font-semibold text-ink">{toggle.label}</p>
+                                    <p className="text-xs text-muted mt-0.5">{toggle.description}</p>
                                 </div>
                                 <div className="relative">
                                     <input
@@ -283,7 +283,7 @@ function ChatButtonTogglesSection() {
                                         onChange={(e) => updateSettings({ [toggle.key]: { ...config, enabled: e.target.checked } })}
                                         className="sr-only peer"
                                     />
-                                    <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-blue-200 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600 transition-colors" />
+                                    <div className="w-11 h-6 bg-panel-2 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-accent-line rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-panel after:border-line after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-accent transition-colors" />
                                 </div>
                             </label>
 
@@ -292,7 +292,7 @@ function ChatButtonTogglesSection() {
                                 <div className="overflow-hidden">
                                     <div className="px-4 pb-4 space-y-4">
                                         <div>
-                                            <label className="block text-xs font-medium text-gray-600 mb-1">
+                                            <label className="block text-xs font-medium text-muted mb-1">
                                                 Webhook URL
                                             </label>
                                             <input
@@ -300,16 +300,16 @@ function ChatButtonTogglesSection() {
                                                 value={config.webhook_url}
                                                 onChange={(e) => updateSettings({ [toggle.key]: { ...config, webhook_url: e.target.value } })}
                                                 placeholder="https://exemplo.com/webhook"
-                                                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                                                className="w-full border border-line rounded-lg px-3 py-2 text-sm text-ink placeholder-muted focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent transition-colors"
                                                 tabIndex={config.enabled ? 0 : -1}
                                             />
-                                            <p className="text-[11px] text-gray-400 mt-1">
+                                            <p className="text-[11px] text-muted mt-1">
                                                 URL que receberá um POST com os dados do lead quando o botão for clicado.
                                             </p>
                                         </div>
 
                                         <div>
-                                            <label className="block text-xs font-medium text-gray-600 mb-1">
+                                            <label className="block text-xs font-medium text-muted mb-1">
                                                 Posição do Botão
                                             </label>
                                             <PositionDropdown
@@ -317,7 +317,7 @@ function ChatButtonTogglesSection() {
                                                 onChange={(v) => updateSettings({ [toggle.key]: { ...config, position: v } })}
                                                 disabled={!config.enabled}
                                             />
-                                            <p className="text-[11px] text-gray-400 mt-1">
+                                            <p className="text-[11px] text-muted mt-1">
                                                 Escolha onde este botão deve aparecer para evitar duplicações.
                                             </p>
                                         </div>

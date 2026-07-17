@@ -124,24 +124,24 @@ export default function FunnelEditorPage() {
 
   if (loading) {
     return (
-      <div className="h-full flex items-center justify-center bg-white">
-        <div className="w-6 h-6 border-2 border-gray-200 border-t-blue-500 rounded-full animate-spin" />
+      <div className="h-full flex items-center justify-center bg-panel">
+        <div className="w-6 h-6 border-2 border-line border-t-blue-500 rounded-full animate-spin" />
       </div>
     )
   }
 
   return (
-    <div className="h-full flex flex-col bg-white">
-      <div className="sticky top-0 z-10 bg-white border-b border-gray-100 px-6 py-3 flex items-center justify-between gap-4">
+    <div className="h-full flex flex-col bg-panel">
+      <div className="sticky top-0 z-10 bg-panel border-b border-line px-6 py-3 flex items-center justify-between gap-4">
         <div className="flex items-center gap-3 min-w-0">
-          <button onClick={() => router.push('/funnels')} className="text-gray-400 hover:text-gray-700 transition-colors">
+          <button onClick={() => router.push('/funnels')} className="text-muted hover:text-muted transition-colors">
             <ArrowLeft size={18} weight="bold" />
           </button>
           <input
             type="text"
             value={name}
             onChange={(e) => setName(e.target.value)}
-            className="text-base font-bold text-gray-900 border-none focus:outline-none focus:ring-0 bg-transparent min-w-0"
+            className="text-base font-bold text-ink border-none focus:outline-none focus:ring-0 bg-transparent min-w-0"
           />
         </div>
 
@@ -151,22 +151,22 @@ export default function FunnelEditorPage() {
               onClick={() => { if (trigger !== 'geracaowhatsapp') setIsActive((v) => !v) }}
               disabled={trigger === 'geracaowhatsapp'}
               title={trigger === 'geracaowhatsapp' ? 'Fluxo padrão: não pode ser desativado' : undefined}
-              className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${isActive ? 'bg-emerald-500' : 'bg-gray-300'} ${trigger === 'geracaowhatsapp' ? 'cursor-not-allowed opacity-80' : ''}`}
+              className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${isActive ? 'bg-emerald-500' : 'bg-panel-2'} ${trigger === 'geracaowhatsapp' ? 'cursor-not-allowed opacity-80' : ''}`}
             >
-              <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${isActive ? 'translate-x-4.5' : 'translate-x-0.5'}`} />
+              <span className={`inline-block h-4 w-4 transform rounded-full bg-panel transition-transform ${isActive ? 'translate-x-4.5' : 'translate-x-0.5'}`} />
             </button>
-            <span className={`text-xs font-semibold ${isActive ? 'text-emerald-600' : 'text-gray-400'}`}>
+            <span className={`text-xs font-semibold ${isActive ? 'text-emerald-600' : 'text-muted'}`}>
               {isActive ? 'Ativo' : 'Inativo'}
             </span>
             {trigger === 'geracaowhatsapp' && (
-              <span className="text-[10px] text-gray-400">🔒 padrão</span>
+              <span className="text-[10px] text-muted">🔒 padrão</span>
             )}
           </label>
 
           <button
             onClick={handleSave}
             disabled={saving}
-            className="flex items-center gap-1.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white text-sm font-semibold px-3 py-1.5 rounded-lg transition-colors"
+            className="flex items-center gap-1.5 bg-accent hover:bg-accent-2 disabled:opacity-50 text-white text-sm font-semibold px-3 py-1.5 rounded-lg transition-colors"
           >
             {saved ? <CheckCircle size={16} weight="bold" /> : <FloppyDisk size={16} weight="bold" />}
             {saving ? 'Salvando...' : saved ? 'Salvo!' : 'Salvar'}

@@ -18,6 +18,12 @@ interface AuthContextType {
   loading: boolean
   error: string | null
   profileName: string | null
+  // onboardingCompleted null = ainda não sabemos (carregando OU erro/sem org — os dois
+  // casos precisam de tratamento igual: nunca travar o app, ver OnboardingGate).
+  // onboardingStatusLoaded existe separado porque esse null sozinho não distingue
+  // "ainda buscando" de "resolvido de forma ambígua".
+  onboardingCompleted: boolean | null
+  onboardingStatusLoaded: boolean
 }
 
 export const AuthContext = createContext<AuthContextType>({
@@ -30,6 +36,8 @@ export const AuthContext = createContext<AuthContextType>({
   loading: true,
   error: null,
   profileName: null,
+  onboardingCompleted: null,
+  onboardingStatusLoaded: false,
 })
 
 export function AuthProvider({ children }: { children: ReactNode }) {
@@ -39,6 +47,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [roleName, setRoleName] = useState<string | null>(null)
   const [permissions, setPermissions] = useState<any>(null)
   const [error, setError] = useState<string | null>(null)
+  const [onboardingCompleted, setOnboardingCompleted] = useState<boolean | null>(null)
+  const [onboardingStatusLoaded, setOnboardingStatusLoaded] = useState(false)
 
   const loading = status === 'loading'
   const user = session?.user
@@ -59,12 +69,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setOrganizationId(null)
       setRoleName(null)
       setPermissions(null)
+      setOnboardingCompleted(null)
+      setOnboardingStatusLoaded(false)
       return
     }
 
     async function loadOrganization() {
       try {
-        const storedOrgId = typeof window !== 'undefined' ? localStorage.getItem('atlas_active_org') : null
+        const storedOrgId = typeof window !== 'undefined' ? localStorage.getItem('follem_active_org') : null
         const url = storedOrgId
           ? `/api/users/me?org_id=${storedOrgId}`
           : '/api/users/me'
@@ -78,12 +90,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setOrganizationId(data.member.organization_id)
           setRoleName(data.role?.name || null)
           setPermissions(data.role?.permissions || null)
+          setOnboardingCompleted(data.onboarding_completed ?? false)
           if (typeof window !== 'undefined') {
-            localStorage.setItem('atlas_active_org', data.member.organization_id)
+            localStorage.setItem('follem_active_org', data.member.organization_id)
           }
         }
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Erro ao carregar organização')
+      } finally {
+        setOnboardingStatusLoaded(true)
       }
     }
 
@@ -102,6 +117,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         loading,
         error,
         profileName,
+        onboardingCompleted,
+        onboardingStatusLoaded,
       }}
     >
       {children}

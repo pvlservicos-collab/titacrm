@@ -46,6 +46,12 @@ export async function GET(req: NextRequest) {
       .where(eq(organizationRoles.id, member.roleId))
       .limit(1)
 
+    const [profileRow] = await db
+      .select({ onboardingCompleted: profiles.onboardingCompleted })
+      .from(profiles)
+      .where(eq(profiles.id, userId))
+      .limit(1)
+
     return Response.json({
       member: {
         id: member.id,
@@ -54,6 +60,7 @@ export async function GET(req: NextRequest) {
         status: member.status,
       },
       role: role || null,
+      onboarding_completed: profileRow?.onboardingCompleted ?? false,
     })
   } catch (err: any) {
     return apiError(500, err.message || 'Erro interno.')
@@ -76,6 +83,7 @@ export async function PATCH(req: NextRequest) {
     if (body.full_name !== undefined) updates.fullName = body.full_name
     if (body.avatar_url !== undefined) updates.avatarUrl = body.avatar_url
     if (body.timezone !== undefined) updates.timezone = body.timezone
+    if (body.onboarding_completed !== undefined) updates.onboardingCompleted = body.onboarding_completed
 
     if (Object.keys(updates).length === 0) {
       return apiError(400, 'Nenhum campo para atualizar.')

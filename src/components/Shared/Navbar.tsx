@@ -121,13 +121,13 @@ export default function Navbar() {
 
   return (
     <>
-    <nav className="app-safe-top dark-nav bg-white dark:bg-[#161b22] border-b border-gray-200 dark:border-[#30363d] px-4 sm:px-6 h-14 flex items-center justify-between sticky top-0 z-50">
+    <nav className="app-safe-top bg-panel border-b border-line px-4 sm:px-6 h-14 flex items-center justify-between sticky top-0 z-50">
       {/* Left: Logo + Nav */}
       <div className="flex items-center gap-8">
         {/* Logo */}
         <Link href="/" className="flex items-center gap-2">
-          <img src="/logos/Atlas.svg" alt="Atlas Eye Logo" className="h-6 w-auto object-contain" />
-          <span className="font-display font-bold text-gray-900 dark:text-[#e6edf3] hidden sm:inline">Atlas Eye</span>
+          <img src="/logos/Atlas.svg" alt="Follem Logo" className="h-6 w-auto object-contain" />
+          <span className="font-display font-bold text-ink hidden sm:inline">Follem</span>
         </Link>
 
         {/* Nav Tabs (desktop) */}
@@ -149,8 +149,8 @@ export default function Navbar() {
                   <Link
                     href={item.href}
                     className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${isActive
-                      ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400'
-                      : 'text-gray-600 dark:text-[#8b949e] hover:bg-gray-100 dark:hover:bg-[#21262d] hover:text-gray-900 dark:hover:text-[#e6edf3]'
+                      ? 'bg-panel-2 text-accent-2'
+                      : 'text-muted hover:bg-panel-2 hover:text-ink'
                       }`}
                   >
                     <Icon size={16} weight={isActive ? 'fill' : 'regular'} />
@@ -161,7 +161,7 @@ export default function Navbar() {
                   {/* Dropdown */}
                   {showPipelineDropdown && (
                     <div className="absolute top-full left-0 pt-2 w-48 z-50">
-                      <div className="bg-white border border-gray-200 rounded-lg shadow-lg py-1">
+                      <div className="bg-panel border border-line rounded-lg shadow-lg py-1">
                         {pipelines.map((pipeline) => (
                           <button
                             key={pipeline.id}
@@ -169,9 +169,9 @@ export default function Navbar() {
                               router.push(`/pipeline?pipelineId=${pipeline.id}`)
                               setShowPipelineDropdown(false)
                             }}
-                            className={`w-full text-left px-4 py-2 text-sm hover:bg-gray-50 transition-colors ${activePipelineId === pipeline.id
-                              ? 'bg-blue-50 text-blue-600 font-semibold'
-                              : 'text-gray-700'
+                            className={`w-full text-left px-4 py-2 text-sm hover:bg-panel-2 transition-colors ${activePipelineId === pipeline.id
+                              ? 'text-accent-2 font-semibold'
+                              : 'text-ink'
                               }`}
                           >
                             {pipeline.name}
@@ -190,8 +190,8 @@ export default function Navbar() {
                 key={item.href}
                 href={item.href}
                 className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${isActive
-                  ? 'bg-blue-50 text-blue-600'
-                  : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
+                  ? 'bg-panel-2 text-accent-2'
+                  : 'text-muted hover:bg-panel-2 hover:text-ink'
                   }`}
               >
                 <Icon size={16} weight={isActive ? 'fill' : 'regular'} />
@@ -203,7 +203,7 @@ export default function Navbar() {
           {/* Conditional Filter Button for Pipeline */}
           {pathname.startsWith('/pipeline') && organizationId && (
             <>
-              <div className="w-[1px] h-4 bg-gray-300 mx-1"></div>
+              <div className="w-[1px] h-4 bg-line mx-1"></div>
               <FilterButton organizationId={organizationId} onFilterChange={setFilters} />
             </>
           )}
@@ -222,7 +222,7 @@ export default function Navbar() {
         <button
           onClick={toggleTheme}
           title={isDark ? 'Modo claro' : 'Modo escuro'}
-          className="app-tap-target w-11 h-11 flex items-center justify-center rounded-lg text-gray-500 dark:text-[#8b949e] hover:bg-gray-100 dark:hover:bg-[#21262d] transition-colors"
+          className="app-tap-target w-11 h-11 flex items-center justify-center rounded-lg text-muted hover:bg-panel-2 transition-colors"
         >
           {isDark ? <Sun size={18} weight="fill" className="text-yellow-400" /> : <Moon size={18} />}
         </button>
@@ -231,28 +231,28 @@ export default function Navbar() {
         <div className="relative" ref={userDropdownRef}>
           <div
             onClick={() => setShowUserDropdown(!showUserDropdown)}
-            className="flex items-center gap-2 cursor-pointer hover:bg-gray-50 rounded-lg px-2 py-1 transition-colors"
+            className="flex items-center gap-2 cursor-pointer hover:bg-panel-2 rounded-lg px-2 py-1 transition-colors"
           >
             {avatarUrl ? (
-              <div className="w-8 h-8 rounded-full flex items-center justify-center overflow-hidden border border-gray-200">
+              <div className="w-8 h-8 rounded-full flex items-center justify-center overflow-hidden border border-line">
                 <img src={avatarUrl} alt={displayName} className="w-full h-full object-cover" />
               </div>
             ) : (
-              <div className="w-8 h-8 bg-purple-100 rounded-full flex items-center justify-center">
-                <span className="text-purple-600 text-xs font-bold">{initials}</span>
+              <div className="w-8 h-8 bg-purple-500/20 rounded-full flex items-center justify-center">
+                <span className="text-purple-300 text-xs font-bold">{initials}</span>
               </div>
             )}
-            <span className="hidden sm:inline text-sm font-medium text-gray-700 dark:text-[#adbac7] truncate max-w-[120px]">{displayName}</span>
-            <CaretDown size={14} className={`hidden sm:block text-gray-400 transition-transform ${showUserDropdown ? 'rotate-180' : ''}`} />
+            <span className="hidden sm:inline text-sm font-medium text-ink truncate max-w-[120px]">{displayName}</span>
+            <CaretDown size={14} className={`hidden sm:block text-muted transition-transform ${showUserDropdown ? 'rotate-180' : ''}`} />
           </div>
 
           {/* User Menu Popup */}
           {showUserDropdown && (
-            <div className="absolute right-0 top-full mt-2 w-48 bg-white dark:bg-[#1c2128] border border-gray-100 dark:border-[#30363d] rounded-xl shadow-lg shadow-gray-200/50 py-1 z-50 animate-in fade-in slide-in-from-top-2">
+            <div className="absolute right-0 top-full mt-2 w-48 bg-panel border border-line rounded-xl shadow-lg py-1 z-50 animate-in fade-in slide-in-from-top-2">
               <Link
                 href="/workspaces"
                 onClick={() => setShowUserDropdown(false)}
-                className="flex items-center gap-2 px-4 py-2 text-sm text-gray-600 hover:text-gray-900 hover:bg-gray-50 transition-colors w-full text-left"
+                className="flex items-center gap-2 px-4 py-2 text-sm text-muted hover:text-ink hover:bg-panel-2 transition-colors w-full text-left"
               >
                 <Buildings size={16} />
                 <span>Organizações</span>
@@ -260,15 +260,15 @@ export default function Navbar() {
               <Link
                 href="/settings/profile"
                 onClick={() => setShowUserDropdown(false)}
-                className="flex items-center gap-2 px-4 py-2 text-sm text-gray-600 hover:text-gray-900 hover:bg-gray-50 transition-colors w-full text-left"
+                className="flex items-center gap-2 px-4 py-2 text-sm text-muted hover:text-ink hover:bg-panel-2 transition-colors w-full text-left"
               >
                 <Gear size={16} />
                 <span>Configurações do Perfil</span>
               </Link>
-              <div className="h-px bg-gray-100 my-1 mx-2"></div>
+              <div className="h-px bg-line my-1 mx-2"></div>
               <button
                 onClick={handleLogout}
-                className="flex items-center gap-2 px-4 py-2 text-sm text-red-600 hover:text-red-700 hover:bg-red-50 transition-colors w-full text-left"
+                className="flex items-center gap-2 px-4 py-2 text-sm text-red-400 hover:text-red-300 hover:bg-red-500/10 transition-colors w-full text-left"
               >
                 <SignOut size={16} />
                 <span>Sair da conta</span>
@@ -286,15 +286,15 @@ export default function Navbar() {
           className="absolute inset-0 bg-black/40"
           onClick={() => setShowMobileMenu(false)}
         />
-        <div className="absolute left-0 top-0 bottom-0 w-72 max-w-[85vw] bg-white dark:bg-[#161b22] shadow-xl flex flex-col">
-          <div className="flex items-center justify-between h-14 px-4 border-b border-gray-100 dark:border-[#30363d]">
+        <div className="absolute left-0 top-0 bottom-0 w-72 max-w-[85vw] bg-panel shadow-xl flex flex-col">
+          <div className="flex items-center justify-between h-14 px-4 border-b border-line">
             <Link href="/" className="flex items-center gap-2" onClick={() => setShowMobileMenu(false)}>
-              <img src="/logos/Atlas.svg" alt="Atlas Eye Logo" className="h-6 w-auto object-contain" />
-              <span className="font-display font-bold text-gray-900 dark:text-[#e6edf3]">Atlas Eye</span>
+              <img src="/logos/Atlas.svg" alt="Follem Logo" className="h-6 w-auto object-contain" />
+              <span className="font-display font-bold text-ink">Follem</span>
             </Link>
             <button
               onClick={() => setShowMobileMenu(false)}
-              className="w-8 h-8 flex items-center justify-center rounded-lg text-gray-500 hover:bg-gray-100 dark:hover:bg-[#21262d] transition-colors"
+              className="w-8 h-8 flex items-center justify-center rounded-lg text-muted hover:bg-panel-2 transition-colors"
               aria-label="Fechar menu"
             >
               <X size={20} />
@@ -310,8 +310,8 @@ export default function Navbar() {
                   href={item.href}
                   onClick={() => setShowMobileMenu(false)}
                   className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${isActive
-                    ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400'
-                    : 'text-gray-700 dark:text-[#adbac7] hover:bg-gray-100 dark:hover:bg-[#21262d]'
+                    ? 'bg-panel-2 text-accent-2'
+                    : 'text-muted hover:bg-panel-2'
                     }`}
                 >
                   <Icon size={18} weight={isActive ? 'fill' : 'regular'} />
@@ -326,7 +326,7 @@ export default function Navbar() {
 
     {/* Barra de navegação inferior (celular) — destinos mais usados sempre à mão,
         sem precisar abrir o menu. Padrão de app nativo (Instagram, WhatsApp etc). */}
-    <div className="app-safe-bottom md:hidden fixed bottom-0 left-0 right-0 z-50 bg-white dark:bg-[#161b22] dark-nav border-t border-gray-200 dark:border-[#30363d]">
+    <div className="app-safe-bottom md:hidden fixed bottom-0 left-0 right-0 z-50 bg-panel border-t border-line">
       <div className="h-16 flex items-stretch">
         {NAV_ITEMS.filter(item => MOBILE_TAB_LABELS.includes(item.label) && isItemVisible(item.label)).map(item => {
           const isActive = pathname === item.href || (item.href !== '/' && pathname.startsWith(item.href))
@@ -335,7 +335,7 @@ export default function Navbar() {
             <Link
               key={item.href}
               href={item.href}
-              className={`app-tap-target flex-1 flex flex-col items-center justify-center gap-0.5 transition-colors ${isActive ? 'text-blue-600 dark:text-blue-400' : 'text-gray-500 dark:text-[#8b949e]'
+              className={`app-tap-target flex-1 flex flex-col items-center justify-center gap-0.5 transition-colors ${isActive ? 'text-accent-2' : 'text-muted'
                 }`}
             >
               <Icon size={22} weight={isActive ? 'fill' : 'regular'} />
@@ -347,7 +347,7 @@ export default function Navbar() {
             (Configurações, Funil de Mensagens, Métricas etc), nunca os dois ao mesmo tempo. */}
         <button
           onClick={() => setShowMobileMenu(true)}
-          className="app-tap-target flex-1 flex flex-col items-center justify-center gap-0.5 text-gray-500 dark:text-[#8b949e] transition-colors"
+          className="app-tap-target flex-1 flex flex-col items-center justify-center gap-0.5 text-muted transition-colors"
         >
           <List size={22} />
           <span className="text-[10px] font-medium leading-none">Mais</span>

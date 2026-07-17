@@ -1,9 +1,37 @@
 import { NextRequest } from 'next/server'
 import { apiError } from '@/lib/api-auth'
 import { db } from '@/lib/db'
-import { users, profiles, organizationMembers, organizationRoles, setupTokens } from '@/lib/schema'
+import { users, profiles, organizationMembers, organizationRoles, setupTokens, organizations } from '@/lib/schema'
 import { eq, and, gt } from 'drizzle-orm'
 import bcrypt from 'bcryptjs'
+
+// GET /api/auth/setup-owner?token=... — usado por /ativar-conta pra mostrar o nome
+// do workspace antes do cliente preencher o formulário, sem expor mais nada do token.
+export async function GET(req: NextRequest) {
+  try {
+    const token = req.nextUrl.searchParams.get('token')
+    if (!token) return apiError(400, 'Token obrigatório.')
+
+    const [row] = await db
+      .select({
+        usedAt: setupTokens.usedAt,
+        expiresAt: setupTokens.expiresAt,
+        organizationName: organizations.name,
+      })
+      .from(setupTokens)
+      .innerJoin(organizations, eq(organizations.id, setupTokens.organizationId))
+      .where(eq(setupTokens.token, token))
+      .limit(1)
+
+    if (!row || row.usedAt || row.expiresAt < new Date()) {
+      return Response.json({ valid: false })
+    }
+
+    return Response.json({ valid: true, organization_name: row.organizationName })
+  } catch (err: any) {
+    return apiError(500, err.message || 'Erro interno.')
+  }
+}
 
 export async function POST(req: NextRequest) {
   try {

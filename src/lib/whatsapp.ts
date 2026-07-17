@@ -3,7 +3,7 @@ import { integrations, integrationSecrets } from '@/lib/schema'
 import { eq, and, isNull } from 'drizzle-orm'
 import { convertAudioForMeta } from '@/lib/audioConvert'
 
-async function getWhatsAppCredentials(organizationId: string) {
+export async function getWhatsAppCredentials(organizationId: string) {
   const [integration] = await db.select({ id: integrations.id, config: integrations.config })
     .from(integrations)
     .where(and(

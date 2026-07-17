@@ -13,7 +13,7 @@ const FAQS = [
     },
     {
         question: "Quantos aparelhos posso conectar?",
-        answer: "Cada instância do Atlas Eye permite a conexão de um único aparelho Lite por vez para garantir a estabilidade das automações."
+        answer: "Cada instância do Follem permite a conexão de um único aparelho Lite por vez para garantir a estabilidade das automações."
     },
     {
         question: "Como funciona a estabilidade do Lite?",
@@ -21,26 +21,26 @@ const FAQS = [
     },
     {
         question: "Tem limite de mensagens por dia?",
-        answer: "Não há limite técnico pelo Atlas, mas recomendamos seguir as boas práticas do WhatsApp para evitar bloqueios por spam."
+        answer: "Não há limite técnico pela plataforma, mas recomendamos seguir as boas práticas do WhatsApp para evitar bloqueios por spam."
     }
 ]
 
 function FAQItem({ question, answer }: { question: string, answer: string }) {
     const [isOpen, setIsOpen] = useState(false)
     return (
-        <div className="border rounded-lg bg-white overflow-hidden transition-all duration-200">
+        <div className="border rounded-lg bg-panel overflow-hidden transition-all duration-200">
             <button
                 onClick={() => setIsOpen(!isOpen)}
-                className="w-full flex items-center justify-between p-4 text-left font-medium text-gray-900 focus:outline-none hover:bg-gray-50 transition-colors"
+                className="w-full flex items-center justify-between p-4 text-left font-medium text-ink focus:outline-none hover:bg-void transition-colors"
                 aria-expanded={isOpen}
             >
                 {question}
-                {isOpen ? <CaretUp size={16} className="text-gray-500" /> : <CaretDown size={16} className="text-gray-500" />}
+                {isOpen ? <CaretUp size={16} className="text-muted" /> : <CaretDown size={16} className="text-muted" />}
             </button>
             <div
                 className={`overflow-hidden transition-all duration-300 ${isOpen ? 'max-h-40 opacity-100' : 'max-h-0 opacity-0'}`}
             >
-                <div className="p-4 text-sm text-gray-600 border-t border-gray-100">
+                <div className="p-4 text-sm text-muted border-t border-line">
                     {answer}
                 </div>
             </div>
@@ -328,22 +328,22 @@ export default function WhatsAppLitePage() {
         <div className="max-w-5xl pb-12">
             {/* Header */}
             <div className="flex items-center gap-4 mb-8">
-                <Link href="/settings/integrations" className="p-2 -ml-2 hover:bg-gray-100 rounded-full transition-colors text-gray-500">
+                <Link href="/settings/integrations" className="p-2 -ml-2 hover:bg-panel-2 rounded-full transition-colors text-muted">
                     <ArrowLeft size={20} />
                 </Link>
                 <div>
-                    <h1 className="text-2xl font-bold text-gray-900">Conexão WhatsApp Lite</h1>
-                    <p className="text-gray-600 text-sm mt-1">Conecte sua conta pessoal ou de equipe via QR Code.</p>
+                    <h1 className="text-2xl font-bold text-ink">Conexão WhatsApp Lite</h1>
+                    <p className="text-muted text-sm mt-1">Conecte sua conta pessoal ou de equipe via QR Code.</p>
                 </div>
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-5 gap-6 mb-8">
                 {/* Left side: QR Code / Initialization*/}
-                <div className="bg-white border rounded-xl p-4 sm:p-8 flex flex-col items-center justify-center lg:col-span-3 min-h-[400px]">
+                <div className="bg-panel border rounded-xl p-4 sm:p-8 flex flex-col items-center justify-center lg:col-span-3 min-h-[400px]">
                     {connectionState === 'loading' && (
                         <div className="flex flex-col items-center justify-center">
-                            <div className="w-12 h-12 border-4 border-blue-200 border-t-blue-500 rounded-full animate-spin mb-4" />
-                            <p className="text-gray-500">Preparando conexão...</p>
+                            <div className="w-12 h-12 border-4 border-accent-line border-t-blue-500 rounded-full animate-spin mb-4" />
+                            <p className="text-muted">Preparando conexão...</p>
                         </div>
                     )}
 
@@ -352,11 +352,11 @@ export default function WhatsAppLitePage() {
                             <div className="w-16 h-16 bg-red-50 text-red-500 rounded-full flex items-center justify-center mb-4">
                                 <Warning size={32} />
                             </div>
-                            <h3 className="text-lg font-bold text-gray-900 mb-2">Erro de Conexão</h3>
-                            <p className="text-gray-500 text-sm mb-6 max-w-sm">{error}</p>
+                            <h3 className="text-lg font-bold text-ink mb-2">Erro de Conexão</h3>
+                            <p className="text-muted text-sm mb-6 max-w-sm">{error}</p>
                             <button
                                 onClick={() => instanceName && initializeInstance(instanceName)}
-                                className="px-4 py-2 bg-blue-50 text-blue-600 rounded-lg font-medium hover:bg-blue-100 transition-colors"
+                                className="px-4 py-2 bg-panel-2 text-accent-2 rounded-lg font-medium hover:bg-panel-2 transition-colors"
                             >
                                 Tentar Novamente
                             </button>
@@ -365,18 +365,18 @@ export default function WhatsAppLitePage() {
 
                     {connectionState === 'not_created' && (
                         <div className="flex flex-col items-center justify-center text-center w-full max-w-sm">
-                            <div className="w-16 h-16 bg-blue-50 text-blue-500 rounded-full flex items-center justify-center mb-6">
+                            <div className="w-16 h-16 bg-panel-2 text-accent-2 rounded-full flex items-center justify-center mb-6">
                                 <DeviceMobile size={32} weight="fill" />
                             </div>
-                            <h3 className="text-xl font-bold text-gray-900 mb-2">Configurar Whatsapp Lite</h3>
-                            <p className="text-gray-500 mb-8 text-sm">
+                            <h3 className="text-xl font-bold text-ink mb-2">Configurar Whatsapp Lite</h3>
+                            <p className="text-muted mb-8 text-sm">
                                 Sua organização ainda não possui uma instância conectada. Clique no botão abaixo para gerar uma agora e em seguida escaneie o código QR com seu celular.
                             </p>
 
                             <button
                                 onClick={handleCreateInstance}
                                 disabled={isCreating}
-                                className="w-full flex items-center justify-center py-3 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-300 text-white rounded-lg font-medium transition-colors"
+                                className="w-full flex items-center justify-center py-3 bg-accent hover:bg-accent-2 disabled:bg-accent text-white rounded-lg font-medium transition-colors"
                             >
                                 {isCreating ? 'Gerando Instância...' : 'Criar Instância & Gerar QR Code'}
                             </button>
@@ -388,8 +388,8 @@ export default function WhatsAppLitePage() {
                             <div className="w-20 h-20 bg-green-50 text-green-500 rounded-full flex items-center justify-center mb-4">
                                 <CheckCircle size={40} weight="fill" />
                             </div>
-                            <h3 className="text-xl font-bold text-gray-900 mb-2">Aparelho Conectado!</h3>
-                            <p className="text-gray-500 text-sm mb-8 max-w-sm">
+                            <h3 className="text-xl font-bold text-ink mb-2">Aparelho Conectado!</h3>
+                            <p className="text-muted text-sm mb-8 max-w-sm">
                                 Seu WhatsApp Lite está operando normalmente. Não desconecte o celular da internet para manter as automações.
                             </p>
                             <div className="flex gap-4">
@@ -407,13 +407,13 @@ export default function WhatsAppLitePage() {
                                 </button>
                             </div>
 
-                            <div className="mt-8 pt-8 border-t border-gray-100 w-full text-left">
-                                <h4 className="text-sm font-bold text-gray-900 mb-2 mt-4">Funil de Destino</h4>
-                                <p className="text-xs text-gray-500 mb-4">Selecione para qual funil os novos leads que entrarem por este WhatsApp devem ser enviados automaticamente.</p>
+                            <div className="mt-8 pt-8 border-t border-line w-full text-left">
+                                <h4 className="text-sm font-bold text-ink mb-2 mt-4">Funil de Destino</h4>
+                                <p className="text-xs text-muted mb-4">Selecione para qual funil os novos leads que entrarem por este WhatsApp devem ser enviados automaticamente.</p>
                                 <select
                                     value={defaultPipelineId}
                                     onChange={handlePipelineChange}
-                                    className="w-full bg-gray-50 border border-gray-200 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block p-2.5 outline-none transition-colors"
+                                    className="w-full bg-void border border-line text-ink text-sm rounded-lg focus:ring-accent focus:border-accent block p-2.5 outline-none transition-colors"
                                 >
                                     <option value="">Selecione um Funil</option>
                                     {pipelines.map(p => (
@@ -422,23 +422,23 @@ export default function WhatsAppLitePage() {
                                 </select>
                             </div>
 
-                            <div className="mt-6 pt-6 border-t border-gray-100 w-full text-left">
+                            <div className="mt-6 pt-6 border-t border-line w-full text-left">
                                 <div className="flex items-center justify-between">
                                     <div className="flex items-center gap-3">
                                         <div className="w-8 h-8 rounded-lg bg-indigo-50 flex items-center justify-center">
                                             <UsersThree size={18} className="text-indigo-500" weight="fill" />
                                         </div>
                                         <div>
-                                            <h4 className="text-sm font-bold text-gray-900">Escutar Grupos</h4>
-                                            <p className="text-xs text-gray-500">Receber mensagens de grupos do WhatsApp no chat.</p>
+                                            <h4 className="text-sm font-bold text-ink">Escutar Grupos</h4>
+                                            <p className="text-xs text-muted">Receber mensagens de grupos do WhatsApp no chat.</p>
                                         </div>
                                     </div>
                                     <button
                                         onClick={handleToggleListenGroups}
-                                        className={`relative w-11 h-6 rounded-full transition-colors duration-200 ${listenGroups ? 'bg-indigo-500' : 'bg-gray-300'}`}
+                                        className={`relative w-11 h-6 rounded-full transition-colors duration-200 ${listenGroups ? 'bg-indigo-500' : 'bg-panel-2'}`}
                                     >
                                         <span
-                                            className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform duration-200 ${listenGroups ? 'translate-x-5' : 'translate-x-0'}`}
+                                            className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-panel shadow transition-transform duration-200 ${listenGroups ? 'translate-x-5' : 'translate-x-0'}`}
                                         />
                                     </button>
                                 </div>
@@ -448,16 +448,16 @@ export default function WhatsAppLitePage() {
 
                     {(connectionState === 'created' || connectionState === 'disconnected' || connectionState === 'connecting') && (
                         <>
-                            <div className="relative w-48 h-48 sm:w-64 sm:h-64 bg-gray-50 border-2 border-dashed border-gray-200 rounded-xl flex items-center justify-center mb-8 overflow-hidden">
+                            <div className="relative w-48 h-48 sm:w-64 sm:h-64 bg-void border-2 border-dashed border-line rounded-xl flex items-center justify-center mb-8 overflow-hidden">
                                 {/* Placeholder / QR Code render */}
                                 {qrCodeBase64 ? (
                                     <img src={qrCodeBase64} alt="WhatsApp QR Code" className="w-full h-full object-cover" />
                                 ) : (
-                                    <div className="w-32 h-32 sm:w-48 sm:h-48 bg-gray-200 rounded-lg animate-pulse" />
+                                    <div className="w-32 h-32 sm:w-48 sm:h-48 bg-panel-2 rounded-lg animate-pulse" />
                                 )}
 
-                                <div className="absolute top-0 bottom-0 left-1/2 w-[2px] bg-blue-400 opacity-50 -ml-[1px]" />
-                                <div className="absolute left-0 right-0 top-1/2 h-[2px] bg-blue-400 opacity-50 -mt-[1px]" />
+                                <div className="absolute top-0 bottom-0 left-1/2 w-[2px] bg-accent opacity-50 -ml-[1px]" />
+                                <div className="absolute left-0 right-0 top-1/2 h-[2px] bg-accent opacity-50 -mt-[1px]" />
                             </div>
 
                             <div className="flex items-center justify-center gap-2 px-4 py-2 bg-yellow-50 text-yellow-700 text-sm font-medium rounded-full mb-6">
@@ -467,7 +467,7 @@ export default function WhatsAppLitePage() {
 
                             <button
                                 onClick={() => instanceToken && fetchQrCode(instanceToken)}
-                                className="flex items-center justify-center gap-2 bg-[#00A3FF] hover:bg-[#0090E6] text-white px-6 py-2.5 rounded-lg font-medium transition-colors w-full sm:w-auto"
+                                className="flex items-center justify-center gap-2 bg-accent hover:bg-accent-2 text-white px-6 py-2.5 rounded-lg font-medium transition-colors w-full sm:w-auto"
                             >
                                 <ArrowsClockwise size={18} weight="bold" />
                                 Gerar Novo QR Code
@@ -477,49 +477,49 @@ export default function WhatsAppLitePage() {
                 </div>
 
                 {/* Right side: Instructions */}
-                <div className="bg-white border rounded-xl p-4 sm:p-8 lg:col-span-2 shadow-sm">
+                <div className="bg-panel border rounded-xl p-4 sm:p-8 lg:col-span-2 shadow-sm">
                     <div className="flex items-center gap-3 mb-6">
-                        <div className="w-8 h-8 rounded-full bg-blue-50 flex items-center justify-center text-blue-600">
+                        <div className="w-8 h-8 rounded-full bg-panel-2 flex items-center justify-center text-accent-2">
                             <Info size={18} weight="bold" />
                         </div>
-                        <h3 className="font-semibold text-gray-900 text-lg">Como conectar?</h3>
+                        <h3 className="font-semibold text-ink text-lg">Como conectar?</h3>
                     </div>
 
                     <div className="space-y-6">
                         <div className="flex gap-4">
-                            <div className="flex-shrink-0 w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-gray-600 font-semibold text-sm">
+                            <div className="flex-shrink-0 w-8 h-8 rounded-full bg-panel-2 flex items-center justify-center text-muted font-semibold text-sm">
                                 1
                             </div>
                             <div>
-                                <p className="font-medium text-gray-900 text-sm">Abra o WhatsApp no seu celular</p>
-                                <p className="text-xs text-gray-500 mt-1">Certifique-se de que seu celular está com conexão ativa à internet.</p>
+                                <p className="font-medium text-ink text-sm">Abra o WhatsApp no seu celular</p>
+                                <p className="text-xs text-muted mt-1">Certifique-se de que seu celular está com conexão ativa à internet.</p>
                             </div>
                         </div>
 
                         <div className="flex gap-4">
-                            <div className="flex-shrink-0 w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-gray-600 font-semibold text-sm">
+                            <div className="flex-shrink-0 w-8 h-8 rounded-full bg-panel-2 flex items-center justify-center text-muted font-semibold text-sm">
                                 2
                             </div>
                             <div>
-                                <p className="font-medium text-gray-900 text-sm">Toque em Aparelhos Conectados</p>
-                                <p className="text-xs text-gray-500 mt-1">Vá em Configurações (ou no menu de três pontos) e selecione &quot;Aparelhos Conectados&quot;.</p>
+                                <p className="font-medium text-ink text-sm">Toque em Aparelhos Conectados</p>
+                                <p className="text-xs text-muted mt-1">Vá em Configurações (ou no menu de três pontos) e selecione &quot;Aparelhos Conectados&quot;.</p>
                             </div>
                         </div>
 
                         <div className="flex gap-4">
-                            <div className="flex-shrink-0 w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-gray-600 font-semibold text-sm">
+                            <div className="flex-shrink-0 w-8 h-8 rounded-full bg-panel-2 flex items-center justify-center text-muted font-semibold text-sm">
                                 3
                             </div>
                             <div>
-                                <p className="font-medium text-gray-900 text-sm">Aponte a câmera para este QR Code</p>
-                                <p className="text-xs text-gray-500 mt-1">Toque em &quot;Conectar um Aparelho&quot; e aponte a câmera para o código ao lado.</p>
+                                <p className="font-medium text-ink text-sm">Aponte a câmera para este QR Code</p>
+                                <p className="text-xs text-muted mt-1">Toque em &quot;Conectar um Aparelho&quot; e aponte a câmera para o código ao lado.</p>
                             </div>
                         </div>
                     </div>
 
-                    <div className="mt-8 bg-blue-50/50 rounded-lg p-4 flex gap-3 border border-blue-100">
-                        <Info size={18} className="text-blue-600 flex-shrink-0 mt-0.5" />
-                        <p className="text-xs leading-relaxed text-blue-800">
+                    <div className="mt-8 bg-panel-2 rounded-lg p-4 flex gap-3 border border-accent-line">
+                        <Info size={18} className="text-accent-2 flex-shrink-0 mt-0.5" />
+                        <p className="text-xs leading-relaxed text-accent-2">
                             <span className="font-semibold">Dica:</span> Para maior estabilidade, desative as opções de economia de bateria para o WhatsApp no seu smartphone.
                         </p>
                     </div>
@@ -527,15 +527,15 @@ export default function WhatsAppLitePage() {
             </div>
 
             {/* FAQs */}
-            <div className="bg-white border rounded-xl p-4 sm:p-8">
+            <div className="bg-panel border rounded-xl p-4 sm:p-8">
                 <div className="flex items-center gap-3 mb-6">
-                    <div className="w-10 h-10 rounded-lg bg-blue-50 flex items-center justify-center text-blue-600">
+                    <div className="w-10 h-10 rounded-lg bg-panel-2 flex items-center justify-center text-accent-2">
                         <MonitorPlay size={20} weight="fill" className="opacity-50 absolute" />
                         <Info size={16} weight="bold" />
                     </div>
                     <div>
-                        <h2 className="text-lg font-bold text-gray-900">Perguntas Frequentes (FAQ)</h2>
-                        <p className="text-sm text-gray-500">Tire suas dúvidas sobre a conexão WhatsApp Lite.</p>
+                        <h2 className="text-lg font-bold text-ink">Perguntas Frequentes (FAQ)</h2>
+                        <p className="text-sm text-muted">Tire suas dúvidas sobre a conexão WhatsApp Lite.</p>
                     </div>
                 </div>
 

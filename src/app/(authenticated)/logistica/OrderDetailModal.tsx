@@ -13,7 +13,7 @@ const TONE_CLASSES: Record<StatusTone, string> = {
   warning: 'text-yellow-400 bg-yellow-400/10 border-yellow-400/30',
   success: 'text-green-400 bg-green-400/10 border-green-400/30',
   danger: 'text-red-400 bg-red-400/10 border-red-400/30',
-  info: 'text-blue-400 bg-blue-400/10 border-blue-400/30',
+  info: 'text-accent-2 bg-accent/10 border-accent/30',
 }
 
 export interface OrderDetailItem {
@@ -224,32 +224,32 @@ export default function OrderDetailModal({ order: initialOrder, onClose, onUpdat
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
-      <div className="bg-white border border-gray-100 rounded-2xl w-full max-w-lg max-h-[90vh] flex flex-col shadow-2xl">
-        <div className="flex items-center justify-between p-5 border-b border-gray-100">
+      <div className="bg-panel border border-line rounded-2xl w-full max-w-lg max-h-[90vh] flex flex-col shadow-2xl">
+        <div className="flex items-center justify-between p-5 border-b border-line">
           <div>
-            <h2 className="text-lg font-bold text-gray-900">{order.customer_name || 'Cliente'}</h2>
-            <p className="text-xs text-gray-400">Pedido de {formatDateTime(order.created_at)}</p>
+            <h2 className="text-lg font-bold text-ink">{order.customer_name || 'Cliente'}</h2>
+            <p className="text-xs text-muted">Pedido de {formatDateTime(order.created_at)}</p>
           </div>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 transition-colors"><X size={20} /></button>
+          <button onClick={onClose} className="text-muted hover:text-muted transition-colors"><X size={20} /></button>
         </div>
 
         <div className="flex-1 overflow-y-auto p-5 space-y-5">
           {/* Contato */}
           <div className="space-y-2">
-            <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400">Contato</p>
-            <div className="flex items-center gap-2 text-sm text-gray-700">
-              <Phone size={14} className="text-gray-400 flex-shrink-0" />
+            <p className="text-[10px] font-bold uppercase tracking-wider text-muted">Contato</p>
+            <div className="flex items-center gap-2 text-sm text-muted">
+              <Phone size={14} className="text-muted flex-shrink-0" />
               {order.customer_phone || '—'}
             </div>
             {order.customer_email && (
-              <div className="flex items-center gap-2 text-sm text-gray-700">
-                <EnvelopeSimple size={14} className="text-gray-400 flex-shrink-0" />
+              <div className="flex items-center gap-2 text-sm text-muted">
+                <EnvelopeSimple size={14} className="text-muted flex-shrink-0" />
                 {order.customer_email}
               </div>
             )}
             {order.customer_cpf && (
-              <div className="flex items-center gap-2 text-sm text-gray-700">
-                <IdentificationCard size={14} className="text-gray-400 flex-shrink-0" />
+              <div className="flex items-center gap-2 text-sm text-muted">
+                <IdentificationCard size={14} className="text-muted flex-shrink-0" />
                 {order.customer_cpf}
               </div>
             )}
@@ -258,55 +258,55 @@ export default function OrderDetailModal({ order: initialOrder, onClose, onUpdat
           {/* Endereço */}
           <div className="space-y-2">
             <div className="flex items-center justify-between">
-              <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400 flex items-center gap-1.5">
+              <p className="text-[10px] font-bold uppercase tracking-wider text-muted flex items-center gap-1.5">
                 <MapPin size={12} /> Endereço de entrega
               </p>
               {!editingAddress && (
-                <button onClick={() => setEditingAddress(true)} className="flex items-center gap-1 text-xs font-medium text-blue-600 hover:text-blue-700">
+                <button onClick={() => setEditingAddress(true)} className="flex items-center gap-1 text-xs font-medium text-accent-2 hover:text-accent-2">
                   <PencilSimple size={12} /> Editar
                 </button>
               )}
             </div>
             {!editingAddress ? (
-              <p className="text-sm text-gray-700">{address || 'Endereço não informado'}</p>
+              <p className="text-sm text-muted">{address || 'Endereço não informado'}</p>
             ) : (
               <div className="space-y-2">
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                   <div>
-                    <label className="text-[10px] text-gray-400 font-medium">CEP</label>
-                    <input value={addrCep} onChange={e => setAddrCep(maskCep(e.target.value))} onBlur={handleCepBlur} placeholder="00000-000" className="w-full mt-1 px-2.5 py-1.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:border-blue-400" />
-                    {cepLoading && <span className="text-[10px] text-blue-500">Buscando...</span>}
+                    <label className="text-[10px] text-muted font-medium">CEP</label>
+                    <input value={addrCep} onChange={e => setAddrCep(maskCep(e.target.value))} onBlur={handleCepBlur} placeholder="00000-000" className="w-full mt-1 px-2.5 py-1.5 text-sm border border-line rounded-lg focus:outline-none focus:border-accent" />
+                    {cepLoading && <span className="text-[10px] text-accent-2">Buscando...</span>}
                   </div>
                   <div className="sm:col-span-2">
-                    <label className="text-[10px] text-gray-400 font-medium">Endereço</label>
-                    <input value={addrAddress} onChange={e => setAddrAddress(e.target.value)} placeholder="Rua, Av..." className="w-full mt-1 px-2.5 py-1.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:border-blue-400" />
+                    <label className="text-[10px] text-muted font-medium">Endereço</label>
+                    <input value={addrAddress} onChange={e => setAddrAddress(e.target.value)} placeholder="Rua, Av..." className="w-full mt-1 px-2.5 py-1.5 text-sm border border-line rounded-lg focus:outline-none focus:border-accent" />
                   </div>
                   <div>
-                    <label className="text-[10px] text-gray-400 font-medium">Número</label>
-                    <input value={addrNumber} onChange={e => setAddrNumber(e.target.value)} className="w-full mt-1 px-2.5 py-1.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:border-blue-400" />
+                    <label className="text-[10px] text-muted font-medium">Número</label>
+                    <input value={addrNumber} onChange={e => setAddrNumber(e.target.value)} className="w-full mt-1 px-2.5 py-1.5 text-sm border border-line rounded-lg focus:outline-none focus:border-accent" />
                   </div>
                   <div className="sm:col-span-2">
-                    <label className="text-[10px] text-gray-400 font-medium">Complemento</label>
-                    <input value={addrComplement} onChange={e => setAddrComplement(e.target.value)} placeholder="Apto, Bloco..." className="w-full mt-1 px-2.5 py-1.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:border-blue-400" />
+                    <label className="text-[10px] text-muted font-medium">Complemento</label>
+                    <input value={addrComplement} onChange={e => setAddrComplement(e.target.value)} placeholder="Apto, Bloco..." className="w-full mt-1 px-2.5 py-1.5 text-sm border border-line rounded-lg focus:outline-none focus:border-accent" />
                   </div>
                   <div>
-                    <label className="text-[10px] text-gray-400 font-medium">Bairro</label>
-                    <input value={addrNeighborhood} onChange={e => setAddrNeighborhood(e.target.value)} className="w-full mt-1 px-2.5 py-1.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:border-blue-400" />
+                    <label className="text-[10px] text-muted font-medium">Bairro</label>
+                    <input value={addrNeighborhood} onChange={e => setAddrNeighborhood(e.target.value)} className="w-full mt-1 px-2.5 py-1.5 text-sm border border-line rounded-lg focus:outline-none focus:border-accent" />
                   </div>
                   <div>
-                    <label className="text-[10px] text-gray-400 font-medium">Cidade</label>
-                    <input value={addrCity} onChange={e => setAddrCity(e.target.value)} className="w-full mt-1 px-2.5 py-1.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:border-blue-400" />
+                    <label className="text-[10px] text-muted font-medium">Cidade</label>
+                    <input value={addrCity} onChange={e => setAddrCity(e.target.value)} className="w-full mt-1 px-2.5 py-1.5 text-sm border border-line rounded-lg focus:outline-none focus:border-accent" />
                   </div>
                   <div>
-                    <label className="text-[10px] text-gray-400 font-medium">Estado</label>
-                    <input value={addrState} onChange={e => setAddrState(e.target.value)} maxLength={2} placeholder="SP" className="w-full mt-1 px-2.5 py-1.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:border-blue-400" />
+                    <label className="text-[10px] text-muted font-medium">Estado</label>
+                    <input value={addrState} onChange={e => setAddrState(e.target.value)} maxLength={2} placeholder="SP" className="w-full mt-1 px-2.5 py-1.5 text-sm border border-line rounded-lg focus:outline-none focus:border-accent" />
                   </div>
                 </div>
                 <div className="flex items-center gap-2 pt-1">
-                  <button onClick={handleSaveAddress} disabled={savingAddress} className="px-3 py-1.5 bg-blue-600 text-white rounded-lg text-xs font-medium hover:bg-blue-700 disabled:opacity-50">
+                  <button onClick={handleSaveAddress} disabled={savingAddress} className="px-3 py-1.5 bg-accent text-white rounded-lg text-xs font-medium hover:bg-accent-2 disabled:opacity-50">
                     {savingAddress ? 'Salvando...' : 'Salvar'}
                   </button>
-                  <button onClick={() => setEditingAddress(false)} className="px-3 py-1.5 text-xs font-medium text-gray-500 hover:text-gray-700">
+                  <button onClick={() => setEditingAddress(false)} className="px-3 py-1.5 text-xs font-medium text-muted hover:text-muted">
                     Cancelar
                   </button>
                 </div>
@@ -316,25 +316,25 @@ export default function OrderDetailModal({ order: initialOrder, onClose, onUpdat
 
           {/* Itens */}
           <div className="space-y-2">
-            <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400">Itens do pedido</p>
-            <div className="divide-y divide-gray-50 border border-gray-100 rounded-lg overflow-hidden">
+            <p className="text-[10px] font-bold uppercase tracking-wider text-muted">Itens do pedido</p>
+            <div className="divide-y divide-line border border-line rounded-lg overflow-hidden">
               {order.items.map(item => (
                 <div key={item.id} className="flex items-center justify-between px-3 py-2 text-sm">
-                  <span className="text-gray-700">{item.product_name} {item.quantity > 1 ? `x${item.quantity}` : ''}</span>
-                  <span className="font-medium text-gray-900">{formatCurrency(Number(item.unit_price) * item.quantity)}</span>
+                  <span className="text-muted">{item.product_name} {item.quantity > 1 ? `x${item.quantity}` : ''}</span>
+                  <span className="font-medium text-ink">{formatCurrency(Number(item.unit_price) * item.quantity)}</span>
                 </div>
               ))}
             </div>
             <div className="flex items-center justify-between px-1 pt-1">
-              <span className="text-sm font-semibold text-gray-900">Total</span>
-              <span className="text-base font-bold text-gray-900">{formatCurrency(order.total_value)}</span>
+              <span className="text-sm font-semibold text-ink">Total</span>
+              <span className="text-base font-bold text-ink">{formatCurrency(order.total_value)}</span>
             </div>
           </div>
 
           {/* Status */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
             <div>
-              <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400 mb-1">
+              <p className="text-[10px] font-bold uppercase tracking-wider text-muted mb-1">
                 Pagamento <span className="normal-case font-normal">({PAYMENT_METHOD_LABELS[order.payment_method] || order.payment_method})</span>
               </p>
               <select
@@ -344,12 +344,12 @@ export default function OrderDetailModal({ order: initialOrder, onClose, onUpdat
                 className={`text-xs font-medium px-2 py-1 rounded-full border bg-transparent focus:outline-none cursor-pointer ${TONE_CLASSES[PAYMENT_STATUS_META[order.payment_status]?.tone || 'warning']}`}
               >
                 {Object.entries(PAYMENT_STATUS_META).map(([val, meta]) => (
-                  <option key={val} value={val} className="bg-white text-gray-700">{meta.label}</option>
+                  <option key={val} value={val} className="bg-panel text-muted">{meta.label}</option>
                 ))}
               </select>
             </div>
             <div>
-              <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400 mb-1">Entrega</p>
+              <p className="text-[10px] font-bold uppercase tracking-wider text-muted mb-1">Entrega</p>
               {sellerView ? (
                 <span
                   title="Status de entrega — só pode ser alterado na Logística"
@@ -365,12 +365,12 @@ export default function OrderDetailModal({ order: initialOrder, onClose, onUpdat
                   className={`text-xs font-medium px-2 py-1 rounded-full border bg-transparent focus:outline-none cursor-pointer ${TONE_CLASSES[DELIVERY_STATUS_META[order.delivery_status]?.tone || 'warning']}`}
                 >
                   {Object.entries(DELIVERY_STATUS_META).map(([val, meta]) => (
-                    <option key={val} value={val} className="bg-white text-gray-700">{meta.label}</option>
+                    <option key={val} value={val} className="bg-panel text-muted">{meta.label}</option>
                   ))}
                 </select>
               )}
               {order.delivered_at && (
-                <p className="text-[10px] text-gray-400 mt-1">Entregue em {formatDateTime(order.delivered_at)}</p>
+                <p className="text-[10px] text-muted mt-1">Entregue em {formatDateTime(order.delivered_at)}</p>
               )}
             </div>
           </div>
@@ -381,7 +381,7 @@ export default function OrderDetailModal({ order: initialOrder, onClose, onUpdat
             <div className="flex items-center justify-between bg-orange-50 border border-orange-100 rounded-lg px-3 py-2.5">
               <div className="flex items-center gap-2">
                 <Motorcycle size={16} className={order.cash_settled ? 'text-green-600' : 'text-orange-500'} />
-                <span className="text-sm text-gray-700">
+                <span className="text-sm text-muted">
                   {order.cash_settled ? 'Dinheiro repassado' : 'Aguardando repasse do motoboy'}
                 </span>
               </div>
@@ -395,11 +395,11 @@ export default function OrderDetailModal({ order: initialOrder, onClose, onUpdat
 
           {/* Histórico de status — data/hora de cada mudança, tipo rastreamento */}
           <div className="space-y-2">
-            <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400">Histórico</p>
+            <p className="text-[10px] font-bold uppercase tracking-wider text-muted">Histórico</p>
             {historyLoading ? (
-              <p className="text-xs text-gray-400">Carregando...</p>
+              <p className="text-xs text-muted">Carregando...</p>
             ) : history.length === 0 ? (
-              <p className="text-xs text-gray-400">Nenhum evento registrado.</p>
+              <p className="text-xs text-muted">Nenhum evento registrado.</p>
             ) : (
               <div className="space-y-2.5">
                 {history.map(event => (
@@ -409,10 +409,10 @@ export default function OrderDetailModal({ order: initialOrder, onClose, onUpdat
                       style={{ backgroundColor: TONE_STYLES[statusTone(event.field, event.to_status)].color }}
                     />
                     <div className="min-w-0">
-                      <p className="text-xs text-gray-700">
+                      <p className="text-xs text-muted">
                         {event.field === 'payment_status' ? 'Pagamento' : 'Entrega'}: <span className="font-semibold">{statusLabel(event.field, event.to_status)}</span>
                       </p>
-                      <p className="text-[10px] text-gray-400">
+                      <p className="text-[10px] text-muted">
                         {formatDateTime(event.changed_at)}{event.actor_name ? ` · ${event.actor_name}` : ' · Sistema'}
                       </p>
                     </div>
@@ -423,7 +423,7 @@ export default function OrderDetailModal({ order: initialOrder, onClose, onUpdat
           </div>
         </div>
 
-        <div className="p-5 border-t border-gray-100">
+        <div className="p-5 border-t border-line">
           {whatsappLink ? (
             <a
               href={whatsappLink}
@@ -435,7 +435,7 @@ export default function OrderDetailModal({ order: initialOrder, onClose, onUpdat
               Avisar cliente no WhatsApp
             </a>
           ) : (
-            <p className="text-xs text-gray-400 text-center">Sem telefone cadastrado para avisar o cliente</p>
+            <p className="text-xs text-muted text-center">Sem telefone cadastrado para avisar o cliente</p>
           )}
         </div>
       </div>

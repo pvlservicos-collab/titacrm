@@ -121,28 +121,28 @@ export default function OrderStatusChart({ orders }: { orders: ChartOrder[] }) {
 
   if (orders.length === 0) {
     return (
-      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-8 flex items-center justify-center">
-        <p className="text-sm text-gray-400">Sem pedidos ainda pra mostrar tendência.</p>
+      <div className="bg-panel rounded-2xl border border-line shadow-sm p-8 flex items-center justify-center">
+        <p className="text-sm text-muted">Sem pedidos ainda pra mostrar tendência.</p>
       </div>
     )
   }
 
   return (
-    <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 sm:p-5">
+    <div className="bg-panel rounded-2xl border border-line shadow-sm p-4 sm:p-5">
       {/* Cabeçalho: título + total do período + presets de janela */}
       <div className="flex items-start justify-between flex-wrap gap-3 mb-4">
         <div>
-          <h2 className="text-sm font-semibold text-gray-900">Pedidos por dia</h2>
-          <p className="text-xs text-gray-500 mt-0.5">
-            <span className="font-semibold text-gray-700">{totalInWindow}</span> pedido{totalInWindow !== 1 ? 's' : ''} nos últimos {windowDays} dias
+          <h2 className="text-sm font-semibold text-ink">Pedidos por dia</h2>
+          <p className="text-xs text-muted mt-0.5">
+            <span className="font-semibold text-muted">{totalInWindow}</span> pedido{totalInWindow !== 1 ? 's' : ''} nos últimos {windowDays} dias
           </p>
         </div>
-        <div className="flex items-center gap-1 bg-gray-100 rounded-full p-0.5">
+        <div className="flex items-center gap-1 bg-panel-2 rounded-full p-0.5">
           {WINDOW_OPTIONS.map(opt => (
             <button
               key={opt.days}
               onClick={() => setWindowDays(opt.days)}
-              className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${windowDays === opt.days ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'
+              className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${windowDays === opt.days ? 'bg-panel text-ink shadow-sm' : 'text-muted hover:text-muted'
                 }`}
             >
               {opt.label}
@@ -156,7 +156,7 @@ export default function OrderStatusChart({ orders }: { orders: ChartOrder[] }) {
         {STATUS_ORDER.map(key => (
           <div key={key} className="flex items-center gap-1.5">
             <span className="w-2.5 h-2.5 rounded-sm shrink-0" style={{ backgroundColor: STATUS_META[key].color }} />
-            <span className="text-xs text-gray-600">{STATUS_META[key].label}</span>
+            <span className="text-xs text-muted">{STATUS_META[key].label}</span>
           </div>
         ))}
       </div>
@@ -166,7 +166,7 @@ export default function OrderStatusChart({ orders }: { orders: ChartOrder[] }) {
           {/* Gridlines + rótulos do eixo Y — hairline, recessivo, nunca tracejado. */}
           {ticks.map(t => (
             <g key={t}>
-              <line x1={PAD_LEFT} x2={W - PAD_RIGHT} y1={yFor(t)} y2={yFor(t)} stroke="#eef0f2" strokeWidth={1} />
+              <line x1={PAD_LEFT} x2={W - PAD_RIGHT} y1={yFor(t)} y2={yFor(t)} stroke="rgba(255,255,255,0.07)" strokeWidth={1} />
               <text x={PAD_LEFT - 6} y={yFor(t)} textAnchor="end" dominantBaseline="middle" className="fill-gray-400" fontSize={9}>
                 {t}
               </text>
@@ -243,7 +243,7 @@ export default function OrderStatusChart({ orders }: { orders: ChartOrder[] }) {
               onFocus={() => setHoveredIdx(i)}
               onBlur={() => setHoveredIdx(null)}
               aria-label={`${WEEKDAYS_SHORT[d.date.getDay()]} ${formatDay(d.date)}: ${d.total} pedido${d.total !== 1 ? 's' : ''} — ${STATUS_META.emProcesso.label} ${d.emProcesso}, ${STATUS_META.entregue.label} ${d.entregue}, ${STATUS_META.cancelado.label} ${d.cancelado}`}
-              className="flex-1 h-full bg-transparent focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-400/50 rounded-sm"
+              className="flex-1 h-full bg-transparent focus:outline-none focus-visible:ring-2 focus-visible:ring-accent/50 rounded-sm"
             />
           ))}
         </div>
@@ -258,7 +258,7 @@ export default function OrderStatusChart({ orders }: { orders: ChartOrder[] }) {
 
           return (
             <div
-              className="absolute pointer-events-none bg-gray-900 text-white text-xs rounded-lg px-3 py-2 shadow-lg z-10 min-w-[132px]"
+              className="absolute pointer-events-none bg-void text-white text-xs rounded-lg px-3 py-2 shadow-lg z-10 min-w-[132px]"
               style={{
                 left: `${(x / W) * 100}%`,
                 top: `${barTopPct}%`,
@@ -268,7 +268,7 @@ export default function OrderStatusChart({ orders }: { orders: ChartOrder[] }) {
               <p className="font-semibold mb-1.5">{WEEKDAYS_SHORT[d.date.getDay()]}, {formatDay(d.date)}</p>
               {STATUS_ORDER.map(key => (
                 <div key={key} className="flex items-center justify-between gap-3">
-                  <span className="flex items-center gap-1.5 text-gray-300">
+                  <span className="flex items-center gap-1.5 text-muted">
                     <span className="w-2 h-0.5 rounded-full shrink-0" style={{ backgroundColor: STATUS_META[key].color }} />
                     {STATUS_META[key].label}
                   </span>
@@ -276,7 +276,7 @@ export default function OrderStatusChart({ orders }: { orders: ChartOrder[] }) {
                 </div>
               ))}
               <div className="flex items-center justify-between gap-3 mt-1.5 pt-1.5 border-t border-white/15">
-                <span className="text-gray-300">Total</span>
+                <span className="text-muted">Total</span>
                 <span className="font-semibold tabular-nums">{d.total}</span>
               </div>
             </div>
@@ -289,7 +289,7 @@ export default function OrderStatusChart({ orders }: { orders: ChartOrder[] }) {
       <button
         type="button"
         onClick={() => setShowTable(v => !v)}
-        className="text-xs font-medium text-blue-600 hover:text-blue-700 mt-3"
+        className="text-xs font-medium text-accent-2 hover:text-accent-2 mt-3"
       >
         {showTable ? 'Ocultar tabela' : 'Ver como tabela'}
       </button>
@@ -298,22 +298,22 @@ export default function OrderStatusChart({ orders }: { orders: ChartOrder[] }) {
         <div className="mt-2 overflow-x-auto">
           <table className="w-full text-xs">
             <thead>
-              <tr className="border-b border-gray-100">
-                <th className="text-left py-1.5 font-medium text-gray-500">Dia</th>
+              <tr className="border-b border-line">
+                <th className="text-left py-1.5 font-medium text-muted">Dia</th>
                 {STATUS_ORDER.map(key => (
-                  <th key={key} className="text-right py-1.5 font-medium text-gray-500">{STATUS_META[key].label}</th>
+                  <th key={key} className="text-right py-1.5 font-medium text-muted">{STATUS_META[key].label}</th>
                 ))}
-                <th className="text-right py-1.5 font-medium text-gray-500">Total</th>
+                <th className="text-right py-1.5 font-medium text-muted">Total</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-50">
+            <tbody className="divide-y divide-line">
               {days.map(d => (
                 <tr key={d.key}>
-                  <td className="py-1.5 text-gray-700 font-medium">{WEEKDAYS_SHORT[d.date.getDay()]} {formatDay(d.date)}</td>
+                  <td className="py-1.5 text-muted font-medium">{WEEKDAYS_SHORT[d.date.getDay()]} {formatDay(d.date)}</td>
                   {STATUS_ORDER.map(key => (
-                    <td key={key} className="py-1.5 text-right text-gray-700 tabular-nums">{d[key]}</td>
+                    <td key={key} className="py-1.5 text-right text-muted tabular-nums">{d[key]}</td>
                   ))}
-                  <td className="py-1.5 text-right text-gray-900 font-semibold tabular-nums">{d.total}</td>
+                  <td className="py-1.5 text-right text-ink font-semibold tabular-nums">{d.total}</td>
                 </tr>
               ))}
             </tbody>

@@ -2,13 +2,13 @@ import type { MetadataRoute } from 'next'
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: 'Atlas Eye CRM',
-    short_name: 'Atlas Eye',
+    name: 'Follem CRM',
+    short_name: 'Follem',
     description: 'Atendimento, pipeline e logística em um só app.',
     start_url: '/',
     display: 'standalone',
-    background_color: '#0b141a',
-    theme_color: '#0b141a',
+    background_color: '#050609',
+    theme_color: '#050609',
     orientation: 'portrait',
     icons: [
       { src: '/icons/icon-192.png', sizes: '192x192', type: 'image/png', purpose: 'any' },

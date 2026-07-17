@@ -31,19 +31,19 @@ const FAQS = [
 function FAQItem({ question, answer }: { question: string, answer: string }) {
     const [isOpen, setIsOpen] = useState(false)
     return (
-        <div className="border rounded-lg bg-white overflow-hidden transition-all duration-200">
+        <div className="border rounded-lg bg-panel overflow-hidden transition-all duration-200">
             <button
                 onClick={() => setIsOpen(!isOpen)}
-                className="w-full flex items-center justify-between p-4 text-left font-medium text-gray-900 focus:outline-none hover:bg-gray-50 transition-colors"
+                className="w-full flex items-center justify-between p-4 text-left font-medium text-ink focus:outline-none hover:bg-void transition-colors"
                 aria-expanded={isOpen}
             >
                 {question}
-                {isOpen ? <CaretUp size={16} className="text-gray-500" /> : <CaretDown size={16} className="text-gray-500" />}
+                {isOpen ? <CaretUp size={16} className="text-muted" /> : <CaretDown size={16} className="text-muted" />}
             </button>
             <div
                 className={`overflow-hidden transition-all duration-300 ${isOpen ? 'max-h-40 opacity-100' : 'max-h-0 opacity-0'}`}
             >
-                <div className="p-4 pt-0 text-sm text-gray-600 border-t">
+                <div className="p-4 pt-0 text-sm text-muted border-t">
                     {answer}
                 </div>
             </div>
@@ -174,15 +174,15 @@ export default function InstagramDirectPage() {
             {/* Header Status */}
             <div className="flex items-center flex-wrap gap-3 justify-between mb-8 pb-6 border-b">
                 <div className="flex items-center gap-4">
-                    <Link href="/settings/integrations" className="p-2 -ml-2 hover:bg-gray-100 rounded-full transition-colors text-gray-500">
+                    <Link href="/settings/integrations" className="p-2 -ml-2 hover:bg-panel-2 rounded-full transition-colors text-muted">
                         <ArrowLeft size={20} />
                     </Link>
                     <div>
-                        <h1 className="text-2xl font-bold text-gray-900">Instagram Direct</h1>
-                        <p className="text-gray-500 text-sm mt-1">Integração via Meta Graph API (Instagram Business + Page conectada). Suporta várias contas.</p>
+                        <h1 className="text-2xl font-bold text-ink">Instagram Direct</h1>
+                        <p className="text-muted text-sm mt-1">Integração via Meta Graph API (Instagram Business + Page conectada). Suporta várias contas.</p>
                     </div>
                 </div>
-                <span className="flex items-center gap-1.5 text-sm font-semibold text-gray-500 uppercase tracking-wider">
+                <span className="flex items-center gap-1.5 text-sm font-semibold text-muted uppercase tracking-wider">
                     {accounts.length} {accounts.length === 1 ? 'conta conectada' : 'contas conectadas'}
                 </span>
             </div>
@@ -198,9 +198,9 @@ export default function InstagramDirectPage() {
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                 <div className="lg:col-span-2">
                     {/* Connected accounts list */}
-                    <div className="bg-white border rounded-xl p-6 mb-8 shadow-sm">
+                    <div className="bg-panel border rounded-xl p-6 mb-8 shadow-sm">
                         <div className="flex items-center justify-between mb-4">
-                            <h3 className="font-bold text-gray-900 text-lg">Contas conectadas</h3>
+                            <h3 className="font-bold text-ink text-lg">Contas conectadas</h3>
                             <button
                                 onClick={openAddForm}
                                 className="flex items-center gap-1.5 bg-fuchsia-600 hover:bg-fuchsia-700 text-white text-sm font-medium px-3 py-1.5 rounded-lg transition-colors"
@@ -211,9 +211,9 @@ export default function InstagramDirectPage() {
                         </div>
 
                         {loading ? (
-                            <p className="text-sm text-gray-400 py-6 text-center">Carregando...</p>
+                            <p className="text-sm text-muted py-6 text-center">Carregando...</p>
                         ) : accounts.length === 0 ? (
-                            <p className="text-sm text-gray-400 py-6 text-center">Nenhuma conta do Instagram conectada ainda.</p>
+                            <p className="text-sm text-muted py-6 text-center">Nenhuma conta do Instagram conectada ainda.</p>
                         ) : (
                             <div className="space-y-3">
                                 {accounts.map((account) => {
@@ -224,16 +224,16 @@ export default function InstagramDirectPage() {
                                                 <InstagramLogo size={20} weight="fill" className="text-fuchsia-600" />
                                             </div>
                                             <div className="flex-1 min-w-0">
-                                                <p className="font-semibold text-gray-900 truncate">{account.name}</p>
-                                                <p className="text-xs text-gray-400">ID: {account.config?.instagram_business_account_id}</p>
-                                                <p className={`text-xs mt-0.5 ${age.warn ? 'text-amber-600 font-medium' : 'text-gray-400'}`}>{age.label}</p>
+                                                <p className="font-semibold text-ink truncate">{account.name}</p>
+                                                <p className="text-xs text-muted">ID: {account.config?.instagram_business_account_id}</p>
+                                                <p className={`text-xs mt-0.5 ${age.warn ? 'text-amber-600 font-medium' : 'text-muted'}`}>{age.label}</p>
                                             </div>
-                                            <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${account.status === 'active' ? 'bg-emerald-50 text-emerald-600' : 'bg-gray-100 text-gray-500'}`}>
+                                            <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${account.status === 'active' ? 'bg-emerald-50 text-emerald-600' : 'bg-panel-2 text-muted'}`}>
                                                 {account.status === 'active' ? 'Ativa' : 'Desativada'}
                                             </span>
                                             <button
                                                 onClick={() => openEditForm(account)}
-                                                className="p-2 text-gray-400 hover:text-fuchsia-600 hover:bg-fuchsia-50 rounded-lg transition-colors"
+                                                className="p-2 text-muted hover:text-fuchsia-600 hover:bg-fuchsia-50 rounded-lg transition-colors"
                                                 title="Editar / renovar token"
                                             >
                                                 <PencilSimple size={16} />
@@ -241,7 +241,7 @@ export default function InstagramDirectPage() {
                                             <button
                                                 onClick={() => handleDelete(account)}
                                                 disabled={deletingId === account.id}
-                                                className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-50"
+                                                className="p-2 text-muted hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-50"
                                                 title="Desconectar"
                                             >
                                                 <Trash size={16} />
@@ -255,22 +255,22 @@ export default function InstagramDirectPage() {
 
                     {/* Add/Edit Form */}
                     {showForm && (
-                        <form onSubmit={handleSubmit} className="bg-white border rounded-xl p-8 mb-8 shadow-sm relative">
-                            <button type="button" onClick={() => setShowForm(false)} className="absolute top-6 right-6 text-gray-400 hover:text-gray-600">
+                        <form onSubmit={handleSubmit} className="bg-panel border rounded-xl p-8 mb-8 shadow-sm relative">
+                            <button type="button" onClick={() => setShowForm(false)} className="absolute top-6 right-6 text-muted hover:text-muted">
                                 <X size={18} />
                             </button>
                             <div className="flex items-center gap-3 mb-6">
                                 <div className="w-8 h-8 rounded-lg bg-fuchsia-50 flex items-center justify-center text-fuchsia-600">
                                     <Lightning size={18} weight="fill" className="rotate-45" />
                                 </div>
-                                <h3 className="font-bold text-gray-900 text-lg">
+                                <h3 className="font-bold text-ink text-lg">
                                     {isEditingExisting ? 'Atualizar conta' : 'Nova conta do Instagram'}
                                 </h3>
                             </div>
 
                             <div className="space-y-5">
                                 <div>
-                                    <label htmlFor="name" className="block text-sm font-semibold text-gray-700 mb-2">
+                                    <label htmlFor="name" className="block text-sm font-semibold text-muted mb-2">
                                         Nome / apelido da conta
                                     </label>
                                     <input
@@ -280,14 +280,14 @@ export default function InstagramDirectPage() {
                                         onChange={(e) => setForm(f => ({ ...f, name: e.target.value }))}
                                         placeholder="Ex: @geicymaralves"
                                         disabled={formDisabled}
-                                        className="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-fuchsia-500 focus:border-transparent transition-all disabled:bg-gray-50"
+                                        className="w-full border border-line rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-fuchsia-500 focus:border-transparent transition-all disabled:bg-void"
                                         required
                                     />
-                                    <p className="text-xs text-gray-400 mt-1.5">Só pra você identificar essa conta na lista — não precisa ser o @ exato.</p>
+                                    <p className="text-xs text-muted mt-1.5">Só pra você identificar essa conta na lista — não precisa ser o @ exato.</p>
                                 </div>
 
                                 <div>
-                                    <label htmlFor="ig_business_account_id" className="block text-sm font-semibold text-gray-700 mb-2">
+                                    <label htmlFor="ig_business_account_id" className="block text-sm font-semibold text-muted mb-2">
                                         Instagram Business Account ID
                                     </label>
                                     <input
@@ -297,14 +297,14 @@ export default function InstagramDirectPage() {
                                         onChange={(e) => setForm(f => ({ ...f, instagramBusinessAccountId: e.target.value }))}
                                         placeholder="Ex: 17841400000000000"
                                         disabled={formDisabled}
-                                        className="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-fuchsia-500 focus:border-transparent transition-all disabled:bg-gray-50"
+                                        className="w-full border border-line rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-fuchsia-500 focus:border-transparent transition-all disabled:bg-void"
                                         required
                                     />
-                                    <p className="text-xs text-gray-400 mt-1.5">No Meta for Developers, em "Personalizar caso de uso &gt; API do Instagram &gt; Gerar tokens de acesso" — é o número embaixo do nome da conta.</p>
+                                    <p className="text-xs text-muted mt-1.5">No Meta for Developers, em "Personalizar caso de uso &gt; API do Instagram &gt; Gerar tokens de acesso" — é o número embaixo do nome da conta.</p>
                                 </div>
 
                                 <div>
-                                    <label htmlFor="connected_page_id" className="block text-sm font-semibold text-gray-700 mb-2">
+                                    <label htmlFor="connected_page_id" className="block text-sm font-semibold text-muted mb-2">
                                         Page ID conectada
                                     </label>
                                     <input
@@ -314,14 +314,14 @@ export default function InstagramDirectPage() {
                                         onChange={(e) => setForm(f => ({ ...f, connectedPageId: e.target.value }))}
                                         placeholder="Ex: 100928374650123"
                                         disabled={formDisabled}
-                                        className="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-fuchsia-500 focus:border-transparent transition-all disabled:bg-gray-50"
+                                        className="w-full border border-line rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-fuchsia-500 focus:border-transparent transition-all disabled:bg-void"
                                         required
                                     />
-                                    <p className="text-xs text-gray-400 mt-1.5">ID da Page do Facebook conectada a essa conta Instagram Business (Meta Business Suite &gt; Configurações &gt; Contas).</p>
+                                    <p className="text-xs text-muted mt-1.5">ID da Page do Facebook conectada a essa conta Instagram Business (Meta Business Suite &gt; Configurações &gt; Contas).</p>
                                 </div>
 
                                 <div>
-                                    <label htmlFor="system_token" className="block text-sm font-semibold text-gray-700 mb-2">
+                                    <label htmlFor="system_token" className="block text-sm font-semibold text-muted mb-2">
                                         Token de acesso
                                     </label>
                                     <div className="relative">
@@ -332,27 +332,27 @@ export default function InstagramDirectPage() {
                                             onChange={(e) => setForm(f => ({ ...f, systemToken: e.target.value }))}
                                             placeholder={isEditingExisting ? '•••••••••••••• (deixe em branco para manter o atual)' : 'EAAW...'}
                                             disabled={formDisabled}
-                                            className="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-fuchsia-500 focus:border-transparent transition-all pr-10 disabled:bg-gray-50"
+                                            className="w-full border border-line rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-fuchsia-500 focus:border-transparent transition-all pr-10 disabled:bg-void"
                                             required={!isEditingExisting}
                                             autoComplete="new-password"
                                         />
                                         <button
                                             type="button"
                                             onClick={() => setShowToken(!showToken)}
-                                            className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
+                                            className="absolute right-3 top-1/2 -translate-y-1/2 text-muted hover:text-muted transition-colors"
                                             tabIndex={-1}
                                         >
                                             {showToken ? <EyeClosed size={18} /> : <Eye size={18} />}
                                         </button>
                                     </div>
-                                    <p className="text-xs text-gray-400 mt-1.5 flex items-center gap-1">
+                                    <p className="text-xs text-muted mt-1.5 flex items-center gap-1">
                                         <ShieldCheck size={12} weight="fill" className="text-fuchsia-500" />
                                         Gere em "Gerar tokens de acesso", na mesma tela do Meta. Expira a cada 60 dias.
                                     </p>
                                 </div>
 
                                 <div>
-                                    <label htmlFor="graph_api_version" className="block text-sm font-semibold text-gray-700 mb-2">
+                                    <label htmlFor="graph_api_version" className="block text-sm font-semibold text-muted mb-2">
                                         Versão da Graph API
                                     </label>
                                     <input
@@ -362,7 +362,7 @@ export default function InstagramDirectPage() {
                                         onChange={(e) => setForm(f => ({ ...f, graphApiVersion: e.target.value }))}
                                         placeholder="v21.0"
                                         disabled={formDisabled}
-                                        className="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-fuchsia-500 focus:border-transparent transition-all disabled:bg-gray-50"
+                                        className="w-full border border-line rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-fuchsia-500 focus:border-transparent transition-all disabled:bg-void"
                                     />
                                 </div>
                             </div>
@@ -395,14 +395,14 @@ export default function InstagramDirectPage() {
                     )}
 
                     {/* FAQs */}
-                    <div className="bg-white border rounded-xl p-8 shadow-sm mb-8">
+                    <div className="bg-panel border rounded-xl p-8 shadow-sm mb-8">
                         <div className="flex items-center gap-3 mb-6">
-                            <div className="w-10 h-10 rounded-lg bg-gray-50 flex items-center justify-center text-gray-500 border border-gray-200">
-                                <BookOpen size={20} className="text-gray-600" />
+                            <div className="w-10 h-10 rounded-lg bg-void flex items-center justify-center text-muted border border-line">
+                                <BookOpen size={20} className="text-muted" />
                             </div>
                             <div>
-                                <h2 className="text-lg font-bold text-gray-900">Perguntas Frequentes (FAQ)</h2>
-                                <p className="text-sm text-gray-500">Tire suas dúvidas sobre o funcionamento da integração.</p>
+                                <h2 className="text-lg font-bold text-ink">Perguntas Frequentes (FAQ)</h2>
+                                <p className="text-sm text-muted">Tire suas dúvidas sobre o funcionamento da integração.</p>
                             </div>
                         </div>
 

@@ -72,33 +72,33 @@ export default function Toast({ notification, onClose }: ToastProps) {
 
     const getIconBackground = () => {
         switch (type) {
-            case 'success': return 'bg-[#00B8D9]' // Cyan from reference
+            case 'success': return 'bg-accent'
             case 'warning': return 'bg-orange-500'
             case 'error': return 'bg-red-500'
             case 'message': return 'bg-purple-500' // Distinctive color for support
             case 'info':
             default:
-                return 'bg-[#00B8D9]'
+                return 'bg-accent'
         }
     }
 
     const getProgressColor = () => {
         switch (type) {
-            case 'success': return 'bg-[#00B8D9]'
+            case 'success': return 'bg-accent'
             case 'warning': return 'bg-orange-500'
             case 'error': return 'bg-red-500'
             case 'message': return 'bg-purple-500'
             case 'info':
             default:
-                return 'bg-[#00B8D9]'
+                return 'bg-accent'
         }
     }
 
     return (
         <div
             className={`
-                relative w-[340px] bg-white rounded-xl shadow-[0_8px_30px_rgb(0,0,0,0.12)] 
-                border border-gray-100 overflow-hidden p-4
+                relative w-[340px] bg-panel rounded-xl shadow-[0_8px_30px_rgb(0,0,0,0.35)]
+                border border-line overflow-hidden p-4
                 transition-all duration-300 ease-out
                 ${isClosing || !isVisible ? 'opacity-0 -translate-x-8 scale-95' : 'opacity-100 translate-x-0 scale-100'}
             `}
@@ -114,25 +114,25 @@ export default function Toast({ notification, onClose }: ToastProps) {
 
                 <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between mb-1.5">
-                        <span className="text-[10px] font-bold text-[#00B8D9] tracking-wider uppercase">
-                            ATLAS EYE
+                        <span className="text-[10px] font-bold text-accent-2 tracking-wider uppercase">
+                            FOLLEM
                         </span>
                         <div className="flex items-center gap-2">
-                            <span className="text-[11px] font-medium text-gray-400">Agora</span>
+                            <span className="text-[11px] font-medium text-muted">Agora</span>
                             <button
                                 onClick={handleClose}
-                                className="text-gray-300 hover:text-gray-500 transition-colors"
+                                className="text-muted hover:text-ink transition-colors"
                             >
                                 <X size={14} weight="bold" />
                             </button>
                         </div>
                     </div>
 
-                    <h3 className="text-[15px] font-bold text-gray-900 leading-tight mb-1">
+                    <h3 className="text-[15px] font-bold text-ink leading-tight mb-1">
                         {title}
                     </h3>
 
-                    <p className="text-[13px] font-medium text-gray-500 leading-snug mb-3">
+                    <p className="text-[13px] font-medium text-muted leading-snug mb-3">
                         {message}
                     </p>
 
@@ -144,14 +144,14 @@ export default function Toast({ notification, onClose }: ToastProps) {
                                     else if (linkUrl) router.push(linkUrl)
                                     handleClose()
                                 }}
-                                className="px-4 py-1.5 bg-[#2563EB] hover:bg-blue-700 text-white text-xs font-semibold rounded-md transition-colors shadow-sm"
+                                className="px-4 py-1.5 bg-accent hover:bg-accent-2 text-white text-xs font-semibold rounded-md transition-colors shadow-sm"
                             >
                                 {actionText}
                             </button>
                         )}
                         <button
                             onClick={handleClose}
-                            className="text-xs font-medium text-gray-400 hover:text-gray-600 transition-colors"
+                            className="text-xs font-medium text-muted hover:text-ink transition-colors"
                         >
                             Ignorar
                         </button>
@@ -160,7 +160,7 @@ export default function Toast({ notification, onClose }: ToastProps) {
             </div>
 
             {/* Progress bar at the bottom */}
-            <div className="absolute bottom-0 left-0 right-0 h-1 bg-gray-100">
+            <div className="absolute bottom-0 left-0 right-0 h-1 bg-panel-2">
                 <div
                     className={`h-full ${!notification.customColor ? getProgressColor() : ''} origin-left ease-linear`}
                     style={{

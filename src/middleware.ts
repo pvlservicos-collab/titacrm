@@ -5,7 +5,7 @@ export function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl
 
   const publicPaths = [
-    '/login', '/api/auth', '/api/webhooks', '/api/funnels/tick', '/api/integrations/instagram/check-tokens',
+    '/login', '/ativar-conta', '/api/auth', '/api/webhooks', '/api/funnels/tick', '/api/integrations/instagram/check-tokens',
     // Cron da Vercel não manda cookie de sessão nem Authorization (CRON_SECRET não está
     // configurado no projeto) — sem isso na lista, toda chamada do cron caía no redirect
     // de login e a reconciliação nunca rodou de verdade desde que foi criada (13/07).

@@ -6,12 +6,12 @@ import { NotificationProvider } from '@/contexts/NotificationContext'
 import { ThemeProvider } from '@/contexts/ThemeContext'
 
 export const metadata: Metadata = {
-  title: 'Atlas Eye CRM',
+  title: 'Follem CRM',
   description: 'Sales CRM with AI Insights and Real-time Collaboration',
   appleWebApp: {
     capable: true,
     statusBarStyle: 'black-translucent',
-    title: 'Atlas Eye',
+    title: 'Follem',
   },
   icons: {
     apple: '/icons/apple-touch-icon.png',
@@ -22,19 +22,27 @@ export const viewport: Viewport = {
   width: 'device-width',
   initialScale: 1,
   viewportFit: 'cover',
-  themeColor: '#0b141a',
+  themeColor: '#050609',
 }
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="pt-BR" suppressHydrationWarning>
       <head>
+        {/* Aplica a classe .dark antes da hidratação (dark-first): sem isso, todo
+            primeiro carregamento pisca claro e só escurece depois que o ThemeContext
+            monta — visível e feio numa marca que depende de atmosfera escura. */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: "try{if(localStorage.getItem('follem-theme')!=='light')document.documentElement.classList.add('dark')}catch(e){}",
+          }}
+        />
         <link
           href="https://fonts.googleapis.com/css2?family=Darker+Grotesque:wght@400;500;600;700;800;900&family=Inter:wght@400;500;600;700&display=swap"
           rel="stylesheet"
         />
       </head>
-      <body className="bg-gray-50 dark:bg-[#0d1117] text-gray-900 dark:text-[#e6edf3] font-sans transition-colors duration-200" suppressHydrationWarning>
+      <body className="bg-gray-50 dark:bg-void text-gray-900 dark:text-ink font-sans transition-colors duration-200" suppressHydrationWarning>
         <ThemeProvider>
           <SessionProvider>
             <AuthProvider>

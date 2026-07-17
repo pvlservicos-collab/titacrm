@@ -15,11 +15,13 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     setMounted(true)
-    const stored = localStorage.getItem('atlas-theme')
-    if (stored === 'dark') {
-      setIsDark(true)
-      document.documentElement.classList.add('dark')
-    }
+    const stored = localStorage.getItem('follem-theme')
+    // Marca dark-first: quem nunca escolheu um tema começa no escuro (identidade da
+    // marca). O script inline em layout.tsx já aplica a classe antes da hidratação
+    // pra não piscar claro→escuro; isto aqui só mantém o estado React em sincronia.
+    const shouldBeDark = stored ? stored === 'dark' : true
+    setIsDark(shouldBeDark)
+    document.documentElement.classList.toggle('dark', shouldBeDark)
   }, [])
 
   const toggleTheme = () => {
@@ -27,10 +29,10 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
       const next = !prev
       if (next) {
         document.documentElement.classList.add('dark')
-        localStorage.setItem('atlas-theme', 'dark')
+        localStorage.setItem('follem-theme', 'dark')
       } else {
         document.documentElement.classList.remove('dark')
-        localStorage.setItem('atlas-theme', 'light')
+        localStorage.setItem('follem-theme', 'light')
       }
       return next
     })

@@ -17,17 +17,17 @@ export default function MembersSettingsPage() {
         <div className="max-w-5xl space-y-6">
             {/* Header */}
             <div>
-                <h1 className="text-2xl font-bold text-gray-900 pb-1">Membros e Permissões</h1>
-                <p className="text-sm text-gray-500">Gerencie o acesso da sua equipe e os cargos disponíveis na organização.</p>
+                <h1 className="text-2xl font-bold text-ink pb-1">Membros e Permissões</h1>
+                <p className="text-sm text-muted">Gerencie o acesso da sua equipe e os cargos disponíveis na organização.</p>
             </div>
 
             {/* Tabs */}
-            <div className="flex items-center gap-6 border-b border-gray-200">
+            <div className="flex items-center gap-6 border-b border-line">
                 <button
                     onClick={() => setActiveTab('members')}
                     className={`pb-3 text-sm font-medium transition-colors border-b-2 ${activeTab === 'members'
-                        ? 'border-blue-600 text-blue-600'
-                        : 'border-transparent text-gray-500 hover:text-gray-900'
+                        ? 'border-accent text-accent-2'
+                        : 'border-transparent text-muted hover:text-ink'
                         }`}
                 >
                     Membros
@@ -35,8 +35,8 @@ export default function MembersSettingsPage() {
                 <button
                     onClick={() => setActiveTab('roles')}
                     className={`pb-3 text-sm font-medium transition-colors border-b-2 ${activeTab === 'roles'
-                        ? 'border-blue-600 text-blue-600'
-                        : 'border-transparent text-gray-500 hover:text-gray-900'
+                        ? 'border-accent text-accent-2'
+                        : 'border-transparent text-muted hover:text-ink'
                         }`}
                 >
                     Cargos e Permissões
@@ -46,7 +46,7 @@ export default function MembersSettingsPage() {
             <div className="pt-2">
                 {showLoading ? (
                     <div className="flex items-center justify-center h-48">
-                        <p className="text-gray-500 text-sm">Carregando...</p>
+                        <p className="text-muted text-sm">Carregando...</p>
                     </div>
                 ) : activeTab === 'members' ? (
                     <div>

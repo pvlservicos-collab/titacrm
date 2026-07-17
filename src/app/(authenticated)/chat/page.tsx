@@ -231,7 +231,7 @@ export default function ChatPage() {
   if (!organizationId) {
     return (
       <div className="flex items-center justify-center h-full">
-        <p className="text-gray-500">Nenhuma organização encontrada. Execute o seed.sql no Supabase.</p>
+        <p className="text-muted">Nenhuma organização encontrada. Execute o seed.sql no Supabase.</p>
       </div>
     )
   }

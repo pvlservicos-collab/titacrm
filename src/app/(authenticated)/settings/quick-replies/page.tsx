@@ -9,7 +9,7 @@ import LoadingSpinner from '@/components/Shared/LoadingSpinner'
 
 function MediaBadge({ mediaType }: { mediaType: string | null }) {
   if (!mediaType) return null
-  const props = { size: 14, className: 'text-gray-400 flex-shrink-0' }
+  const props = { size: 14, className: 'text-muted flex-shrink-0' }
   if (mediaType === 'image') return <ImageIcon {...props} />
   if (mediaType === 'video') return <VideoCamera {...props} />
   if (mediaType === 'audio') return <FileAudio {...props} />
@@ -28,26 +28,26 @@ function QuickReplyRow({
   onDelete: () => void
 }) {
   return (
-    <div className="flex items-center gap-3 px-4 py-3 bg-white border border-gray-100 rounded-xl shadow-sm">
-      <Lightning size={16} weight="fill" className="text-blue-500 flex-shrink-0" />
+    <div className="flex items-center gap-3 px-4 py-3 bg-panel border border-line rounded-xl shadow-sm">
+      <Lightning size={16} weight="fill" className="text-accent-2 flex-shrink-0" />
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-1.5">
-          <span className="text-sm font-semibold text-gray-900">/{qr.shortcut}</span>
+          <span className="text-sm font-semibold text-ink">/{qr.shortcut}</span>
           <MediaBadge mediaType={qr.mediaType} />
           {qr.category && (
-            <span className="px-1.5 py-0.5 bg-gray-100 text-gray-500 text-[10px] font-semibold rounded uppercase tracking-wide">
+            <span className="px-1.5 py-0.5 bg-panel-2 text-muted text-[10px] font-semibold rounded uppercase tracking-wide">
               {qr.category}
             </span>
           )}
         </div>
-        {qr.content && <p className="text-xs text-gray-500 truncate mt-0.5">{qr.content}</p>}
+        {qr.content && <p className="text-xs text-muted truncate mt-0.5">{qr.content}</p>}
       </div>
       {canManage && (
         <div className="flex items-center gap-1 flex-shrink-0">
-          <button onClick={onEdit} className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors">
+          <button onClick={onEdit} className="p-1.5 text-muted hover:text-accent-2 hover:bg-panel-2 rounded-lg transition-colors">
             <PencilSimple size={16} />
           </button>
-          <button onClick={onDelete} className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors">
+          <button onClick={onDelete} className="p-1.5 text-muted hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors">
             <Trash size={16} />
           </button>
         </div>
@@ -99,26 +99,26 @@ export default function QuickRepliesSettingsPage() {
   return (
     <div className="max-w-3xl mx-auto space-y-8">
       <div>
-        <h1 className="text-2xl font-bold text-gray-900">Respostas Rápidas</h1>
-        <p className="text-sm text-gray-500 mt-1">
+        <h1 className="text-2xl font-bold text-ink">Respostas Rápidas</h1>
+        <p className="text-sm text-muted mt-1">
           Crie atalhos de texto, foto, áudio ou vídeo para agilizar o atendimento. Digite &quot;/&quot; no chat para usá-los.
         </p>
       </div>
 
       <section className="space-y-3">
         <div className="flex items-center justify-between">
-          <h2 className="text-sm font-bold text-gray-700 uppercase tracking-wide">Biblioteca da Empresa</h2>
+          <h2 className="text-sm font-bold text-muted uppercase tracking-wide">Biblioteca da Empresa</h2>
           {canManageShared && (
             <button
               onClick={() => setModalState({ scope: 'shared', quickReply: null })}
-              className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold rounded-lg transition-colors flex items-center gap-1.5"
+              className="px-3 py-1.5 bg-accent hover:bg-accent-2 text-white text-xs font-semibold rounded-lg transition-colors flex items-center gap-1.5"
             >
               <Plus size={14} weight="bold" /> Nova
             </button>
           )}
         </div>
         {shared.length === 0 ? (
-          <p className="text-sm text-gray-400 italic px-1">Nenhuma resposta compartilhada ainda.</p>
+          <p className="text-sm text-muted italic px-1">Nenhuma resposta compartilhada ainda.</p>
         ) : (
           <div className="space-y-2">
             {shared.map((qr) => (
@@ -133,22 +133,22 @@ export default function QuickRepliesSettingsPage() {
           </div>
         )}
         {!canManageShared && (
-          <p className="text-xs text-gray-400">Você pode usar a biblioteca da empresa no chat, mas só um administrador pode editá-la.</p>
+          <p className="text-xs text-muted">Você pode usar a biblioteca da empresa no chat, mas só um administrador pode editá-la.</p>
         )}
       </section>
 
       <section className="space-y-3">
         <div className="flex items-center justify-between">
-          <h2 className="text-sm font-bold text-gray-700 uppercase tracking-wide">Meus Atalhos Pessoais</h2>
+          <h2 className="text-sm font-bold text-muted uppercase tracking-wide">Meus Atalhos Pessoais</h2>
           <button
             onClick={() => setModalState({ scope: 'personal', quickReply: null })}
-            className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold rounded-lg transition-colors flex items-center gap-1.5"
+            className="px-3 py-1.5 bg-accent hover:bg-accent-2 text-white text-xs font-semibold rounded-lg transition-colors flex items-center gap-1.5"
           >
             <Plus size={14} weight="bold" /> Novo
           </button>
         </div>
         {personal.length === 0 ? (
-          <p className="text-sm text-gray-400 italic px-1">Você ainda não tem atalhos pessoais.</p>
+          <p className="text-sm text-muted italic px-1">Você ainda não tem atalhos pessoais.</p>
         ) : (
           <div className="space-y-2">
             {personal.map((qr) => (

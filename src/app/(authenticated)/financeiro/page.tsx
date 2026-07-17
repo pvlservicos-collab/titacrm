@@ -90,7 +90,7 @@ function formatBucketLabel(iso: string, bucketType: 'hour' | 'day') {
 }
 
 function EmptyChartState({ label }: { label: string }) {
-  return <div className="flex items-center justify-center h-28 text-sm text-gray-400">{label}</div>
+  return <div className="flex items-center justify-center h-28 text-sm text-muted">{label}</div>
 }
 
 function tooltipAlignClass(i: number, length: number) {
@@ -111,7 +111,7 @@ function CashFlowChart({ data, bucketType }: { data: SummaryData['time_series'];
 
   return (
     <div>
-      <div className="flex items-center gap-4 mb-4 text-xs font-medium text-gray-500">
+      <div className="flex items-center gap-4 mb-4 text-xs font-medium text-muted">
         <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-sm bg-green-600" /> Entradas</span>
         <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-sm bg-red-600" /> Saídas</span>
       </div>
@@ -133,7 +133,7 @@ function CashFlowChart({ data, bucketType }: { data: SummaryData['time_series'];
                   style={{ height: `${inflowPct}%` }}
                 />
               </div>
-              <div className="w-full border-t border-gray-200" />
+              <div className="w-full border-t border-line" />
               <div className="w-full flex items-start justify-center" style={{ height: zoneHeight }}>
                 <div
                   className={`w-full max-w-[20px] rounded-b transition-colors ${hoverIdx === i ? 'bg-red-700' : 'bg-red-600'}`}
@@ -141,7 +141,7 @@ function CashFlowChart({ data, bucketType }: { data: SummaryData['time_series'];
                 />
               </div>
               {hoverIdx === i && (
-                <div className={`absolute bottom-full mb-2 ${tooltipAlignClass(i, data.length)} z-10 bg-gray-900 text-white text-xs rounded-lg px-3 py-2 shadow-lg whitespace-nowrap pointer-events-none`}>
+                <div className={`absolute bottom-full mb-2 ${tooltipAlignClass(i, data.length)} z-10 bg-void text-white text-xs rounded-lg px-3 py-2 shadow-lg whitespace-nowrap pointer-events-none`}>
                   <p className="font-semibold mb-1">{formatBucketLabel(d.date, bucketType)}</p>
                   <p><span className="text-green-400">Entradas:</span> {formatCurrency(d.inflow)}</p>
                   <p><span className="text-red-400">Saídas:</span> {formatCurrency(d.outflow)}</p>
@@ -151,7 +151,7 @@ function CashFlowChart({ data, bucketType }: { data: SummaryData['time_series'];
           )
         })}
       </div>
-      <div className="flex text-[11px] text-gray-400 mt-2">
+      <div className="flex text-[11px] text-muted mt-2">
         {data.map((d, i) => {
           const showLabel = i === 0 || i === data.length - 1 || i === Math.floor(data.length / 2)
           return <div key={d.date} className="flex-1 text-center">{showLabel ? formatBucketLabel(d.date, bucketType) : ''}</div>
@@ -185,11 +185,11 @@ function SalesCountChart({ data, bucketType }: { data: SummaryData['time_series'
               tabIndex={0}
             >
               <div
-                className={`w-full max-w-[20px] rounded-t transition-colors ${hoverIdx === i ? 'bg-blue-700' : 'bg-blue-600'}`}
+                className={`w-full max-w-[20px] rounded-t transition-colors ${hoverIdx === i ? 'bg-accent-2' : 'bg-accent'}`}
                 style={{ height: `${Math.max(pct, d.sales_count > 0 ? 4 : 0)}%` }}
               />
               {hoverIdx === i && (
-                <div className={`absolute bottom-full mb-2 ${tooltipAlignClass(i, data.length)} z-10 bg-gray-900 text-white text-xs rounded-lg px-3 py-2 shadow-lg whitespace-nowrap pointer-events-none`}>
+                <div className={`absolute bottom-full mb-2 ${tooltipAlignClass(i, data.length)} z-10 bg-void text-white text-xs rounded-lg px-3 py-2 shadow-lg whitespace-nowrap pointer-events-none`}>
                   <p className="font-semibold">{formatBucketLabel(d.date, bucketType)}</p>
                   <p>{d.sales_count} venda{d.sales_count !== 1 ? 's' : ''}</p>
                 </div>
@@ -198,7 +198,7 @@ function SalesCountChart({ data, bucketType }: { data: SummaryData['time_series'
           )
         })}
       </div>
-      <div className="flex text-[11px] text-gray-400 mt-2">
+      <div className="flex text-[11px] text-muted mt-2">
         {data.map((d, i) => {
           const showLabel = i === 0 || i === data.length - 1 || i === Math.floor(data.length / 2)
           return <div key={d.date} className="flex-1 text-center">{showLabel ? formatBucketLabel(d.date, bucketType) : ''}</div>
@@ -249,42 +249,42 @@ function QuickExpenseModal({ onClose, onSaved }: { onClose: () => void; onSaved:
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
-      <div className="bg-white rounded-2xl w-full max-w-sm shadow-2xl border border-gray-100">
-        <div className="flex items-center justify-between p-5 border-b border-gray-100">
-          <h2 className="text-base font-bold text-gray-900">Registrar gasto de hoje</h2>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 transition-colors">
+      <div className="bg-panel rounded-2xl w-full max-w-sm shadow-2xl border border-line">
+        <div className="flex items-center justify-between p-5 border-b border-line">
+          <h2 className="text-base font-bold text-ink">Registrar gasto de hoje</h2>
+          <button onClick={onClose} className="text-muted hover:text-muted transition-colors">
             <X size={20} />
           </button>
         </div>
         <div className="p-5 space-y-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">O que foi? *</label>
+            <label className="block text-sm font-medium text-muted mb-1">O que foi? *</label>
             <input
               value={description}
               onChange={e => setDescription(e.target.value)}
               placeholder="Ex: Pote para embalagem"
               autoFocus
-              className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400"
+              className="w-full px-3 py-2 text-sm border border-line rounded-lg focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent"
             />
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Valor (R$) *</label>
+              <label className="block text-sm font-medium text-muted mb-1">Valor (R$) *</label>
               <input
                 type="number" step="0.01" min="0"
                 value={amount}
                 onChange={e => setAmount(e.target.value)}
                 placeholder="0,00"
-                className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400"
+                className="w-full px-3 py-2 text-sm border border-line rounded-lg focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent"
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Categoria</label>
+              <label className="block text-sm font-medium text-muted mb-1">Categoria</label>
               <input
                 list="quick-category-options"
                 value={category}
                 onChange={e => setCategory(e.target.value)}
-                className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400"
+                className="w-full px-3 py-2 text-sm border border-line rounded-lg focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent"
               />
               <datalist id="quick-category-options">
                 {EXPENSE_CATEGORY_OPTIONS.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
@@ -293,14 +293,14 @@ function QuickExpenseModal({ onClose, onSaved }: { onClose: () => void; onSaved:
           </div>
           {error && <p className="text-sm text-red-500">{error}</p>}
         </div>
-        <div className="flex items-center justify-end gap-3 p-5 border-t border-gray-100">
-          <button onClick={onClose} className="px-4 py-2 text-sm text-gray-600 hover:text-gray-800 transition-colors">
+        <div className="flex items-center justify-end gap-3 p-5 border-t border-line">
+          <button onClick={onClose} className="px-4 py-2 text-sm text-muted hover:text-ink transition-colors">
             Cancelar
           </button>
           <button
             onClick={handleSave}
             disabled={saving}
-            className="flex items-center gap-2 px-5 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 disabled:opacity-50 transition-colors"
+            className="flex items-center gap-2 px-5 py-2 bg-accent text-white rounded-lg text-sm font-medium hover:bg-accent-2 disabled:opacity-50 transition-colors"
           >
             <Check size={16} />
             {saving ? 'Salvando...' : 'Registrar'}
@@ -399,17 +399,17 @@ export default function FinanceiroPage() {
         <div className="flex items-center gap-3">
           <CurrencyDollar size={28} className="text-green-600" weight="fill" />
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">Financeiro</h1>
-            <p className="text-sm text-gray-500">Acompanhe as vendas e as saídas da empresa</p>
+            <h1 className="text-2xl font-bold text-ink">Financeiro</h1>
+            <p className="text-sm text-muted">Acompanhe as vendas e as saídas da empresa</p>
           </div>
         </div>
-        <div className="flex items-center gap-1 bg-white border border-gray-200 rounded-xl p-1">
+        <div className="flex items-center gap-1 bg-panel border border-line rounded-xl p-1">
           {PERIOD_OPTIONS.map(opt => (
             <button
               key={opt.id}
               onClick={() => setPeriod(opt.id)}
               className={`px-3.5 py-1.5 rounded-lg text-sm font-medium transition-colors ${
-                period === opt.id ? 'bg-gray-900 text-white' : 'text-gray-500 hover:text-gray-800'
+                period === opt.id ? 'bg-void text-white' : 'text-muted hover:text-ink'
               }`}
             >
               {opt.label}
@@ -419,32 +419,32 @@ export default function FinanceiroPage() {
       </div>
 
       {summaryLoading && !summary ? (
-        <div className="flex items-center justify-center h-48 text-gray-400">Carregando...</div>
+        <div className="flex items-center justify-center h-48 text-muted">Carregando...</div>
       ) : summary && (
         <>
           {/* Fixos do dia */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm flex items-center gap-3">
-              <div className="w-10 h-10 bg-blue-50 rounded-xl flex items-center justify-center flex-shrink-0">
-                <ShoppingCart size={18} className="text-blue-600" />
+            <div className="bg-panel rounded-2xl p-4 border border-line shadow-sm flex items-center gap-3">
+              <div className="w-10 h-10 bg-panel-2 rounded-xl flex items-center justify-center flex-shrink-0">
+                <ShoppingCart size={18} className="text-accent-2" />
               </div>
               <div>
-                <p className="text-lg font-bold text-gray-900 leading-tight">{summary.sales_today_count}</p>
-                <p className="text-xs text-gray-500">venda{summary.sales_today_count !== 1 ? 's' : ''} hoje</p>
+                <p className="text-lg font-bold text-ink leading-tight">{summary.sales_today_count}</p>
+                <p className="text-xs text-muted">venda{summary.sales_today_count !== 1 ? 's' : ''} hoje</p>
               </div>
             </div>
-            <div className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm flex items-center gap-3">
+            <div className="bg-panel rounded-2xl p-4 border border-line shadow-sm flex items-center gap-3">
               <div className="w-10 h-10 bg-red-50 rounded-xl flex items-center justify-center flex-shrink-0">
                 <Receipt size={18} className="text-red-600" />
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-lg font-bold text-gray-900 leading-tight">{formatCurrency(summary.expenses_today_total)}</p>
-                <p className="text-xs text-gray-500">gastos hoje</p>
+                <p className="text-lg font-bold text-ink leading-tight">{formatCurrency(summary.expenses_today_total)}</p>
+                <p className="text-xs text-muted">gastos hoje</p>
               </div>
               <button
                 onClick={() => setShowQuickExpense(true)}
                 title="Registrar gasto de hoje"
-                className="flex-shrink-0 w-8 h-8 flex items-center justify-center rounded-lg bg-gray-50 text-gray-500 hover:bg-red-50 hover:text-red-600 transition-colors"
+                className="flex-shrink-0 w-8 h-8 flex items-center justify-center rounded-lg bg-void text-muted hover:bg-red-50 hover:text-red-600 transition-colors"
               >
                 <Plus size={16} weight="bold" />
               </button>
@@ -453,93 +453,93 @@ export default function FinanceiroPage() {
 
           {/* KPI Cards */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            <div className="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm">
+            <div className="bg-panel rounded-2xl p-5 border border-line shadow-sm">
               <div className="flex items-center justify-between mb-3">
-                <span className="text-sm font-medium text-gray-500">Faturamento</span>
+                <span className="text-sm font-medium text-muted">Faturamento</span>
                 <div className="w-9 h-9 bg-green-50 rounded-xl flex items-center justify-center">
                   <TrendUp size={18} className="text-green-600" />
                 </div>
               </div>
-              <p className="text-2xl font-bold text-gray-900">{formatCurrency(summary.revenue.total)}</p>
-              <p className="text-xs text-gray-400 mt-1">{summary.revenue.orders_count} pedido{summary.revenue.orders_count !== 1 ? 's' : ''} pago{summary.revenue.orders_count !== 1 ? 's' : ''}</p>
+              <p className="text-2xl font-bold text-ink">{formatCurrency(summary.revenue.total)}</p>
+              <p className="text-xs text-muted mt-1">{summary.revenue.orders_count} pedido{summary.revenue.orders_count !== 1 ? 's' : ''} pago{summary.revenue.orders_count !== 1 ? 's' : ''}</p>
             </div>
 
-            <div className="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm">
+            <div className="bg-panel rounded-2xl p-5 border border-line shadow-sm">
               <div className="flex items-center justify-between mb-3">
-                <span className="text-sm font-medium text-gray-500">Entradas</span>
+                <span className="text-sm font-medium text-muted">Entradas</span>
                 <div className="w-9 h-9 bg-green-50 rounded-xl flex items-center justify-center">
                   <TrendUp size={18} className="text-green-600" />
                 </div>
               </div>
-              <p className="text-2xl font-bold text-gray-900">{formatCurrency(summary.inflow)}</p>
-              <p className="text-xs text-gray-400 mt-1">no período selecionado</p>
+              <p className="text-2xl font-bold text-ink">{formatCurrency(summary.inflow)}</p>
+              <p className="text-xs text-muted mt-1">no período selecionado</p>
             </div>
 
-            <div className="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm">
+            <div className="bg-panel rounded-2xl p-5 border border-line shadow-sm">
               <div className="flex items-center justify-between mb-3">
-                <span className="text-sm font-medium text-gray-500">Saídas</span>
+                <span className="text-sm font-medium text-muted">Saídas</span>
                 <div className="w-9 h-9 bg-red-50 rounded-xl flex items-center justify-center">
                   <TrendDown size={18} className="text-red-600" />
                 </div>
               </div>
-              <p className="text-2xl font-bold text-gray-900">{formatCurrency(summary.outflow)}</p>
-              <p className="text-xs text-gray-400 mt-1">despesas + reembolsos</p>
+              <p className="text-2xl font-bold text-ink">{formatCurrency(summary.outflow)}</p>
+              <p className="text-xs text-muted mt-1">despesas + reembolsos</p>
             </div>
 
-            <div className="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm">
+            <div className="bg-panel rounded-2xl p-5 border border-line shadow-sm">
               <div className="flex items-center justify-between mb-3">
-                <span className="text-sm font-medium text-gray-500">Saldo</span>
-                <div className="w-9 h-9 bg-blue-50 rounded-xl flex items-center justify-center">
-                  <Wallet size={18} className="text-blue-600" />
+                <span className="text-sm font-medium text-muted">Saldo</span>
+                <div className="w-9 h-9 bg-panel-2 rounded-xl flex items-center justify-center">
+                  <Wallet size={18} className="text-accent-2" />
                 </div>
               </div>
-              <p className={`text-2xl font-bold ${Number(summary.accumulated_balance) >= 0 ? 'text-gray-900' : 'text-red-600'}`}>
+              <p className={`text-2xl font-bold ${Number(summary.accumulated_balance) >= 0 ? 'text-ink' : 'text-red-600'}`}>
                 {formatCurrency(summary.accumulated_balance)}
               </p>
-              <p className="text-xs text-gray-400 mt-1">desde o início</p>
+              <p className="text-xs text-muted mt-1">desde o início</p>
             </div>
           </div>
 
           {/* Fluxo de caixa */}
-          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
-            <h2 className="text-base font-semibold text-gray-900 mb-1">Fluxo de caixa</h2>
-            <p className="text-xs text-gray-400 mb-4">Entradas e saídas ao longo do período</p>
+          <div className="bg-panel rounded-2xl border border-line shadow-sm p-5">
+            <h2 className="text-base font-semibold text-ink mb-1">Fluxo de caixa</h2>
+            <p className="text-xs text-muted mb-4">Entradas e saídas ao longo do período</p>
             <CashFlowChart data={summary.time_series} bucketType={bucketType} />
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <div className="lg:col-span-2 space-y-6">
               {/* Vendas por período */}
-              <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
-                <h2 className="text-base font-semibold text-gray-900 mb-4">Vendas no período</h2>
+              <div className="bg-panel rounded-2xl border border-line shadow-sm p-5">
+                <h2 className="text-base font-semibold text-ink mb-4">Vendas no período</h2>
                 <SalesCountChart data={summary.time_series} bucketType={bucketType} />
               </div>
 
               {/* Movimentações */}
-              <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-                <div className="px-5 py-4 border-b border-gray-100">
-                  <h2 className="text-base font-semibold text-gray-900">Movimentações</h2>
+              <div className="bg-panel rounded-2xl border border-line shadow-sm overflow-hidden">
+                <div className="px-5 py-4 border-b border-line">
+                  <h2 className="text-base font-semibold text-ink">Movimentações</h2>
                 </div>
                 {movementsLoading ? (
-                  <div className="flex items-center justify-center h-48 text-gray-400">Carregando...</div>
+                  <div className="flex items-center justify-center h-48 text-muted">Carregando...</div>
                 ) : movements.length === 0 ? (
                   <div className="flex flex-col items-center justify-center h-48 gap-2">
-                    <Package size={32} className="text-gray-300" />
-                    <p className="text-gray-400 text-sm">Nenhuma movimentação ainda</p>
+                    <Package size={32} className="text-muted" />
+                    <p className="text-muted text-sm">Nenhuma movimentação ainda</p>
                   </div>
                 ) : (
-                  <div className="divide-y divide-gray-50 max-h-[480px] overflow-y-auto">
+                  <div className="divide-y divide-line max-h-[480px] overflow-y-auto">
                     {movements.map(m => (
-                      <div key={m.id} className="flex items-center justify-between px-5 py-3.5 hover:bg-gray-50/50 transition-colors">
+                      <div key={m.id} className="flex items-center justify-between px-5 py-3.5 hover:bg-void transition-colors">
                         <div>
-                          <p className="text-sm font-medium text-gray-900">{m.label}</p>
-                          <p className="text-xs text-gray-400">{m.sublabel}</p>
+                          <p className="text-sm font-medium text-ink">{m.label}</p>
+                          <p className="text-xs text-muted">{m.sublabel}</p>
                         </div>
                         <div className="text-right">
                           <p className={`text-sm font-bold ${m.isOutflow ? 'text-red-500' : 'text-green-600'}`}>
                             {m.isOutflow ? '−' : '+'}{formatCurrency(m.amount)}
                           </p>
-                          <p className="text-xs text-gray-400">{formatDate(m.date)}</p>
+                          <p className="text-xs text-muted">{formatDate(m.date)}</p>
                         </div>
                       </div>
                     ))}
@@ -551,15 +551,15 @@ export default function FinanceiroPage() {
             {/* Side Panel */}
             <div className="space-y-4">
               {/* Passivo do mês */}
-              <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+              <div className="bg-panel rounded-2xl border border-line shadow-sm p-5">
                 <div className="flex items-center justify-between mb-1">
-                  <h2 className="text-base font-semibold text-gray-900">Passivo do mês</h2>
-                  <Link href="/financeiro/contas-a-pagar" className="text-xs text-blue-600 hover:underline flex items-center gap-0.5 flex-shrink-0">
+                  <h2 className="text-base font-semibold text-ink">Passivo do mês</h2>
+                  <Link href="/financeiro/contas-a-pagar" className="text-xs text-accent-2 hover:underline flex items-center gap-0.5 flex-shrink-0">
                     Gerenciar <CaretRight size={12} />
                   </Link>
                 </div>
-                <p className="text-2xl font-bold text-gray-900 mt-2">{formatCurrency(summary.liabilities.month_total)}</p>
-                <p className="text-xs text-gray-400 mb-4">em aberto este mês</p>
+                <p className="text-2xl font-bold text-ink mt-2">{formatCurrency(summary.liabilities.month_total)}</p>
+                <p className="text-xs text-muted mb-4">em aberto este mês</p>
 
                 {Number(summary.liabilities.overdue_total) > 0 && (
                   <div className="flex items-center gap-2 bg-red-50 border border-red-100 rounded-lg px-3 py-2 mb-4">
@@ -569,14 +569,14 @@ export default function FinanceiroPage() {
                 )}
 
                 {summary.liabilities.upcoming.length === 0 ? (
-                  <p className="text-sm text-gray-400">Nenhuma conta pendente</p>
+                  <p className="text-sm text-muted">Nenhuma conta pendente</p>
                 ) : (
                   <div className="space-y-1">
                     {summary.liabilities.upcoming.map(item => (
-                      <div key={item.id} className="flex items-center justify-between py-2 border-b border-gray-50 last:border-0 gap-2">
+                      <div key={item.id} className="flex items-center justify-between py-2 border-b border-line last:border-0 gap-2">
                         <div className="min-w-0">
-                          <p className="text-sm text-gray-800 truncate">{item.description}</p>
-                          <p className={`text-xs ${item.effective_status === 'overdue' ? 'text-red-500 font-medium' : 'text-gray-400'}`}>
+                          <p className="text-sm text-ink truncate">{item.description}</p>
+                          <p className={`text-xs ${item.effective_status === 'overdue' ? 'text-red-500 font-medium' : 'text-muted'}`}>
                             {item.effective_status === 'overdue' ? 'Venceu em ' : 'Vence em '}{formatDate(item.due_date)}
                           </p>
                         </div>
@@ -592,21 +592,21 @@ export default function FinanceiroPage() {
               {/* Dinheiro pendente de repasse — o motoboy recebe em espécie na entrega,
                   esse dinheiro só entra de fato quando ele repassa pra empresa. */}
               {Number(summary.cash_pending.total) > 0 && (
-                <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+                <div className="bg-panel rounded-2xl border border-line shadow-sm p-5">
                   <div className="flex items-center gap-2 mb-1">
                     <Motorcycle size={18} className="text-orange-500" />
-                    <h2 className="text-base font-semibold text-gray-900">Dinheiro pendente de repasse</h2>
+                    <h2 className="text-base font-semibold text-ink">Dinheiro pendente de repasse</h2>
                   </div>
-                  <p className="text-2xl font-bold text-gray-900 mt-2">{formatCurrency(summary.cash_pending.total)}</p>
-                  <p className="text-xs text-gray-400 mb-4">
+                  <p className="text-2xl font-bold text-ink mt-2">{formatCurrency(summary.cash_pending.total)}</p>
+                  <p className="text-xs text-muted mb-4">
                     {summary.cash_pending.count} pedido{summary.cash_pending.count !== 1 ? 's' : ''} em dinheiro ainda com o motoboy
                   </p>
                   <div className="space-y-1">
                     {summary.cash_pending.orders.map(item => (
-                      <div key={item.id} className="flex items-center justify-between py-2 border-b border-gray-50 last:border-0 gap-2">
+                      <div key={item.id} className="flex items-center justify-between py-2 border-b border-line last:border-0 gap-2">
                         <div className="min-w-0">
-                          <p className="text-sm text-gray-800 truncate">{item.customer_name || 'Cliente'}</p>
-                          <p className="text-xs text-gray-400">{formatDate(item.created_at)} · {formatCurrency(item.total_value)}</p>
+                          <p className="text-sm text-ink truncate">{item.customer_name || 'Cliente'}</p>
+                          <p className="text-xs text-muted">{formatDate(item.created_at)} · {formatCurrency(item.total_value)}</p>
                         </div>
                         <button onClick={() => markCashSettled(item.id)} className="text-xs font-medium text-green-600 hover:text-green-700 flex-shrink-0">
                           Marcar repassado
@@ -618,22 +618,22 @@ export default function FinanceiroPage() {
               )}
 
               {/* Payment Methods Breakdown */}
-              <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
-                <h2 className="text-base font-semibold text-gray-900 mb-4">Por forma de pagamento</h2>
+              <div className="bg-panel rounded-2xl border border-line shadow-sm p-5">
+                <h2 className="text-base font-semibold text-ink mb-4">Por forma de pagamento</h2>
                 {summary.payment_methods.length === 0 ? (
-                  <p className="text-sm text-gray-400">Nenhum pagamento no período</p>
+                  <p className="text-sm text-muted">Nenhum pagamento no período</p>
                 ) : (
                   <div className="space-y-3">
                     {summary.payment_methods.map(({ method, total, pct }) => (
                       <div key={method}>
                         <div className="flex items-center justify-between mb-1">
-                          <span className="text-sm font-medium text-gray-700">{PAYMENT_METHOD_LABELS[method] || method}</span>
-                          <span className="text-sm font-bold text-gray-900">{formatCurrency(total)}</span>
+                          <span className="text-sm font-medium text-muted">{PAYMENT_METHOD_LABELS[method] || method}</span>
+                          <span className="text-sm font-bold text-ink">{formatCurrency(total)}</span>
                         </div>
-                        <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
-                          <div className="h-full bg-blue-600 rounded-full transition-all" style={{ width: `${pct}%` }} />
+                        <div className="h-2 bg-panel-2 rounded-full overflow-hidden">
+                          <div className="h-full bg-accent rounded-full transition-all" style={{ width: `${pct}%` }} />
                         </div>
-                        <p className="text-xs text-gray-400 mt-0.5">{pct.toFixed(1)}% do faturamento</p>
+                        <p className="text-xs text-muted mt-0.5">{pct.toFixed(1)}% do faturamento</p>
                       </div>
                     ))}
                   </div>
@@ -641,22 +641,22 @@ export default function FinanceiroPage() {
               </div>
 
               {/* Despesas por categoria */}
-              <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
-                <h2 className="text-base font-semibold text-gray-900 mb-4">Despesas por categoria</h2>
+              <div className="bg-panel rounded-2xl border border-line shadow-sm p-5">
+                <h2 className="text-base font-semibold text-ink mb-4">Despesas por categoria</h2>
                 {summary.expenses_by_category.length === 0 ? (
-                  <p className="text-sm text-gray-400">Nenhuma despesa paga no período</p>
+                  <p className="text-sm text-muted">Nenhuma despesa paga no período</p>
                 ) : (
                   <div className="space-y-3">
                     {summary.expenses_by_category.map(({ category, total, pct }) => (
                       <div key={category}>
                         <div className="flex items-center justify-between mb-1">
-                          <span className="text-sm font-medium text-gray-700">{EXPENSE_CATEGORY_LABELS[category] || category}</span>
-                          <span className="text-sm font-bold text-gray-900">{formatCurrency(total)}</span>
+                          <span className="text-sm font-medium text-muted">{EXPENSE_CATEGORY_LABELS[category] || category}</span>
+                          <span className="text-sm font-bold text-ink">{formatCurrency(total)}</span>
                         </div>
-                        <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
+                        <div className="h-2 bg-panel-2 rounded-full overflow-hidden">
                           <div className="h-full bg-red-500 rounded-full transition-all" style={{ width: `${pct}%` }} />
                         </div>
-                        <p className="text-xs text-gray-400 mt-0.5">{pct.toFixed(1)}% das saídas</p>
+                        <p className="text-xs text-muted mt-0.5">{pct.toFixed(1)}% das saídas</p>
                       </div>
                     ))}
                   </div>

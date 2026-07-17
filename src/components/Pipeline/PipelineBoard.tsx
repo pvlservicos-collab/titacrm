@@ -364,7 +364,7 @@ export default function PipelineBoard({ organizationId, filters }: PipelineBoard
   }
 
   return (
-    <div className="flex-1 flex flex-col h-full min-h-0 bg-gray-50">
+    <div className="flex-1 flex flex-col h-full min-h-0 bg-void">
       {/* Kanban Board — largura rola no desktop (várias colunas lado a lado), altura
           é travada aqui e repassada pra baixo; quem rola de verdade é a lista de cards
           dentro de cada StageColumn, não essa página inteira. */}
@@ -377,11 +377,11 @@ export default function PipelineBoard({ organizationId, filters }: PipelineBoard
           onDragEnd={handleDragEnd}
         >
           {stages.length === 0 ? (
-            <div className="flex flex-col items-center justify-center h-[calc(100vh-200px)] w-full -mt-8 text-center text-gray-500">
-              <div className="bg-white p-8 rounded-2xl border border-dashed border-gray-300 max-w-md shadow-sm">
-                <h3 className="text-xl font-bold text-gray-900 mb-3">Seu pipeline está vazio</h3>
+            <div className="flex flex-col items-center justify-center h-[calc(100vh-200px)] w-full -mt-8 text-center text-muted">
+              <div className="bg-panel p-8 rounded-2xl border border-dashed border-line max-w-md shadow-sm">
+                <h3 className="text-xl font-bold text-ink mb-3">Seu pipeline está vazio</h3>
                 <p className="mb-6 text-sm">Não há etapas configuradas para este pipeline. Acesse as configurações para adicionar as colunas do seu funil de vendas.</p>
-                <a href="/settings/pipelines" className="inline-flex items-center justify-center px-6 py-2.5 bg-blue-600 text-white font-bold rounded-xl hover:bg-blue-700 transition shadow-sm">
+                <a href="/settings/pipelines" className="inline-flex items-center justify-center px-6 py-2.5 bg-accent text-white font-bold rounded-xl hover:bg-accent-2 transition shadow-sm">
                   Configurar Funil
                 </a>
               </div>
@@ -403,7 +403,7 @@ export default function PipelineBoard({ organizationId, filters }: PipelineBoard
                       key={stage.id}
                       onClick={() => setActiveMobileStageId(stage.id)}
                       className={`flex-shrink-0 px-3.5 py-2 rounded-full text-sm font-medium border transition-colors ${
-                        isActive ? 'bg-gray-900 text-white border-gray-900' : 'bg-white text-gray-600 border-gray-200'
+                        isActive ? 'bg-void text-white border-line' : 'bg-panel text-muted border-line'
                       }`}
                     >
                       {stage.name} <span className="opacity-70">({count})</span>
@@ -469,13 +469,13 @@ export default function PipelineBoard({ organizationId, filters }: PipelineBoard
       {/* Mobile: "mover para" — alternativa ao arrastar entre etapas */}
       {movingLead && (
         <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
-          <div className="bg-white rounded-2xl w-full max-w-sm shadow-2xl border border-gray-100">
-            <div className="flex items-center justify-between p-5 border-b border-gray-100">
+          <div className="bg-panel rounded-2xl w-full max-w-sm shadow-2xl border border-line">
+            <div className="flex items-center justify-between p-5 border-b border-line">
               <div>
-                <h2 className="text-base font-bold text-gray-900">Mover lead</h2>
-                <p className="text-xs text-gray-500 mt-0.5 truncate">{movingLead.title}</p>
+                <h2 className="text-base font-bold text-ink">Mover lead</h2>
+                <p className="text-xs text-muted mt-0.5 truncate">{movingLead.title}</p>
               </div>
-              <button onClick={() => setMovingLead(null)} className="text-gray-400 hover:text-gray-600 transition-colors">
+              <button onClick={() => setMovingLead(null)} className="text-muted hover:text-muted transition-colors">
                 <X size={20} />
               </button>
             </div>
@@ -487,8 +487,8 @@ export default function PipelineBoard({ organizationId, filters }: PipelineBoard
                   disabled={stage.id === movingLead.stage_id}
                   className={`w-full text-left px-4 py-3 rounded-lg text-sm transition-colors ${
                     stage.id === movingLead.stage_id
-                      ? 'text-gray-400 cursor-default'
-                      : 'text-gray-700 hover:bg-gray-50'
+                      ? 'text-muted cursor-default'
+                      : 'text-muted hover:bg-void'
                   }`}
                 >
                   {stage.name}{stage.id === movingLead.stage_id ? ' (etapa atual)' : ''}

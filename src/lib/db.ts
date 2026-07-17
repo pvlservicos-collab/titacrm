@@ -1,16 +1,15 @@
-import { neon, neonConfig } from '@neondatabase/serverless'
-import { drizzle } from 'drizzle-orm/neon-http'
+import { Pool } from 'pg'
+import { drizzle } from 'drizzle-orm/node-postgres'
 import * as schema from './schema'
-
-neonConfig.fetchConnectionCache = true
 
 let _db: ReturnType<typeof drizzle<typeof schema>> | null = null
 
 function getDb() {
   if (!_db) {
-    const url = process.env.DATABASE_URL || process.env.whatsapp_DATABASE_URL || process.env.whatsappnaturabelas_DATABASE_URL
+    const url = process.env.DATABASE_URL
     if (!url) throw new Error('DATABASE_URL não definida nas variáveis de ambiente')
-    _db = drizzle(neon(url), { schema })
+    const pool = new Pool({ connectionString: url })
+    _db = drizzle(pool, { schema })
   }
   return _db
 }

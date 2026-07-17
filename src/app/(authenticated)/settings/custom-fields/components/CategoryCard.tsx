@@ -92,39 +92,39 @@ export function CategoryCard({
             {/* Category Header */}
             <div className="flex items-center justify-between mb-3 px-2">
                 <div className="flex items-center gap-3">
-                    <h2 className="text-sm font-bold text-gray-400 uppercase tracking-wider font-display">
+                    <h2 className="text-sm font-bold text-muted uppercase tracking-wider font-display">
                         {category.name}
                     </h2>
                     {!isFallback && (
                         <button
                             onClick={onEditCategory}
-                            className="text-gray-400 hover:text-blue-600 transition-colors text-xs"
+                            className="text-muted hover:text-accent-2 transition-colors text-xs"
                         >
                             Editar
                         </button>
                     )}
                 </div>
                 <div className="flex items-center gap-4">
-                    <span className="text-xs font-semibold text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full">
+                    <span className="text-xs font-semibold text-muted bg-panel-2 px-2 py-0.5 rounded-full">
                         {localFields.length} {localFields.length === 1 ? 'CAMPO' : 'CAMPOS'}
                     </span>
                 </div>
             </div>
 
             {/* Fields List */}
-            <div className="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm">
+            <div className="bg-panel rounded-xl border border-line overflow-hidden shadow-sm">
                 {(localFields.length === 0 && !isAddingNewHere) ? (
-                    <div className="px-6 py-8 text-center text-sm text-gray-400">
+                    <div className="px-6 py-8 text-center text-sm text-muted">
                         Nenhum campo nesta categoria.
                     </div>
                 ) : !isMounted ? (
-                    <div className="px-6 py-8 text-center text-sm text-gray-400">
+                    <div className="px-6 py-8 text-center text-sm text-muted">
                         Carregando campos...
                     </div>
                 ) : (
                     <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
                         <SortableContext items={itemIds} strategy={verticalListSortingStrategy}>
-                            <div className="divide-y divide-gray-100 flex flex-col">
+                            <div className="divide-y divide-line flex flex-col">
                                 {localFields.map((field) => (
                                     <FieldItem
                                         key={field.id}
@@ -156,10 +156,10 @@ export function CategoryCard({
 
                 {/* Add new field to THIS category */}
                 {!isAddingNewHere && (
-                    <div className="bg-gray-50 px-6 py-3 border-t border-gray-100">
+                    <div className="bg-void px-6 py-3 border-t border-line">
                         <button
                             onClick={() => onStartEditField(`new-${category.id}`)}
-                            className="text-sm font-semibold text-blue-600 hover:text-blue-700 transition-colors"
+                            className="text-sm font-semibold text-accent-2 hover:text-accent-2 transition-colors"
                         >
                             + Adicionar campo
                         </button>

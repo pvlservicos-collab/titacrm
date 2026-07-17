@@ -52,14 +52,14 @@ export function CategoryModal({ isOpen, onClose, category, onSubmit, onDelete }:
 
     return (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 modal-overlay-enter p-4">
-            <div className="bg-white rounded-2xl w-full max-w-md overflow-hidden shadow-2xl modal-content-enter">
-                <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
-                    <h2 className="text-lg font-bold font-display text-gray-900">
+            <div className="bg-panel rounded-2xl w-full max-w-md overflow-hidden shadow-2xl modal-content-enter">
+                <div className="px-6 py-4 border-b border-line flex items-center justify-between">
+                    <h2 className="text-lg font-bold font-display text-ink">
                         {category ? 'Editar Categoria' : 'Nova Categoria'}
                     </h2>
                     <button
                         onClick={onClose}
-                        className="text-gray-400 hover:text-gray-600 transition-colors p-1 rounded-full hover:bg-gray-100"
+                        className="text-muted hover:text-muted transition-colors p-1 rounded-full hover:bg-panel-2"
                     >
                         <X size={20} weight="bold" />
                     </button>
@@ -67,14 +67,14 @@ export function CategoryModal({ isOpen, onClose, category, onSubmit, onDelete }:
 
                 <form onSubmit={handleSubmit} className="p-6 space-y-6">
                     <div className="space-y-1.5">
-                        <label className="text-sm font-semibold text-gray-700">Name da Categoria</label>
+                        <label className="text-sm font-semibold text-muted">Name da Categoria</label>
                         <input
                             type="text"
                             required
                             value={name}
                             onChange={e => setName(e.target.value)}
                             placeholder="Ex: Dados Pessoais"
-                            className="w-full h-11 px-4 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all font-medium"
+                            className="w-full h-11 px-4 bg-void border border-line rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent transition-all font-medium"
                         />
                     </div>
 
@@ -97,14 +97,14 @@ export function CategoryModal({ isOpen, onClose, category, onSubmit, onDelete }:
                                 type="button"
                                 onClick={onClose}
                                 disabled={isSubmitting || isDeleting}
-                                className="px-5 py-2.5 text-sm font-semibold text-gray-600 hover:text-gray-900 transition-colors"
+                                className="px-5 py-2.5 text-sm font-semibold text-muted hover:text-ink transition-colors"
                             >
                                 Cancelar
                             </button>
                             <button
                                 type="submit"
                                 disabled={!name.trim() || isSubmitting || isDeleting}
-                                className="px-6 py-2.5 bg-blue-600 text-white rounded-xl text-sm font-bold hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-md shadow-blue-600/20"
+                                className="px-6 py-2.5 bg-accent text-white rounded-xl text-sm font-bold hover:bg-accent-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-md shadow-blue-600/20"
                             >
                                 {isSubmitting ? 'Salvando...' : 'Salvar'}
                             </button>

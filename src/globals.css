@@ -26,23 +26,40 @@
   font-display: swap;
 }
 
-@layer components {
-  .btn-primary {
-    @apply px-4 py-2 bg-blue-500 text-white rounded-lg font-bold hover:bg-blue-600 transition-colors;
-    font-family: 'Neue Haas Grotesk Display Pro', system-ui, sans-serif;
-  }
+/* ============================================
+   BRAND TOKENS — identidade nova (preto espacial + azul elétrico)
+   Incondicional em :root (não dentro de .dark): só recebemos a paleta escura da
+   marca, não uma versão clara dela — então essas variáveis já valem assim que uma
+   tela migra pra elas, independente do toggle claro/escuro do ThemeContext. Esse
+   toggle continua existindo só pras telas que ainda não foram migradas (ver bloco
+   ".dark" mais abaixo, que agora aponta pra esses mesmos tokens).
+   ============================================ */
+:root {
+  --void: #050609;
+  --panel: #0a0d15;
+  --panel-2: #0c101a;
+  --ink: #f2f5fc;
+  --muted: #8b93a7;
+  --line: rgba(255, 255, 255, 0.07);
+  --blue: #3d7bff;
+  --blue-2: #5b9bff;
+  --blue-line: rgba(80, 140, 255, 0.28);
+  --glow-primary: 0 0 40px rgba(61, 123, 255, 0.35);
+}
 
-  .btn-secondary {
-    @apply px-4 py-2 bg-gray-200 text-gray-800 rounded-lg font-semibold hover:bg-gray-300 transition-colors;
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
   }
+}
 
-  .card {
-    @apply bg-white rounded-xl shadow-sm border border-gray-200;
-  }
-
-  .lead-badge {
-    @apply inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold;
-  }
+:focus-visible {
+  outline: 2px solid var(--blue-2);
+  outline-offset: 2px;
+  border-radius: 4px;
 }
 
 /* ============================================
@@ -97,46 +114,46 @@
    ============================================ */
 .dark nav.bg-white,
 .dark .dark-nav {
-  background-color: #161b22 !important;
-  border-color: #30363d !important;
+  background-color: var(--panel) !important;
+  border-color: var(--line) !important;
 }
 
 /* Cards / panels */
-.dark .bg-white { background-color: #161b22 !important; }
-.dark .bg-gray-50 { background-color: #0d1117 !important; }
-.dark .bg-gray-100 { background-color: #1c2128 !important; }
-.dark .bg-gray-200 { background-color: #21262d !important; }
+.dark .bg-white { background-color: var(--panel) !important; }
+.dark .bg-gray-50 { background-color: var(--void) !important; }
+.dark .bg-gray-100 { background-color: var(--panel-2) !important; }
+.dark .bg-gray-200 { background-color: var(--panel-2) !important; }
 
 /* Borders */
-.dark .border-gray-100 { border-color: #21262d !important; }
-.dark .border-gray-200 { border-color: #30363d !important; }
-.dark .border-gray-300 { border-color: #3d444d !important; }
-.dark .divide-gray-50 > * + * { border-color: #1c2128 !important; }
+.dark .border-gray-100 { border-color: var(--line) !important; }
+.dark .border-gray-200 { border-color: var(--line) !important; }
+.dark .border-gray-300 { border-color: var(--line) !important; }
+.dark .divide-gray-50 > * + * { border-color: var(--line) !important; }
 .dark .divide-y { --tw-divide-opacity: 1; }
 
 /* Text */
-.dark .text-gray-900 { color: #e6edf3 !important; }
-.dark .text-gray-800 { color: #cdd9e5 !important; }
-.dark .text-gray-700 { color: #adbac7 !important; }
-.dark .text-gray-600 { color: #768390 !important; }
-.dark .text-gray-500 { color: #636e7b !important; }
-.dark .text-gray-400 { color: #545d68 !important; }
+.dark .text-gray-900 { color: var(--ink) !important; }
+.dark .text-gray-800 { color: var(--ink) !important; }
+.dark .text-gray-700 { color: var(--muted) !important; }
+.dark .text-gray-600 { color: var(--muted) !important; }
+.dark .text-gray-500 { color: var(--muted) !important; }
+.dark .text-gray-400 { color: var(--muted) !important; }
 
 /* Inputs */
 .dark input:not([class*="bg-["]):not([class*="bg-[#"]),
 .dark textarea:not([class*="bg-["]):not([class*="bg-[#"]),
 .dark select:not([class*="bg-["]):not([class*="bg-[#"]) {
-  background-color: #1c2128 !important;
-  border-color: #30363d !important;
-  color: #e6edf3 !important;
+  background-color: var(--panel-2) !important;
+  border-color: var(--line) !important;
+  color: var(--ink) !important;
 }
 .dark input::placeholder,
-.dark textarea::placeholder { color: #636e7b !important; }
+.dark textarea::placeholder { color: var(--muted) !important; }
 
 /* Tables */
 .dark thead tr,
-.dark .bg-gray-50\/50 { background-color: #161b22 !important; }
-.dark tbody tr:hover { background-color: #1c2128 !important; }
+.dark .bg-gray-50\/50 { background-color: var(--panel) !important; }
+.dark tbody tr:hover { background-color: var(--panel-2) !important; }
 
 /* Shadows — soften in dark mode */
 .dark .shadow-sm { box-shadow: 0 1px 3px rgba(0,0,0,0.4) !important; }

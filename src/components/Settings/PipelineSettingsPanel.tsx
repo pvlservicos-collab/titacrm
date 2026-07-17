@@ -584,7 +584,7 @@ export default function PipelineSettingsPanel() {
                                             <div className="relative">
                                                 <button
                                                     onClick={() => setIsRottenDropdownOpen(!isRottenDropdownOpen)}
-                                                    className="flex items-center gap-1 text-sm py-1.5 px-2 text-blue-600 font-medium hover:text-blue-800 transition-colors focus:outline-none"
+                                                    className="flex items-center gap-1 text-sm py-1.5 px-2 text-blue-600 font-medium hover:text-accent-2 transition-colors focus:outline-none"
                                                 >
                                                     <span>+ Adicionar Exceção</span>
                                                     <CaretDown weight="bold" className={`transition-transform duration-200 ${isRottenDropdownOpen ? 'rotate-180' : ''}`} />

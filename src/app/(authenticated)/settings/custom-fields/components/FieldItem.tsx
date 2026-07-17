@@ -42,16 +42,16 @@ function CustomSelect({
                 type="button"
                 disabled={disabled}
                 onClick={() => !disabled && setIsOpen(!isOpen)}
-                className={`w-full h-11 px-4 bg-gray-50 border border-gray-200 rounded-xl text-sm font-medium flex items-center justify-between focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all ${disabled ? 'opacity-70 cursor-not-allowed' : 'hover:bg-gray-100 focus:bg-white'}`}
+                className={`w-full h-11 px-4 bg-void border border-line rounded-xl text-sm font-medium flex items-center justify-between focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent transition-all ${disabled ? 'opacity-70 cursor-not-allowed' : 'hover:bg-panel-2 focus:bg-panel'}`}
             >
-                <span className={selected ? 'text-gray-900' : 'text-gray-500'}>
+                <span className={selected ? 'text-ink' : 'text-muted'}>
                     {selected ? selected.label : placeholder}
                 </span>
-                <CaretDown size={16} weight="bold" className={`text-gray-400 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+                <CaretDown size={16} weight="bold" className={`text-muted transition-transform ${isOpen ? 'rotate-180' : ''}`} />
             </button>
 
             {isOpen && (
-                <div className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-xl shadow-lg shadow-black/5 py-1.5 max-h-60 overflow-y-auto animate-in fade-in zoom-in-95 duration-100">
+                <div className="absolute z-50 w-full mt-1 bg-panel border border-line rounded-xl shadow-lg shadow-black/5 py-1.5 max-h-60 overflow-y-auto animate-in fade-in zoom-in-95 duration-100">
                     {options.map((opt) => {
                         const isSelected = value === opt.value
                         return (
@@ -62,10 +62,10 @@ function CustomSelect({
                                     onChange(opt.value)
                                     setIsOpen(false)
                                 }}
-                                className={`w-full px-4 py-2.5 text-left text-sm font-medium transition-colors flex items-center justify-between group ${isSelected ? 'bg-blue-50/50 text-blue-700' : 'text-gray-700 hover:bg-gray-50 hover:text-gray-900'}`}
+                                className={`w-full px-4 py-2.5 text-left text-sm font-medium transition-colors flex items-center justify-between group ${isSelected ? 'bg-panel-2 text-accent-2' : 'text-muted hover:bg-void hover:text-ink'}`}
                             >
                                 <span>{opt.label}</span>
-                                {isSelected && <Check size={16} weight="bold" className="text-blue-600" />}
+                                {isSelected && <Check size={16} weight="bold" className="text-accent-2" />}
                             </button>
                         )
                     })}
@@ -194,12 +194,12 @@ export function FieldItem({ field, categories, isEditing, onStartEdit, onCancelE
         return (
             <div
                 ref={setNodeRef}
-                className="p-5 bg-white border border-blue-200 rounded-xl shadow-sm transition-all animate-in fade-in zoom-in-[0.98] duration-200"
+                className="p-5 bg-panel border border-accent-line rounded-xl shadow-sm transition-all animate-in fade-in zoom-in-[0.98] duration-200"
             >
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     {/* Nome */}
                     <div className="col-span-1 md:col-span-2 space-y-1.5">
-                        <label className="text-sm font-semibold text-gray-700">Nome do Campo</label>
+                        <label className="text-sm font-semibold text-muted">Nome do Campo</label>
                         <input
                             ref={inputRef}
                             type="text"
@@ -207,13 +207,13 @@ export function FieldItem({ field, categories, isEditing, onStartEdit, onCancelE
                             onChange={(e) => setName(e.target.value)}
                             onKeyDown={(e) => { if (e.key === 'Escape') onCancelEdit() }}
                             placeholder="Ex: CPF, Cargo, Escolaridade"
-                            className="w-full h-11 px-4 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all font-medium"
+                            className="w-full h-11 px-4 bg-void border border-line rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent transition-all font-medium"
                         />
                     </div>
 
                     {/* Tipo */}
                     <div className="space-y-1.5">
-                        <label className="text-sm font-semibold text-gray-700">Tipo do Campo</label>
+                        <label className="text-sm font-semibold text-muted">Tipo do Campo</label>
                         <CustomSelect
                             value={fieldType}
                             onChange={setFieldType}
@@ -224,7 +224,7 @@ export function FieldItem({ field, categories, isEditing, onStartEdit, onCancelE
 
                     {/* Categoria */}
                     <div className="space-y-1.5">
-                        <label className="text-sm font-semibold text-gray-700">Categoria</label>
+                        <label className="text-sm font-semibold text-muted">Categoria</label>
                         <CustomSelect
                             value={categoryId}
                             onChange={setCategoryId}
@@ -239,25 +239,25 @@ export function FieldItem({ field, categories, isEditing, onStartEdit, onCancelE
 
                 {/* Descrição */}
                 <div className="space-y-1.5 mt-4">
-                    <label className="text-sm font-semibold text-gray-700">Descrição <span className="text-gray-400 font-normal">(Opcional)</span></label>
+                    <label className="text-sm font-semibold text-muted">Descrição <span className="text-muted font-normal">(Opcional)</span></label>
                     <textarea
                         rows={2}
                         value={description}
                         onChange={e => setDescription(e.target.value)}
                         placeholder="Exemplo de preenchimento ou ajuda para o usuário"
-                        className="w-full p-4 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all resize-none"
+                        className="w-full p-4 bg-void border border-line rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent transition-all resize-none"
                     />
                 </div>
 
                 {/* Options (Dynamic) */}
                 {needsOptions && (
-                    <div className="space-y-3 pt-4 mt-4 border-t border-gray-100">
+                    <div className="space-y-3 pt-4 mt-4 border-t border-line">
                         <div className="flex items-center justify-between">
-                            <label className="text-sm font-semibold text-gray-700">Opções de Seleção</label>
+                            <label className="text-sm font-semibold text-muted">Opções de Seleção</label>
                             <button
                                 type="button"
                                 onClick={handleAddOption}
-                                className="text-xs font-semibold text-blue-600 hover:text-blue-700 flex items-center gap-1 bg-blue-50 px-2 py-1 rounded"
+                                className="text-xs font-semibold text-accent-2 hover:text-accent-2 flex items-center gap-1 bg-panel-2 px-2 py-1 rounded"
                             >
                                 <Plus weight="bold" /> Adicionar
                             </button>
@@ -275,12 +275,12 @@ export function FieldItem({ field, categories, isEditing, onStartEdit, onCancelE
                                         value={opt}
                                         onChange={e => handleUpdateOption(idx, e.target.value)}
                                         placeholder={`Opção ${idx + 1}`}
-                                        className="flex-1 h-9 px-3 bg-white border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+                                        className="flex-1 h-9 px-3 bg-panel border border-line rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent"
                                     />
                                     <button
                                         type="button"
                                         onClick={() => handleRemoveOption(idx)}
-                                        className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                                        className="p-2 text-muted hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
                                     >
                                         <Trash size={16} />
                                     </button>
@@ -291,7 +291,7 @@ export function FieldItem({ field, categories, isEditing, onStartEdit, onCancelE
                 )}
 
                 {/* Actions */}
-                <div className="flex items-center justify-between mt-6 pt-4 border-t border-gray-100">
+                <div className="flex items-center justify-between mt-6 pt-4 border-t border-line">
                     <div>
                         {field && onDelete && (
                             <button
@@ -309,7 +309,7 @@ export function FieldItem({ field, categories, isEditing, onStartEdit, onCancelE
                             type="button"
                             onClick={onCancelEdit}
                             disabled={isSaving}
-                            className="px-4 py-2 text-sm font-semibold text-gray-600 hover:text-gray-800 transition-colors"
+                            className="px-4 py-2 text-sm font-semibold text-muted hover:text-ink transition-colors"
                         >
                             Cancelar
                         </button>
@@ -317,7 +317,7 @@ export function FieldItem({ field, categories, isEditing, onStartEdit, onCancelE
                             type="button"
                             onClick={handleSave}
                             disabled={isSaving || !name.trim() || (needsOptions && options.every(o => !o.trim()))}
-                            className="px-5 py-2.5 bg-blue-500 hover:bg-blue-600 text-white text-sm font-medium rounded-xl transition-colors shadow-sm disabled:opacity-50 flex items-center gap-2"
+                            className="px-5 py-2.5 bg-accent hover:bg-accent text-white text-sm font-medium rounded-xl transition-colors shadow-sm disabled:opacity-50 flex items-center gap-2"
                         >
                             {isSaving ? <SpinnerGap size={18} className="animate-spin" /> : <Check size={18} weight="bold" />}
                             Salvar
@@ -335,35 +335,35 @@ export function FieldItem({ field, categories, isEditing, onStartEdit, onCancelE
             ref={setNodeRef}
             style={style}
             onClick={onStartEdit}
-            className={`group flex items-center justify-between px-2 py-4 cursor-pointer hover:bg-gray-50 transition-colors ${isDragging ? 'opacity-40 relative z-50 bg-white shadow-xl border border-blue-200 rounded-lg scale-[1.02]' : ''}`}
+            className={`group flex items-center justify-between px-2 py-4 cursor-pointer hover:bg-void transition-colors ${isDragging ? 'opacity-40 relative z-50 bg-panel shadow-xl border border-accent-line rounded-lg scale-[1.02]' : ''}`}
         >
             <div className="flex items-center gap-2 w-full pr-4">
                 <div
                     {...attributes}
                     {...listeners}
                     onClick={(e) => e.stopPropagation()}
-                    className={`p-1.5 rounded-md cursor-grab active:cursor-grabbing text-gray-300 hover:text-gray-500 hover:bg-gray-100 ${isDragging ? 'text-blue-500' : 'opacity-0 group-hover:opacity-100'} transition-all`}
+                    className={`p-1.5 rounded-md cursor-grab active:cursor-grabbing text-muted hover:text-muted hover:bg-panel-2 ${isDragging ? 'text-accent-2' : 'opacity-0 group-hover:opacity-100'} transition-all`}
                 >
                     <DotsSixVertical size={20} weight="bold" />
                 </div>
                 <div className="flex flex-col gap-1 w-full max-w-[85%]">
                     <div className="flex items-center gap-2">
-                        <span className="font-semibold text-gray-900 group-hover:text-blue-700 transition-colors">
+                        <span className="font-semibold text-ink group-hover:text-accent-2 transition-colors">
                             {field.name}
                         </span>
-                        <span className="text-xs text-gray-400 font-medium whitespace-nowrap">
+                        <span className="text-xs text-muted font-medium whitespace-nowrap">
                             ({FIELD_TYPES.find(t => t.value === field.field_type)?.label || field.field_type})
                         </span>
                     </div>
                     {field.schema?.description && (
-                        <p className="text-sm text-gray-500 truncate">
+                        <p className="text-sm text-muted truncate">
                             {field.schema.description}
                         </p>
                     )}
                 </div>
             </div>
 
-            <div className="text-gray-300 group-hover:text-blue-600 transition-colors flex items-center gap-2 px-4 whitespace-nowrap">
+            <div className="text-muted group-hover:text-accent-2 transition-colors flex items-center gap-2 px-4 whitespace-nowrap">
                 <span className="text-xs font-semibold opacity-0 group-hover:opacity-100 transition-opacity">Editar</span>
                 <CaretRight size={20} weight="bold" />
             </div>

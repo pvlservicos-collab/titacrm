@@ -51,15 +51,15 @@ const EXAMPLE_AUDIO = `{
 function FAQItem({ question, children }: { question: string; children: React.ReactNode }) {
   const [open, setOpen] = useState(false)
   return (
-    <div className="border rounded-lg bg-white overflow-hidden">
+    <div className="border rounded-lg bg-panel overflow-hidden">
       <button
         onClick={() => setOpen(!open)}
-        className="w-full flex items-center justify-between p-4 text-left font-medium text-gray-900 hover:bg-gray-50 transition-colors"
+        className="w-full flex items-center justify-between p-4 text-left font-medium text-ink hover:bg-void transition-colors"
       >
         {question}
-        {open ? <CaretUp size={16} className="text-gray-500" /> : <CaretDown size={16} className="text-gray-500" />}
+        {open ? <CaretUp size={16} className="text-muted" /> : <CaretDown size={16} className="text-muted" />}
       </button>
-      {open && <div className="p-4 text-sm text-gray-600 border-t border-gray-100">{children}</div>}
+      {open && <div className="p-4 text-sm text-muted border-t border-line">{children}</div>}
     </div>
   )
 }
@@ -153,51 +153,51 @@ export default function OutboundWebhookPage() {
   return (
     <div className="max-w-4xl pb-12">
       <div className="flex items-center gap-4 mb-8">
-        <Link href="/settings/integrations" className="p-2 -ml-2 hover:bg-gray-100 rounded-full transition-colors text-gray-500">
+        <Link href="/settings/integrations" className="p-2 -ml-2 hover:bg-panel-2 rounded-full transition-colors text-muted">
           <ArrowLeft size={20} />
         </Link>
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Webhook de Saída</h1>
-          <p className="text-gray-600 text-sm mt-1">Envie toda mensagem recebida ou enviada pelo WhatsApp para uma URL externa, no formato Z-API.</p>
+          <h1 className="text-2xl font-bold text-ink">Webhook de Saída</h1>
+          <p className="text-muted text-sm mt-1">Envie toda mensagem recebida ou enviada pelo WhatsApp para uma URL externa, no formato Z-API.</p>
         </div>
       </div>
 
-      <div className="bg-white border rounded-xl p-4 sm:p-8 mb-6 shadow-sm">
+      <div className="bg-panel border rounded-xl p-4 sm:p-8 mb-6 shadow-sm">
         <div className="flex items-center gap-3 mb-6">
           <div className="w-10 h-10 rounded-lg bg-emerald-50 flex items-center justify-center text-emerald-600">
             <WebhooksLogo size={20} weight="bold" />
           </div>
           <div>
-            <h2 className="text-lg font-bold text-gray-900">Configuração</h2>
-            <p className="text-sm text-gray-500">A URL será chamada via POST a cada nova mensagem.</p>
+            <h2 className="text-lg font-bold text-ink">Configuração</h2>
+            <p className="text-sm text-muted">A URL será chamada via POST a cada nova mensagem.</p>
           </div>
         </div>
 
         {loading ? (
-          <div className="text-sm text-gray-400">Carregando...</div>
+          <div className="text-sm text-muted">Carregando...</div>
         ) : (
           <div className="space-y-5">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1.5">URL do Webhook</label>
+              <label className="block text-sm font-medium text-muted mb-1.5">URL do Webhook</label>
               <input
                 type="url"
                 value={url}
                 onChange={(e) => setUrl(e.target.value)}
                 placeholder="https://webhook.seudominio.com.br/webhook/whatsapp"
-                className="w-full bg-gray-50 border border-gray-200 text-gray-900 text-sm rounded-lg focus:ring-emerald-500 focus:border-emerald-500 block p-2.5 outline-none"
+                className="w-full bg-void border border-line text-ink text-sm rounded-lg focus:ring-emerald-500 focus:border-emerald-500 block p-2.5 outline-none"
               />
             </div>
 
-            <div className="flex items-center justify-between border-t border-gray-100 pt-5">
+            <div className="flex items-center justify-between border-t border-line pt-5">
               <div>
-                <h4 className="text-sm font-bold text-gray-900">Ativo</h4>
-                <p className="text-xs text-gray-500">Desative para pausar o envio sem apagar a URL configurada.</p>
+                <h4 className="text-sm font-bold text-ink">Ativo</h4>
+                <p className="text-xs text-muted">Desative para pausar o envio sem apagar a URL configurada.</p>
               </div>
               <button
                 onClick={() => setEnabled(!enabled)}
-                className={`relative w-11 h-6 rounded-full transition-colors ${enabled ? 'bg-emerald-500' : 'bg-gray-300'}`}
+                className={`relative w-11 h-6 rounded-full transition-colors ${enabled ? 'bg-emerald-500' : 'bg-panel-2'}`}
               >
-                <span className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform ${enabled ? 'translate-x-5' : 'translate-x-0'}`} />
+                <span className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-panel shadow transition-transform ${enabled ? 'translate-x-5' : 'translate-x-0'}`} />
               </button>
             </div>
 
@@ -212,7 +212,7 @@ export default function OutboundWebhookPage() {
               <button
                 onClick={handleTest}
                 disabled={isTesting}
-                className="flex items-center gap-2 px-5 py-2.5 bg-gray-100 hover:bg-gray-200 disabled:opacity-60 text-gray-700 rounded-lg font-medium text-sm transition-colors"
+                className="flex items-center gap-2 px-5 py-2.5 bg-panel-2 hover:bg-panel-2 disabled:opacity-60 text-muted rounded-lg font-medium text-sm transition-colors"
               >
                 <PaperPlaneTilt size={16} weight="bold" />
                 {isTesting ? 'Enviando...' : 'Enviar teste'}
@@ -235,36 +235,36 @@ export default function OutboundWebhookPage() {
         )}
       </div>
 
-      <div className="bg-white border rounded-xl p-4 sm:p-8 shadow-sm">
+      <div className="bg-panel border rounded-xl p-4 sm:p-8 shadow-sm">
         <div className="flex items-center gap-3 mb-6">
           <div className="w-10 h-10 rounded-lg bg-emerald-50 flex items-center justify-center text-emerald-600">
             <Info size={18} weight="bold" />
           </div>
           <div>
-            <h2 className="text-lg font-bold text-gray-900">Como funciona</h2>
-            <p className="text-sm text-gray-500">Formato do payload enviado ao seu webhook.</p>
+            <h2 className="text-lg font-bold text-ink">Como funciona</h2>
+            <p className="text-sm text-muted">Formato do payload enviado ao seu webhook.</p>
           </div>
         </div>
 
         <div className="space-y-4">
           <FAQItem question="Quando o webhook é disparado?">
             A cada mensagem que passar pelo CRM via WhatsApp (Cloud API oficial ou Evolution API), tanto recebidas do
-            cliente (<code className="bg-gray-100 px-1 rounded">fromMe: false</code>) quanto enviadas pelo número
-            conectado (<code className="bg-gray-100 px-1 rounded">fromMe: true</code>). Use o campo{' '}
-            <code className="bg-gray-100 px-1 rounded">fromMe</code> para filtrar no seu agente.
+            cliente (<code className="bg-panel-2 px-1 rounded">fromMe: false</code>) quanto enviadas pelo número
+            conectado (<code className="bg-panel-2 px-1 rounded">fromMe: true</code>). Use o campo{' '}
+            <code className="bg-panel-2 px-1 rounded">fromMe</code> para filtrar no seu agente.
           </FAQItem>
           <FAQItem question="Qual o formato do corpo enviado?">
             O mesmo formato usado pela Z-API nos webhooks de mensagem recebida (ReceivedCallback), para que automações
             já prontas para Z-API funcionem sem adaptação. O conteúdo da mensagem muda de acordo com o tipo:{' '}
-            <code className="bg-gray-100 px-1 rounded">text</code>, <code className="bg-gray-100 px-1 rounded">image</code>,{' '}
-            <code className="bg-gray-100 px-1 rounded">video</code>, <code className="bg-gray-100 px-1 rounded">audio</code>{' '}
-            ou <code className="bg-gray-100 px-1 rounded">document</code>.
-            <pre className="mt-3 bg-gray-900 text-gray-100 text-xs p-4 rounded-lg overflow-x-auto">{EXAMPLE_TEXT}</pre>
+            <code className="bg-panel-2 px-1 rounded">text</code>, <code className="bg-panel-2 px-1 rounded">image</code>,{' '}
+            <code className="bg-panel-2 px-1 rounded">video</code>, <code className="bg-panel-2 px-1 rounded">audio</code>{' '}
+            ou <code className="bg-panel-2 px-1 rounded">document</code>.
+            <pre className="mt-3 bg-void text-ink text-xs p-4 rounded-lg overflow-x-auto">{EXAMPLE_TEXT}</pre>
           </FAQItem>
           <FAQItem question="E mensagens de áudio?">
-            O objeto muda para <code className="bg-gray-100 px-1 rounded">audio</code>, com a URL do arquivo e a
+            O objeto muda para <code className="bg-panel-2 px-1 rounded">audio</code>, com a URL do arquivo e a
             duração em segundos:
-            <pre className="mt-3 bg-gray-900 text-gray-100 text-xs p-4 rounded-lg overflow-x-auto">{EXAMPLE_AUDIO}</pre>
+            <pre className="mt-3 bg-void text-ink text-xs p-4 rounded-lg overflow-x-auto">{EXAMPLE_AUDIO}</pre>
           </FAQItem>
           <FAQItem question="O que acontece se o meu webhook estiver fora do ar?">
             A falha é registrada internamente e não afeta o funcionamento do CRM — a mensagem continua sendo salva
