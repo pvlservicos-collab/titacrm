@@ -22,6 +22,7 @@ import {
   List,
   X,
   House,
+  ShieldCheck,
 } from '@phosphor-icons/react'
 import { useAuth, usePipeline } from '@/hooks'
 import { useTheme } from '@/contexts/ThemeContext'
@@ -40,6 +41,7 @@ const NAV_ITEMS = [
   { label: 'Logística', href: '/logistica', icon: Truck },
   { label: 'Financeiro', href: '/financeiro', icon: CurrencyDollar },
   { label: 'Configurações', href: '/settings/organization', icon: Gear },
+  { label: 'Admin', href: '/admin', icon: ShieldCheck },
 ]
 
 // Destinos mais usados — ficam sempre à mão na barra inferior do celular.
@@ -101,6 +103,11 @@ export default function Navbar() {
   const isItemVisible = (label: string): boolean => {
     // Início é a aba de boas-vindas/conexão — sempre visível, sem depender de permissão
     if (label === 'Início') return true
+
+    // Painel /admin (plataforma inteira) — só profiles.isSuperadmin de verdade, nunca
+    // via permissions?.['*'] (papel de organização). Um tenant pode criar um papel
+    // "Admin" com wildcard; isso não pode abrir a porta pro painel de todas as orgs.
+    if (label === 'Admin') return isMaster
 
     // Superadmins e Admins de organização veem tudo. O papel "Admin" criado pelo fluxo
     // padrão (POST /api/admin/create-workspace) usa permissions: {"*": true} — sem esse

@@ -30,6 +30,9 @@ export const organizations = pgTable('organizations', {
   tierId: uuid('tier_id').references(() => tiers.id),
   timezone: text('timezone').default('UTC'),
   logoUrl: text('logo_url'),
+  // Controlado manualmente pelo painel /admin por enquanto (sem gateway de
+  // pagamento integrado ainda): 'active' | 'unpaid' | 'cancelled'.
+  subscriptionStatus: text('subscription_status').notNull().default('active'),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow(),
   deletedAt: timestamp('deleted_at', { withTimezone: true }),

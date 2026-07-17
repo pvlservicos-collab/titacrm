@@ -62,6 +62,12 @@
   border-radius: 4px;
 }
 
+/* Título é Syne em todo o app — cobre todas as telas de uma vez, sem precisar
+   aplicar font-display manualmente em cada h1/h2 já existente. */
+h1, h2 {
+  font-family: 'Syne', system-ui, sans-serif;
+}
+
 /* ============================================
    CHAT THEME TOKENS
    O Chat era permanentemente escuro (clone visual do WhatsApp Web), sem

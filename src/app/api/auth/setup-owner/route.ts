@@ -2,8 +2,12 @@ import { NextRequest } from 'next/server'
 import { apiError } from '@/lib/api-auth'
 import { db } from '@/lib/db'
 import { users, profiles, organizationMembers, organizationRoles, setupTokens, organizations } from '@/lib/schema'
-import { eq, and, gt } from 'drizzle-orm'
+import { eq, and, gt, sql } from 'drizzle-orm'
 import bcrypt from 'bcryptjs'
+
+// Limite fixo de contas com acesso total (painel /admin). Só muda se o próprio
+// founder pedir explicitamente pra levantar esse número.
+const MAX_FOUNDERS = 2
 
 // GET /api/auth/setup-owner?token=... — usado por /ativar-conta pra mostrar o nome
 // do workspace antes do cliente preencher o formulário, sem expor mais nada do token.
@@ -51,6 +55,15 @@ export async function POST(req: NextRequest) {
 
     if (!token || token.usedAt) return apiError(400, 'Token inválido ou expirado.')
 
+    const isFounderInvite = token.roleName === 'Founder'
+    if (isFounderInvite) {
+      const [{ count }] = await db.select({ count: sql<number>`count(*)::int` })
+        .from(profiles).where(eq(profiles.isSuperadmin, true))
+      if (count >= MAX_FOUNDERS) {
+        return apiError(400, `Limite de ${MAX_FOUNDERS} founders já atingido.`)
+      }
+    }
+
     // Criar usuário
     const passwordHash = await bcrypt.hash(password, 12)
     const [user] = await db.insert(users).values({
@@ -58,7 +71,7 @@ export async function POST(req: NextRequest) {
       passwordHash,
     }).returning()
 
-    await db.insert(profiles).values({ id: user.id, fullName: full_name, isSuperadmin: false })
+    await db.insert(profiles).values({ id: user.id, fullName: full_name, isSuperadmin: isFounderInvite })
 
     // Papel do convite — token.roleName permite gerar convite pra um papel específico
     // (ex: "Founder"); sem isso, mantém o padrão histórico de sempre criar como "Admin".

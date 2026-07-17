@@ -5,6 +5,22 @@ import { db } from './db'
 import { apiTokens, organizationMembers, profiles } from './schema'
 import { auth } from './auth'
 
+/**
+ * Painel /admin (plataforma inteira, todas as organizações) — gate por
+ * profiles.isSuperadmin, NUNCA por nome de papel de organização. Um papel
+ * chamado "Founder"/"Admin" é só um rótulo dentro da própria org e qualquer
+ * organização poderia criar um papel com esse mesmo nome; isSuperadmin é a
+ * única flag que não pode ser auto-concedida por um tenant.
+ */
+export async function requireSuperadmin(): Promise<{ userId: string }> {
+  const session = await auth()
+  if (!session?.user?.id) throw { status: 401, message: 'Não autenticado.' }
+  const [profile] = await db.select({ isSuperadmin: profiles.isSuperadmin })
+    .from(profiles).where(eq(profiles.id, session.user.id)).limit(1)
+  if (!profile?.isSuperadmin) throw { status: 403, message: 'Acesso restrito ao painel administrativo.' }
+  return { userId: session.user.id }
+}
+
 interface AuthResult {
   organizationId: string
   memberId: string | null

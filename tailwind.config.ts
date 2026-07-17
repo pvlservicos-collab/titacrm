@@ -31,7 +31,7 @@ const config: Config = {
       },
       fontFamily: {
         sans: ['"Inter"', 'system-ui', 'sans-serif'],
-        display: ['"Darker Grotesque"', 'system-ui', 'sans-serif'],
+        display: ['"Syne"', 'system-ui', 'sans-serif'],
         neuehaas: ['"Neue Haas Grotesk Display Pro"', 'system-ui', 'sans-serif'],
       },
       boxShadow: {
