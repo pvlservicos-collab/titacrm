@@ -60,9 +60,10 @@ export async function POST(req: NextRequest) {
 
     await db.insert(profiles).values({ id: user.id, fullName: full_name, isSuperadmin: false })
 
-    // Buscar role Admin da org
+    // Papel do convite — token.roleName permite gerar convite pra um papel específico
+    // (ex: "Founder"); sem isso, mantém o padrão histórico de sempre criar como "Admin".
     const [adminRole] = await db.select().from(organizationRoles)
-      .where(and(eq(organizationRoles.organizationId, token.organizationId), eq(organizationRoles.name, 'Admin')))
+      .where(and(eq(organizationRoles.organizationId, token.organizationId), eq(organizationRoles.name, token.roleName || 'Admin')))
       .limit(1)
 
     // Criar membro

@@ -345,6 +345,9 @@ export const setupTokens = pgTable('setup_tokens', {
   usedAt: timestamp('used_at', { withTimezone: true }),
   expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
+  // Null = comportamento antigo (sempre "Admin"). Permite gerar convite pra um papel
+  // específico da própria org (ex: "Founder", acesso total, pra um segundo dono).
+  roleName: text('role_name'),
 })
 
 // ── Webhook Logs ──────────────────────────────────────────────────────────────

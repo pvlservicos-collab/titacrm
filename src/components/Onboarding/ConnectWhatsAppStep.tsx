@@ -1,45 +1,10 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { CheckCircle, ArrowClockwise } from '@phosphor-icons/react'
+import { CheckCircle, XCircle, ArrowClockwise } from '@phosphor-icons/react'
 import WhatsAppCloudApiForm from '@/components/Settings/WhatsAppCloudApiForm'
 import Button from '@/components/Shared/Button'
 import { useAuth } from '@/hooks'
-
-// Passos reais no Meta Business Manager pra chegar em WABA ID / Phone Number ID /
-// System Token — substitui o genérico "cole a URL de webhook", que não corresponde a
-// nenhum canal real (o webhook do WhatsApp Cloud API é um endpoint único da
-// plataforma, configurado uma vez só pelo dono da plataforma, nunca pelo cliente).
-const TUTORIAL_STEPS = [
-    {
-        title: 'Confirme sua Business Manager',
-        description:
-            'Acesse business.facebook.com (Meta Business Suite) e confirme que sua empresa já tem uma Business Manager Account — a verificação completa da empresa desbloqueia limites maiores de mensagem depois.',
-    },
-    {
-        title: 'Crie um App na Meta for Developers',
-        description: 'Em developers.facebook.com/apps, crie um App do tipo "Negócios", vinculado à sua Business Manager.',
-    },
-    {
-        title: 'Adicione o produto WhatsApp',
-        description: 'Dentro do App, em "Adicionar produto", adicione o WhatsApp e siga o assistente de configuração.',
-    },
-    {
-        title: 'Copie o WABA ID',
-        description:
-            'No Meta Business Suite: Configurações → Contas → Contas do WhatsApp → selecione sua conta → copie o "ID da conta" (15-16 dígitos).',
-    },
-    {
-        title: 'Copie o Phone Number ID',
-        description:
-            'Dentro do App, em WhatsApp → Configuração da API, selecione ou adicione seu número comercial — o painel mostra o "Phone number ID" ao lado dele (diferente do número em si).',
-    },
-    {
-        title: 'Gere um System User Token permanente',
-        description:
-            'Configurações do Negócio → Usuários → Usuários do sistema → Adicionar → papel "Admin" → atribua o App e a WABA com acesso total → gere um token com escopos whatsapp_business_messaging e whatsapp_business_management, expiração "Nunca".',
-    },
-] as const
 
 interface ConnectWhatsAppStepProps {
     connected: boolean
@@ -90,49 +55,44 @@ export default function ConnectWhatsAppStep({ connected, onConnected, onStep2Don
     const step2Done = hasInboundMessage || testResult?.ok === true
 
     return (
-        <div className="space-y-8">
-            <div>
-                <h2 className="text-lg font-semibold text-ink mb-2">Conecte seu WhatsApp</h2>
-                <p className="text-sm text-muted max-w-2xl">
-                    Você não precisa configurar nenhum webhook — isso já está pronto na nossa plataforma.
-                    Só precisamos de 3 informações da sua conta oficial do WhatsApp na Meta.
-                </p>
+        <div className="space-y-6">
+            {/* ETAPA 01 — moldura azul */}
+            <div className="border-2 border-accent-line rounded-2xl p-5 sm:p-7 bg-panel">
+                <p className="text-[11px] font-bold text-accent-2 uppercase tracking-[0.3em] mb-1">Etapa 01</p>
+                <h2 className="text-3xl font-bold text-ink tracking-tight mb-1">Conectar WhatsApp</h2>
+                <p className="text-sm text-muted mb-6">API Oficial da Meta. Sem webhook manual — já vem pronto abaixo.</p>
+
+                <WhatsAppCloudApiForm compact onConnected={onConnected} />
             </div>
 
-            <ol className="space-y-3">
-                {TUTORIAL_STEPS.map((step, i) => (
-                    <li key={i} className="flex gap-3 text-sm">
-                        <span className="flex-shrink-0 w-5 h-5 rounded-full bg-panel-2 border border-line text-muted text-[11px] font-bold flex items-center justify-center mt-0.5">
-                            {i + 1}
-                        </span>
-                        <span className="text-muted">
-                            <span className="text-ink font-medium">{step.title}.</span> {step.description}
-                        </span>
-                    </li>
-                ))}
-            </ol>
-
-            <WhatsAppCloudApiForm compact onConnected={onConnected} />
-
+            {/* ETAPA 02 — moldura verde, só aparece depois de salvar as credenciais */}
             {connected && (
-                <div className="border-t border-line pt-6">
-                    <h3 className="text-lg font-medium text-ink mb-3">Status da conexão</h3>
+                <div className={`border-2 rounded-2xl p-5 sm:p-7 ${step2Done ? 'border-emerald-500/40' : 'border-line'} bg-panel`}>
+                    <p className={`text-[11px] font-bold uppercase tracking-[0.3em] mb-1 ${step2Done ? 'text-emerald-400' : 'text-muted'}`}>Etapa 02</p>
+                    <h2 className="text-3xl font-bold text-ink tracking-tight mb-4">Confirmar conexão</h2>
+
                     {step2Done ? (
-                        <div className="flex items-center gap-2 text-emerald-400 bg-emerald-500/10 border border-emerald-500/30 rounded-lg px-4 py-3 text-sm">
-                            <CheckCircle size={18} weight="fill" />
-                            Recebendo mensagens normalmente.
+                        <div className="flex items-center gap-2.5 text-emerald-400 bg-emerald-500/10 border border-emerald-500/30 rounded-lg px-4 py-3">
+                            <CheckCircle size={22} weight="fill" />
+                            <span className="font-semibold">Conectado — recebendo mensagens.</span>
                         </div>
                     ) : (
-                        <div className="flex flex-col sm:flex-row sm:items-center gap-3">
-                            <p className="text-sm text-muted flex-1">Aguardando a primeira mensagem chegar, ou teste agora.</p>
-                            <Button variant="secondary" onClick={handleTest} disabled={testing}>
-                                <ArrowClockwise size={16} className={testing ? 'animate-spin' : ''} />
-                                {testing ? 'Testando...' : 'Testar conexão agora'}
-                            </Button>
+                        <div className="space-y-3">
+                            <div className="flex items-center gap-2.5 text-red-400 bg-red-500/10 border border-red-500/30 rounded-lg px-4 py-3">
+                                <XCircle size={22} weight="fill" />
+                                <span className="font-semibold">Ainda não conectado.</span>
+                            </div>
+                            <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+                                <p className="text-sm text-muted flex-1">Aguardando a 1ª mensagem, ou teste agora.</p>
+                                <Button variant="secondary" onClick={handleTest} disabled={testing}>
+                                    <ArrowClockwise size={16} className={testing ? 'animate-spin' : ''} />
+                                    {testing ? 'Testando...' : 'Testar conexão'}
+                                </Button>
+                            </div>
+                            {testResult && !testResult.ok && (
+                                <p className="text-xs text-red-400">{testResult.error}</p>
+                            )}
                         </div>
-                    )}
-                    {testResult && !testResult.ok && (
-                        <p className="text-xs text-red-400 mt-2">{testResult.error}</p>
                     )}
                 </div>
             )}
