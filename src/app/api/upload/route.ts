@@ -12,12 +12,18 @@ import { NextRequest } from 'next/server'
 import { handleUpload, type HandleUploadBody } from '@vercel/blob/client'
 import { auth } from '@/lib/auth'
 import { apiError } from '@/lib/api-auth'
+import { db } from '@/lib/db'
+import { profiles } from '@/lib/schema'
+import { eq } from 'drizzle-orm'
 
 const FOLDER_LIMITS: Record<string, { maxSize: number; allowedContentTypes?: string[] }> = {
   avatars: { maxSize: 5 * 1024 * 1024, allowedContentTypes: ['image/jpeg', 'image/png', 'image/webp', 'image/gif'] },
   'org-logos': { maxSize: 5 * 1024 * 1024, allowedContentTypes: ['image/jpeg', 'image/png', 'image/webp', 'image/gif'] },
   // 16MB — limite de mídia do WhatsApp; sem restrição de tipo (imagem, vídeo, áudio, documento)
   'chat-media': { maxSize: 16 * 1024 * 1024 },
+  // Prints da tela Início — global, só o superadmin sobe (checado abaixo, além do
+  // POST /api/platform/feature-screenshots exigir superadmin pra registrar a URL).
+  'feature-screenshots': { maxSize: 5 * 1024 * 1024, allowedContentTypes: ['image/jpeg', 'image/png', 'image/webp'] },
 }
 
 export async function POST(req: NextRequest) {
@@ -38,7 +44,13 @@ export async function POST(req: NextRequest) {
 
         const folder = pathname.split('/')[0]
         const limits = FOLDER_LIMITS[folder]
-        if (!limits) throw new Error('Pasta inválida. Use: avatars, org-logos ou chat-media')
+        if (!limits) throw new Error('Pasta inválida. Use: avatars, org-logos, chat-media ou feature-screenshots')
+
+        if (folder === 'feature-screenshots') {
+          const [profile] = await db.select({ isSuperadmin: profiles.isSuperadmin })
+            .from(profiles).where(eq(profiles.id, session.user.id as string)).limit(1)
+          if (!profile?.isSuperadmin) throw new Error('Somente o superadmin pode trocar os prints da tela Início.')
+        }
 
         return {
           allowedContentTypes: limits.allowedContentTypes,

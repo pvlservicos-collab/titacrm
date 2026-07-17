@@ -573,3 +573,14 @@ export const expenses = pgTable('expenses', {
     .on(t.parentExpenseId, t.dueDate)
     .where(sql`${t.parentExpenseId} is not null and ${t.deletedAt} is null`),
 }))
+
+// ── Prints das funções (tela Início) ─────────────────────────────────────────
+// Global, não por organização — são screenshots do próprio produto (Chat, Pipeline
+// etc.), iguais pra qualquer tenant. Só o superadmin pode trocar (ver
+// /api/platform/feature-screenshots); qualquer usuário autenticado só lê.
+export const featureScreenshots = pgTable('feature_screenshots', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  featureKey: text('feature_key').notNull().unique(),
+  imageUrl: text('image_url').notNull(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow(),
+})

@@ -16,7 +16,7 @@
 
 import { upload } from '@vercel/blob/client'
 
-export type UploadFolder = 'avatars' | 'org-logos' | 'chat-media'
+export type UploadFolder = 'avatars' | 'org-logos' | 'chat-media' | 'feature-screenshots'
 
 // Mesmos tipos cobertos pelo antigo normalizeImageOrientation() do servidor (agora feito
 // aqui no cliente, já que o arquivo não passa mais pelo nosso backend antes do upload).
