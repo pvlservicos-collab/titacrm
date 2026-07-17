@@ -92,8 +92,7 @@ export default function ConnectWhatsAppStep({ connected, onConnected, onStep2Don
     return (
         <div className="space-y-8">
             <div>
-                <p className="text-[11px] font-bold text-accent-2 uppercase tracking-[0.3em] mb-2">Whatsapp</p>
-                <h2 className="text-2xl sm:text-3xl font-light text-ink tracking-tight mb-2">Conecte seu WhatsApp</h2>
+                <h2 className="text-lg font-semibold text-ink mb-2">Conecte seu WhatsApp</h2>
                 <p className="text-sm text-muted max-w-2xl">
                     Você não precisa configurar nenhum webhook — isso já está pronto na nossa plataforma.
                     Só precisamos de 3 informações da sua conta oficial do WhatsApp na Meta.

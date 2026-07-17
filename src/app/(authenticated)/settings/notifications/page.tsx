@@ -287,9 +287,9 @@ function PushNotificationsCard() {
                 ) : (
                     <div className="flex items-center justify-between">
                         <div>
-                            <p className="text-sm font-semibold text-ink">Avisar quando chegar mensagem nova</p>
+                            <p className="text-sm font-semibold text-ink">Ativar notificações</p>
                             <p className="text-xs text-muted mt-0.5">
-                                Notificação com prévia da mensagem, mesmo com o app fechado.
+                                Saiba na hora quando chegar uma mensagem nova, mesmo com o app fechado.
                             </p>
                         </div>
                         <Toggle

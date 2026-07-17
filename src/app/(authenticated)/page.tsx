@@ -11,8 +11,8 @@ import OptionalSetupStep from '@/components/Onboarding/OptionalSetupStep'
 import FeatureOverviewGrid from '@/components/Onboarding/FeatureOverviewGrid'
 
 /**
- * Início — página normal (não travada, sem etapas obrigatórias), sempre acessível
- * pela Navbar. Quem quiser pode ir direto pro Pipeline/Chat a qualquer momento.
+ * Início — página normal (não travada), sempre acessível pela Navbar, no mesmo
+ * padrão de header das outras telas do sistema (Financeiro, Logística etc).
  */
 export default function InicioPage() {
     const router = useRouter()
@@ -30,43 +30,32 @@ export default function InicioPage() {
     }
 
     return (
-        <div className="min-h-full bg-void relative overflow-hidden">
-            <div className="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden="true">
-                <div className="absolute -top-40 left-1/2 -translate-x-1/2 w-[800px] h-[800px] rounded-full bg-[radial-gradient(circle,rgba(61,123,255,0.12)_0%,transparent_70%)]" />
-                <div className="absolute bottom-0 right-0 w-[500px] h-[500px] rounded-full bg-[radial-gradient(circle,rgba(91,155,255,0.08)_0%,transparent_70%)]" />
+        <div className="max-w-5xl mx-auto p-4 sm:p-6 space-y-10">
+            {/* Header — mesmo padrão de Financeiro/Logística: ícone + título + subtítulo */}
+            <div className="flex items-center gap-3 pb-6 border-b border-line">
+                <RocketLaunch size={28} className="text-accent-2" weight="fill" />
+                <div>
+                    <h1 className="text-3xl font-bold text-ink">
+                        {firstName ? `Bem-vindo, ${firstName}` : 'Bem-vindo'}
+                    </h1>
+                    <p className="text-sm text-muted">Conecte seu WhatsApp e explore as funções do Follem por aqui.</p>
+                </div>
             </div>
 
-            <div className="relative max-w-4xl mx-auto px-4 sm:px-6 py-12 sm:py-16">
-                <div className="text-center mb-12">
-                    <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-panel-2 border border-accent-line mb-6 shadow-glow">
-                        <RocketLaunch size={26} weight="fill" className="text-accent-2" />
-                    </div>
-                    <p className="text-[11px] font-bold text-accent-2 uppercase tracking-[0.32em] mb-3">
-                        {firstName ? `Olá, ${firstName}` : 'Bem-vindo'}
-                    </p>
-                    <h1 className="text-3xl sm:text-4xl font-light text-ink tracking-tight mb-3">Vamos decolar.</h1>
-                    <p className="text-muted max-w-lg mx-auto">
-                        Conecte seu WhatsApp e explore as funções do Follem por aqui, sempre que precisar.
-                    </p>
+            <div>
+                <ConnectWhatsAppStep connected={connected} onConnected={() => setConnected(true)} />
+                <div className="mt-8">
+                    <OptionalSetupStep onNavigate={(href) => router.push(href)} />
                 </div>
+            </div>
 
-                <div className="bg-panel border border-line rounded-2xl p-6 sm:p-10 mb-12">
-                    <ConnectWhatsAppStep connected={connected} onConnected={() => setConnected(true)} />
-                    <div className="mt-8">
-                        <OptionalSetupStep onNavigate={(href) => router.push(href)} />
-                    </div>
-                </div>
+            <div>
+                <h2 className="text-lg font-semibold text-ink mb-4">O que você vai encontrar por aqui</h2>
+                <FeatureOverviewGrid />
+            </div>
 
-                <div className="mb-4">
-                    <p className="text-[11px] font-bold text-muted uppercase tracking-[0.3em] mb-4 text-center">
-                        O que você vai encontrar por aqui
-                    </p>
-                    <FeatureOverviewGrid />
-                </div>
-
-                <div className="flex flex-col items-center gap-3 pt-8">
-                    <Button href="/chat" variant="primary" showArrow>Ir para o chat</Button>
-                </div>
+            <div className="flex justify-start pb-4">
+                <Button href="/chat" variant="primary" showArrow>Ir para o chat</Button>
             </div>
         </div>
     )
