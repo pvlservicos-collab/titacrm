@@ -60,7 +60,7 @@ export default function ConnectWhatsAppStep({ connected, onConnected, onStep2Don
             <div className="border-2 border-accent-line rounded-2xl p-5 sm:p-7 bg-panel">
                 <p className="text-[11px] font-bold text-accent-2 uppercase tracking-[0.3em] mb-1">Etapa 01</p>
                 <h2 className="text-3xl font-bold text-ink tracking-tight mb-1">Conectar WhatsApp</h2>
-                <p className="text-sm text-muted mb-6">API Oficial da Meta. Sem webhook manual — já vem pronto abaixo.</p>
+                <p className="text-sm text-muted mb-6">API Oficial da Meta. Preencha os campos e cole a URL/Token no seu App da Meta.</p>
 
                 <WhatsAppCloudApiForm compact onConnected={onConnected} />
             </div>

@@ -32,10 +32,11 @@ function CopyField({ label, value, tooltip }: { label: string; value: string; to
                 <button
                     type="button"
                     onClick={handleCopy}
-                    className="p-2.5 text-muted hover:text-ink hover:bg-panel-2 border border-line rounded-lg transition-colors flex-shrink-0"
+                    className="flex items-center gap-1.5 px-3 py-2.5 text-sm font-medium text-muted hover:text-ink hover:bg-panel-2 border border-line rounded-lg transition-colors flex-shrink-0"
                     title="Copiar"
                 >
                     {copied ? <Check size={16} weight="bold" className="text-emerald-400" /> : <Copy size={16} />}
+                    {copied ? 'Copiado' : 'Copie'}
                 </button>
             </div>
         </div>
