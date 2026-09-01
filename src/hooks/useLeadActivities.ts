@@ -9,6 +9,7 @@ import { useSession } from 'next-auth/react'
 import { LeadActivityWithActor } from '@/lib/types'
 import { usePusherChannel } from './usePusher'
 import { useNotification } from '@/contexts/NotificationContext'
+import { DEMO_ORG_ID, demoActivitiesByLeadId } from '@/lib/demoData'
 
 const CHANNEL_LABELS: Record<string, string> = {
   whatsapp_evolution: 'Nº 2 (Evolution)',
@@ -23,7 +24,15 @@ export function useLeadActivities(organizationId: string, leadId: string) {
   const [error, setError] = useState<string | null>(null)
 
   const fetchActivities = useCallback(async (showLoading = true) => {
-    if (!organizationId || !leadId || !session) return
+    if (!organizationId || !leadId) return
+    // TEMPORÁRIO: leads demo do bypass de login não existem no banco — usa a
+    // conversa fake direto. Reverter junto com AuthGuard/middleware.
+    if (organizationId === DEMO_ORG_ID) {
+      setActivities(demoActivitiesByLeadId[leadId] || [])
+      setLoading(false)
+      return
+    }
+    if (!session) return
     try {
       if (showLoading) setLoading(true)
       const res = await fetch(`/api/leads/${leadId}/messages`)
@@ -87,6 +96,13 @@ export function useLeadActivities(organizationId: string, leadId: string) {
       actor: undefined,
     }
     setActivities((prev) => [...prev, optimisticMsg])
+
+    // TEMPORÁRIO: lead demo não existe no banco — mantém a mensagem só localmente
+    // em vez de tentar enviar de verdade. Reverter junto com AuthGuard/middleware.
+    if (organizationId === DEMO_ORG_ID) {
+      setActivities((prev) => prev.map((a) => (a.id === tempId ? { ...a, metadata: { ...a.metadata, is_optimistic: false } } : a)))
+      return
+    }
 
     try {
       const body: any = {

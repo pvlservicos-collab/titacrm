@@ -2,6 +2,9 @@
 
 import { useEffect, useState, useRef } from 'react'
 import { PipelineStage } from '@/lib/types'
+import { demoStages } from '@/lib/demoData'
+
+const DEMO_STAGE_IDS = new Set(demoStages.map(s => s.id))
 
 export function useLeadPipelineStages(stageId: string | undefined | null) {
   const [stages, setStages] = useState<PipelineStage[]>([])
@@ -10,6 +13,9 @@ export function useLeadPipelineStages(stageId: string | undefined | null) {
 
   useEffect(() => {
     if (!stageId) { setStages([]); cachedPipelineId.current = null; return }
+    // TEMPORÁRIO: etapas demo do bypass de login não existem no banco. Reverter
+    // junto com AuthGuard/middleware.
+    if (DEMO_STAGE_IDS.has(stageId)) { setStages(demoStages); return }
     if (stages.length > 0 && stages.some(s => s.id === stageId)) return
     fetchStages()
   }, [stageId])
