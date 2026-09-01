@@ -16,8 +16,6 @@ const DEFAULT_NEW_ROLE_PERMISSIONS = {
     view_chat: true,
     view_leads: true,
     view_settings: false,
-    view_logistica: true,
-    view_financeiro: true,
     view_funnels: true,
     view_logs: true,
     view_metrics: true,

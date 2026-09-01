@@ -12,7 +12,7 @@ import NotAuthorized from '@/components/Shared/NotAuthorized'
 import LoadingSpinner from '@/components/Shared/LoadingSpinner'
 import { CaretLeft, Info } from '@phosphor-icons/react'
 
-export default function ChatPage() {
+export default function ChatInstagramPage() {
   const { organizationId, loading, permissions, isMaster, roleName, currentOrganization, user, profileName } = useAuth()
 
   const { leads: globalLeads, loading: leadsLoading, moveLeadToStage, setLeads } = useLeadsContext()
@@ -20,9 +20,9 @@ export default function ChatPage() {
   const searchParams = useSearchParams()
   const leadIdFromUrl = searchParams.get('leadId')
 
-  // Aba WhatsApp API — Instagram tem aba própria em /chat/instagram
+  // Aba DM Instagram — WhatsApp fica em /chat
   const allLeads = globalLeads.filter(l => {
-    if (getLeadChannel(l) === 'instagram') return false
+    if (getLeadChannel(l) !== 'instagram') return false
     if (permissions?.leads?.view_own_only && currentOrganization?.id) {
       if (l.owner_member_id !== currentOrganization.id) return false;
     }
@@ -51,9 +51,6 @@ export default function ChatPage() {
     const fromMemory = globalLeads.find(l => l.id === leadIdFromUrl)
     if (fromMemory) {
       setSelectedLead(fromMemory)
-      // Sem isso, um link tipo /chat?leadId=... resolvia o lead certo em segundo plano
-      // mas no celular a tela continuava mostrando a lista de conversas — a pessoa
-      // precisava tocar de novo pra entrar na conversa de verdade.
       setMobileView('conversation')
       return
     }
@@ -107,14 +104,11 @@ export default function ChatPage() {
     try {
       let firstStageId: string | undefined;
 
-      // Optimistic Check: Do we already have the stages for this pipeline in memory?
-      // usePipeline's stages map might have it if it was ever loaded or is the default.
       const cachedStages = stagesMap ? stagesMap[newPipelineId] : undefined;
       if (cachedStages && cachedStages.length > 0) {
         firstStageId = cachedStages[0].id;
       }
 
-      // Fallback: Fetch from database if we don't have it in memory
       if (!firstStageId) {
         const stagesRes = await fetch(`/api/pipelines/${newPipelineId}/stages`)
         if (!stagesRes.ok) { console.error('Failed to fetch stages'); return }
@@ -149,7 +143,6 @@ export default function ChatPage() {
       return { ...l, lead_tags: newTags }
     }))
 
-    // Note: selectedLead doesn't strictly need manual matching if it falls back to displayedLead reading from allLeads, but we'll update it just in case
     if (selectedLead?.id === targetLeadId) {
       setSelectedLead((prev) => {
         if (!prev) return prev
@@ -170,8 +163,6 @@ export default function ChatPage() {
     const memberId = currentOrganization?.id || ''
     const fullName = profileName || user?.name || user?.email || ''
     const leadId = displayedLead?.id
-    // Só assume automaticamente quem respondeu se o lead ainda não tem responsável —
-    // nunca sobrescreve uma atribuição manual feita por outra pessoa.
     const alreadyHasOwner = !!displayedLead?.owner_member_id
 
     setLeads(prev => prev.map(l => {
@@ -188,7 +179,6 @@ export default function ChatPage() {
       }
       return l
     }))
-    // Also update selectedLead so the sidebar refreshes immediately
     if (selectedLead && selectedLead.id === leadId) {
       setSelectedLead(prev => {
         if (!prev) return prev
@@ -284,7 +274,7 @@ export default function ChatPage() {
             </div>
           ) : (
             <div className="flex items-center justify-center h-full bg-[var(--chat-bg-conversation)] text-[var(--chat-text-muted)]">
-              Integre alguma fonte de conversas
+              Nenhuma conversa do Instagram ainda.
             </div>
           )
         )}
@@ -334,7 +324,7 @@ export default function ChatPage() {
           />
         ) : (
           <div className="flex items-center justify-center h-full bg-[var(--chat-bg-conversation)] text-[var(--chat-text-muted)]">
-            Integre alguma fonte de conversas
+            Nenhuma conversa do Instagram ainda.
           </div>
         )}
       </div>
@@ -357,4 +347,3 @@ export default function ChatPage() {
     </div>
   )
 }
-

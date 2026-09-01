@@ -16,8 +16,8 @@ import InstallAppBanner from '@/components/Shared/InstallAppBanner'
  *
  * LeadsProvider não fica mais aqui — só Pipeline e Chat usam a lista de leads,
  * então cada um tem seu próprio layout local (pipeline/layout.tsx, chat/layout.tsx,
- * chat-evolution/layout.tsx) que o monta. Páginas como Financeiro e Logística
- * deixam de pagar o custo de /api/leads?returnAll=true em toda navegação.
+ * chat-evolution/layout.tsx) que o monta. As demais páginas deixam de pagar o
+ * custo de /api/leads?returnAll=true em toda navegação.
  */
 export default function AuthenticatedLayout({
     children,

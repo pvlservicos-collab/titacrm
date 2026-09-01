@@ -19,8 +19,6 @@ interface PermissionsSchema {
     view_chat: boolean
     view_leads: boolean
     view_settings: boolean
-    view_logistica: boolean
-    view_financeiro: boolean
     view_funnels: boolean
     view_logs: boolean
     view_metrics: boolean
@@ -38,8 +36,6 @@ const defaultPermissions: PermissionsSchema = {
     view_chat: true,
     view_leads: true,
     view_settings: false,
-    view_logistica: true,
-    view_financeiro: true,
     view_funnels: true,
     view_logs: true,
     view_metrics: true,
@@ -208,8 +204,6 @@ export default function RolePermissionsPanel({ organizationId, selectedRoleId }:
             <PermissionRow title="Visualizar Pipeline" description="Permite o acesso ao módulo de Negócios e Pipeline." module="settings" action="view_pipeline" permissions={permissions} isAdmin={isAdmin} handleToggle={handleToggle} />
             <PermissionRow title="Visualizar Chat" description="Permite o acesso ao módulo de Chat / WhatsApp." module="settings" action="view_chat" permissions={permissions} isAdmin={isAdmin} handleToggle={handleToggle} />
             <PermissionRow title="Visualizar Leads" description="Permite o acesso ao módulo central de Leads." module="settings" action="view_leads" permissions={permissions} isAdmin={isAdmin} handleToggle={handleToggle} />
-            <PermissionRow title="Visualizar Logística" description="Permite o acesso à tela de pedidos e entregas." module="settings" action="view_logistica" permissions={permissions} isAdmin={isAdmin} handleToggle={handleToggle} />
-            <PermissionRow title="Visualizar Financeiro" description="Permite o acesso ao dashboard financeiro e contas a pagar." module="settings" action="view_financeiro" permissions={permissions} isAdmin={isAdmin} handleToggle={handleToggle} />
             <PermissionRow title="Visualizar Funil de Mensagens" description="Permite o acesso às automações de mensagens." module="settings" action="view_funnels" permissions={permissions} isAdmin={isAdmin} handleToggle={handleToggle} />
             <PermissionRow title="Visualizar Logs" description="Permite o acesso ao histórico de eventos do sistema." module="settings" action="view_logs" permissions={permissions} isAdmin={isAdmin} handleToggle={handleToggle} />
             <PermissionRow title="Visualizar Métricas" description="Permite o acesso aos relatórios e métricas." module="settings" action="view_metrics" permissions={permissions} isAdmin={isAdmin} handleToggle={handleToggle} />

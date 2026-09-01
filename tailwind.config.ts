@@ -35,7 +35,7 @@ const config: Config = {
         neuehaas: ['"Neue Haas Grotesk Display Pro"', 'system-ui', 'sans-serif'],
       },
       boxShadow: {
-        glow: '0 0 40px rgba(61,123,255,.35)',
+        glow: '0 0 40px rgba(242,199,68,.35)',
       },
     },
   },

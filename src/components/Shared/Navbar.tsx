@@ -6,7 +6,8 @@ import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import {
   ChartBar,
   Kanban,
-  ChatCircleDots,
+  WhatsappLogo,
+  InstagramLogo,
   Users,
   MagnifyingGlass,
   Plus,
@@ -15,8 +16,6 @@ import {
   SignOut,
   Buildings,
   FlowArrow,
-  Truck,
-  CurrencyDollar,
   Sun,
   Moon,
   List,
@@ -35,11 +34,10 @@ import { usePipelineFilters } from '@/contexts/FilterContext'
 const NAV_ITEMS = [
   { label: 'Início', href: '/', icon: House },
   { label: 'Pipeline', href: '/pipeline', icon: Kanban },
-  { label: 'Chat', href: '/chat', icon: ChatCircleDots },
+  { label: 'WhatsApp API', href: '/chat', icon: WhatsappLogo },
+  { label: 'DM Instagram', href: '/chat/instagram', icon: InstagramLogo },
   { label: 'Funil de Mensagens', href: '/funnels', icon: FlowArrow },
   { label: 'Métricas', href: '/metrics', icon: ChartBar },
-  { label: 'Logística', href: '/logistica', icon: Truck },
-  { label: 'Financeiro', href: '/financeiro', icon: CurrencyDollar },
   { label: 'Configurações', href: '/settings/organization', icon: Gear },
   { label: 'Admin', href: '/admin', icon: ShieldCheck },
 ]
@@ -47,7 +45,7 @@ const NAV_ITEMS = [
 // Destinos mais usados — ficam sempre à mão na barra inferior do celular.
 // Os demais (Configurações, Funil de Mensagens, Métricas) ficam atrás do "Mais",
 // que abre a mesma gaveta lateral — só um sistema de navegação por vez no celular.
-const MOBILE_TAB_LABELS = ['Chat', 'Pipeline', 'Logística', 'Financeiro']
+const MOBILE_TAB_LABELS = ['WhatsApp API', 'DM Instagram', 'Pipeline']
 
 export default function Navbar() {
   const pathname = usePathname()
@@ -115,6 +113,11 @@ export default function Navbar() {
     // "administrador"/"owner", que não é o valor real usado em lugar nenhum do app).
     if (isMaster || roleName?.toLowerCase() === 'administrador' || roleName?.toLowerCase() === 'owner' || permissions?.['*']) return true
 
+    // TEMPORÁRIO: com o bypass de login (AuthGuard/middleware), não existe sessão
+    // real então `permissions` nunca carrega — sem isso o menu só mostrava Início.
+    // Reativar: voltar pra `if (!permissions) return false`.
+    if (!permissions) return true
+
     // If permissions aren't loaded yet, default to false (except Dashboard maybe, but safer to hide until loaded)
     if (!permissions) return false
 
@@ -123,9 +126,8 @@ export default function Navbar() {
       case 'Dashboard': return !!permissions.settings?.view_dashboard
       case 'Leads': return !!permissions.settings?.view_leads
       case 'Pipeline': return !!permissions.settings?.view_pipeline
-      case 'Chat': return !!permissions.settings?.view_chat
-      case 'Logística': return !!permissions.settings?.view_logistica
-      case 'Financeiro': return !!permissions.settings?.view_financeiro
+      case 'WhatsApp API': return !!permissions.settings?.view_chat
+      case 'DM Instagram': return !!permissions.settings?.view_chat
       case 'Funil de Mensagens': return !!permissions.settings?.view_funnels
       case 'Logs': return !!permissions.settings?.view_logs
       case 'Métricas': return !!permissions.settings?.view_metrics
@@ -141,8 +143,8 @@ export default function Navbar() {
       <div className="flex items-center gap-8">
         {/* Logo */}
         <Link href="/" className="flex items-center gap-2">
-          <img src="/logos/Atlas.svg" alt="Follem Logo" className="h-6 w-auto object-contain" />
-          <span className="font-display font-bold text-ink hidden sm:inline">Follem</span>
+          <img src="/logos/T-logo.svg" alt="TitaCRM Logo" className="h-6 w-auto object-contain" />
+          <span className="font-display font-bold text-ink hidden sm:inline">TitaCRM</span>
         </Link>
 
         {/* Nav Tabs (desktop) */}
@@ -304,8 +306,8 @@ export default function Navbar() {
         <div className="absolute left-0 top-0 bottom-0 w-72 max-w-[85vw] bg-panel shadow-xl flex flex-col">
           <div className="flex items-center justify-between h-14 px-4 border-b border-line">
             <Link href="/" className="flex items-center gap-2" onClick={() => setShowMobileMenu(false)}>
-              <img src="/logos/Atlas.svg" alt="Follem Logo" className="h-6 w-auto object-contain" />
-              <span className="font-display font-bold text-ink">Follem</span>
+              <img src="/logos/T-logo.svg" alt="TitaCRM Logo" className="h-6 w-auto object-contain" />
+              <span className="font-display font-bold text-ink">TitaCRM</span>
             </Link>
             <button
               onClick={() => setShowMobileMenu(false)}

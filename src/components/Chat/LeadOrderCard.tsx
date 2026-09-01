@@ -1,10 +1,10 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { ArrowSquareOut, PencilSimple } from '@phosphor-icons/react'
+import { PencilSimple } from '@phosphor-icons/react'
 import { LeadWithOwner } from '@/lib/types'
 import { PAYMENT_STATUS_META, DELIVERY_STATUS_META, TONE_STYLES } from '@/lib/orderStatus'
-import OrderDetailModal, { OrderDetail } from '@/app/(authenticated)/logistica/OrderDetailModal'
+import OrderDetailModal, { OrderDetail } from './OrderDetailModal'
 
 interface OrderSummary {
   id: string
@@ -141,15 +141,9 @@ export default function LeadOrderCard({ lead, refreshKey }: LeadOrderCardProps) 
       </div>
 
       {orders.length > 1 && (
-        <a
-          href={`/logistica?search=${encodeURIComponent(lead.phone || '')}`}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="flex items-center gap-1 text-[11px] font-medium text-[var(--chat-accent)] hover:underline pt-0.5"
-        >
-          Ver todos os pedidos ({orders.length})
-          <ArrowSquareOut size={11} weight="bold" />
-        </a>
+        <p className="text-[11px] font-medium text-[var(--chat-text-tertiary)] pt-0.5">
+          {orders.length} pedidos deste contato
+        </p>
       )}
 
       {detailOrder && (

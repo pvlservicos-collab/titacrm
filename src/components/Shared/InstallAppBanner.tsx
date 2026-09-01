@@ -83,7 +83,7 @@ export default function InstallAppBanner() {
         <div className="flex-1 min-w-0">
           {platform === 'android' ? (
             <>
-              <p className="text-sm font-semibold text-[#e9edef]">Instalar o Follem</p>
+              <p className="text-sm font-semibold text-[#e9edef]">Instalar o TitaCRM</p>
               <p className="text-xs text-[#8696a0] mt-0.5">Adicione à tela de início pra abrir como um app, em tela cheia.</p>
               <button
                 onClick={handleInstall}
@@ -96,7 +96,7 @@ export default function InstallAppBanner() {
             </>
           ) : (
             <>
-              <p className="text-sm font-semibold text-[#e9edef]">Adicione o Follem à tela de início</p>
+              <p className="text-sm font-semibold text-[#e9edef]">Adicione o TitaCRM à tela de início</p>
               <p className="text-xs text-[#8696a0] mt-1 flex items-center gap-1 flex-wrap">
                 Toque em <ShareFat size={14} weight="bold" className="text-[#53bdeb]" /> Compartilhar e depois em "Adicionar à Tela de Início"
               </p>

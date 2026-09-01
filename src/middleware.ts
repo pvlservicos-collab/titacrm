@@ -32,11 +32,15 @@ export function middleware(req: NextRequest) {
     req.cookies.get('next-auth.session-token') ??
     req.cookies.get('__Secure-next-auth.session-token')
 
-  if (!sessionToken) {
-    const loginUrl = new URL('/login', req.url)
-    loginUrl.searchParams.set('callbackUrl', pathname)
-    return NextResponse.redirect(loginUrl)
-  }
+  // TEMPORÁRIO: redirect pro /login desativado a pedido (revisão visual do
+  // redesign sem precisar logar). Rotas de API continuam retornando 401 nos
+  // handlers (authenticateRequest), já que não existe sessão real por trás.
+  // Reativar: descomentar o bloco abaixo.
+  // if (!sessionToken) {
+  //   const loginUrl = new URL('/login', req.url)
+  //   loginUrl.searchParams.set('callbackUrl', pathname)
+  //   return NextResponse.redirect(loginUrl)
+  // }
 
   return NextResponse.next()
 }

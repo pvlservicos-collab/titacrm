@@ -1,4 +1,4 @@
-# Follem CRM
+# TitaCRM
 
 CRM multicanal (WhatsApp/Instagram) multi-tenant. Next.js 15 + React 19, Drizzle ORM
 sobre Postgres, NextAuth v5, Pusher, Vercel Blob.

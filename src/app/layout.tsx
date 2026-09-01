@@ -6,12 +6,12 @@ import { NotificationProvider } from '@/contexts/NotificationContext'
 import { ThemeProvider } from '@/contexts/ThemeContext'
 
 export const metadata: Metadata = {
-  title: 'Follem CRM',
+  title: 'TitaCRM',
   description: 'Sales CRM with AI Insights and Real-time Collaboration',
   appleWebApp: {
     capable: true,
     statusBarStyle: 'black-translucent',
-    title: 'Follem',
+    title: 'TitaCRM',
   },
   icons: {
     apple: '/icons/apple-touch-icon.png',
@@ -22,7 +22,7 @@ export const viewport: Viewport = {
   width: 'device-width',
   initialScale: 1,
   viewportFit: 'cover',
-  themeColor: '#050609',
+  themeColor: '#060606',
 }
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

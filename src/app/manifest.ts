@@ -2,8 +2,8 @@ import type { MetadataRoute } from 'next'
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: 'Follem CRM',
-    short_name: 'Follem',
+    name: 'TitaCRM',
+    short_name: 'TitaCRM',
     description: 'Atendimento, pipeline e logística em um só app.',
     start_url: '/',
     display: 'standalone',

@@ -27,7 +27,7 @@
 }
 
 /* ============================================
-   BRAND TOKENS — identidade nova (preto espacial + azul elétrico)
+   BRAND TOKENS — identidade nova (preto + cinza escuro + amarelo)
    Incondicional em :root (não dentro de .dark): só recebemos a paleta escura da
    marca, não uma versão clara dela — então essas variáveis já valem assim que uma
    tela migra pra elas, independente do toggle claro/escuro do ThemeContext. Esse
@@ -35,16 +35,16 @@
    ".dark" mais abaixo, que agora aponta pra esses mesmos tokens).
    ============================================ */
 :root {
-  --void: #050609;
-  --panel: #0a0d15;
-  --panel-2: #0c101a;
-  --ink: #f2f5fc;
-  --muted: #8b93a7;
-  --line: rgba(255, 255, 255, 0.07);
-  --blue: #3d7bff;
-  --blue-2: #5b9bff;
-  --blue-line: rgba(80, 140, 255, 0.28);
-  --glow-primary: 0 0 40px rgba(61, 123, 255, 0.35);
+  --void: #060606;
+  --panel: #141414;
+  --panel-2: #1c1c1c;
+  --ink: #f5f5f2;
+  --muted: #9a9a94;
+  --line: rgba(255, 255, 255, 0.08);
+  --blue: #f2c744;
+  --blue-2: #ffdd66;
+  --blue-line: rgba(242, 199, 68, 0.28);
+  --glow-primary: 0 0 40px rgba(242, 199, 68, 0.35);
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -116,7 +116,7 @@ h1, h2 {
 
 /* ============================================
    DARK MODE — Light-section overrides
-   Affects Pipeline, Settings, Logística, Financeiro, Metrics etc.
+   Affects Pipeline, Settings, Metrics etc.
    ============================================ */
 .dark nav.bg-white,
 .dark .dark-nav {
