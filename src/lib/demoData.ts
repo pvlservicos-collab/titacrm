@@ -112,6 +112,87 @@ function buildThread(leadId: string, lines: Array<{ from: 'lead' | 'human'; text
   }))
 }
 
+// ── Funil de Mensagens (follow-up com temporizador) ─────────────────────────
+interface DemoFunnelBlock {
+  id: string
+  type: 'trigger' | 'message' | 'wait' | 'condition' | 'end'
+  positionX: number
+  positionY: number
+  config: Record<string, any>
+}
+
+interface DemoFunnelConnection {
+  id: string
+  sourceBlockId: string
+  targetBlockId: string
+  branch: 'default' | 'yes' | 'no'
+}
+
+interface DemoFunnel {
+  id: string
+  name: string
+  trigger: 'novo_pago' | 'novo_recuperacao'
+  is_active: boolean
+  created_at: string
+  blocks: DemoFunnelBlock[]
+  connections: DemoFunnelConnection[]
+}
+
+function linearConnections(funnelId: string, blockIds: string[]): DemoFunnelConnection[] {
+  const conns: DemoFunnelConnection[] = []
+  for (let i = 0; i < blockIds.length - 1; i++) {
+    conns.push({ id: `${funnelId}-conn-${i}`, sourceBlockId: blockIds[i], targetBlockId: blockIds[i + 1], branch: 'default' })
+  }
+  return conns
+}
+
+const RECOVERY_FUNNEL_ID = 'demo-funnel-recuperacao-000001'
+const recoveryBlocks: DemoFunnelBlock[] = [
+  { id: `${RECOVERY_FUNNEL_ID}-trigger`, type: 'trigger', positionX: 0, positionY: 100, config: {} },
+  { id: `${RECOVERY_FUNNEL_ID}-msg1`, type: 'message', positionX: 320, positionY: 100, config: { text: 'Oi {{nome}}! Vi que você deixou uns itens no carrinho 👀 Posso te ajudar a finalizar?' } },
+  { id: `${RECOVERY_FUNNEL_ID}-wait1`, type: 'wait', positionX: 640, positionY: 100, config: { value: 30, unit: 'minutes' } },
+  { id: `${RECOVERY_FUNNEL_ID}-msg2`, type: 'message', positionX: 960, positionY: 100, config: { text: 'Ainda dá tempo! Separei um cupom de 10% pra você finalizar hoje 🙂' } },
+  { id: `${RECOVERY_FUNNEL_ID}-wait2`, type: 'wait', positionX: 1280, positionY: 100, config: { value: 1, unit: 'days' } },
+  { id: `${RECOVERY_FUNNEL_ID}-end`, type: 'end', positionX: 1600, positionY: 100, config: {} },
+]
+
+const POSVENDA_FUNNEL_ID = 'demo-funnel-posvenda-0000001'
+const posvendaBlocks: DemoFunnelBlock[] = [
+  { id: `${POSVENDA_FUNNEL_ID}-trigger`, type: 'trigger', positionX: 0, positionY: 100, config: {} },
+  { id: `${POSVENDA_FUNNEL_ID}-msg1`, type: 'message', positionX: 320, positionY: 100, config: { text: 'Muito obrigado pela compra! Seu pedido já está sendo preparado 🎉' } },
+  { id: `${POSVENDA_FUNNEL_ID}-wait1`, type: 'wait', positionX: 640, positionY: 100, config: { value: 2, unit: 'hours' } },
+  { id: `${POSVENDA_FUNNEL_ID}-msg2`, type: 'message', positionX: 960, positionY: 100, config: { text: 'Como está sendo sua experiência até aqui? Qualquer coisa é só chamar 🙂' } },
+  { id: `${POSVENDA_FUNNEL_ID}-wait2`, type: 'wait', positionX: 1280, positionY: 100, config: { value: 3, unit: 'days' } },
+  { id: `${POSVENDA_FUNNEL_ID}-msg3`, type: 'message', positionX: 1600, positionY: 100, config: { text: 'Já deu tempo de usar? Adoraríamos saber sua opinião ⭐' } },
+  { id: `${POSVENDA_FUNNEL_ID}-end`, type: 'end', positionX: 1920, positionY: 100, config: {} },
+]
+
+export const demoFunnels: DemoFunnel[] = [
+  {
+    id: RECOVERY_FUNNEL_ID,
+    name: 'Recuperação de Carrinho',
+    trigger: 'novo_recuperacao',
+    is_active: true,
+    created_at: hoursAgo(240),
+    blocks: recoveryBlocks,
+    connections: linearConnections(RECOVERY_FUNNEL_ID, recoveryBlocks.map((b) => b.id)),
+  },
+  {
+    id: POSVENDA_FUNNEL_ID,
+    name: 'Boas-vindas Pós-Venda',
+    trigger: 'novo_pago',
+    is_active: true,
+    created_at: hoursAgo(168),
+    blocks: posvendaBlocks,
+    connections: linearConnections(POSVENDA_FUNNEL_ID, posvendaBlocks.map((b) => b.id)),
+  },
+]
+
+export const demoFunnelSummaries = [
+  { id: RECOVERY_FUNNEL_ID, name: 'Recuperação de Carrinho', trigger: 'novo_recuperacao', is_active: true, created_at: hoursAgo(240), metrics: { entradas: 84, mensagens_enviadas: 152, cliques: 21, cliques_total: 84, taxa_clique: 0.25 } },
+  { id: POSVENDA_FUNNEL_ID, name: 'Boas-vindas Pós-Venda', trigger: 'novo_pago', is_active: true, created_at: hoursAgo(168), metrics: { entradas: 96, mensagens_enviadas: 268, cliques: 9, cliques_total: 96, taxa_clique: 0.09 } },
+]
+
 export const demoActivitiesByLeadId: Record<string, LeadActivityWithActor[]> = {
   'demo-lead-01': buildThread('demo-lead-01', [
     { from: 'lead', text: 'Oi, vi o produto no Instagram e amei!', hoursAgo: 3 },

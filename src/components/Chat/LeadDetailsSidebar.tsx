@@ -21,6 +21,8 @@ import {
   ShoppingCart,
   Trash,
   InstagramLogo,
+  Briefcase,
+  Database,
 } from '@phosphor-icons/react'
 import { CustomFieldDefinition, LeadWithOwner, PipelineStage, LeadStageHistory, Pipeline } from '@/lib/types'
 import { useSession } from 'next-auth/react'
@@ -57,14 +59,16 @@ interface LeadDetailsSidebarProps {
   onGoToConversation?: () => void
 }
 
-const ADDRESS_FIELDS: { key: 'cep' | 'address' | 'address_number' | 'address_complement' | 'neighborhood' | 'city' | 'state'; label: string; placeholder: string }[] = [
-  { key: 'cep', label: 'CEP', placeholder: 'Adicionar CEP...' },
-  { key: 'address', label: 'Rua', placeholder: 'Adicionar rua...' },
-  { key: 'address_number', label: 'Número', placeholder: 'Adicionar número...' },
-  { key: 'address_complement', label: 'Complemento', placeholder: 'Adicionar complemento...' },
-  { key: 'neighborhood', label: 'Bairro', placeholder: 'Adicionar bairro...' },
-  { key: 'city', label: 'Cidade', placeholder: 'Adicionar cidade...' },
-  { key: 'state', label: 'Estado', placeholder: 'Adicionar estado...' },
+interface Appointment {
+  id: string
+  title: string
+  date: string
+}
+
+const PROFESSIONAL_FIELDS: { key: 'profession' | 'company' | 'role'; label: string; placeholder: string }[] = [
+  { key: 'profession', label: 'Profissão', placeholder: 'Adicionar profissão...' },
+  { key: 'company', label: 'Empresa', placeholder: 'Adicionar empresa...' },
+  { key: 'role', label: 'Cargo', placeholder: 'Adicionar cargo...' },
 ]
 
 
@@ -110,6 +114,13 @@ export default function LeadDetailsSidebar({
 
   const [showOrderModal, setShowOrderModal] = useState(false)
   const [orderRefreshKey, setOrderRefreshKey] = useState(0)
+
+  // Central de DADOS — agenda de compromissos e definições profissionais. Sem
+  // tabela própria ainda, fica só na sessão (não persiste ao recarregar).
+  const [appointments, setAppointments] = useState<Appointment[]>([])
+  const [newAppointmentTitle, setNewAppointmentTitle] = useState('')
+  const [newAppointmentDate, setNewAppointmentDate] = useState('')
+  const [professionalInfo, setProfessionalInfo] = useState<Record<string, string>>({})
   const [webhookStatus, setWebhookStatus] = useState<{
     key: ChatButtonKey
     status: 'sending' | 'success' | 'error'
@@ -281,6 +292,18 @@ export default function LeadDetailsSidebar({
       console.error(`Failed to update lead field ${field}`, err)
       if (onUpdateLead) onUpdateLead(lead.id, { [field]: prevValue } as any)
     }
+  }
+
+  const addAppointment = () => {
+    const title = newAppointmentTitle.trim()
+    if (!title || !newAppointmentDate) return
+    setAppointments(prev => [...prev, { id: `apt-${Date.now()}`, title, date: newAppointmentDate }].sort((a, b) => a.date.localeCompare(b.date)))
+    setNewAppointmentTitle('')
+    setNewAppointmentDate('')
+  }
+
+  const removeAppointment = (id: string) => {
+    setAppointments(prev => prev.filter(a => a.id !== id))
   }
 
   const handleDeleteHistory = async () => {
@@ -688,27 +711,94 @@ export default function LeadDetailsSidebar({
 
         <div className="border-t border-[var(--chat-border)]" />
 
-        {/* Endereço */}
+        {/* Central de DADOS */}
         <div>
-          <p className="text-[10px] font-bold uppercase tracking-wider text-[var(--chat-text-muted)] mb-3">
-            Endereço
+          <p className="text-[10px] font-bold uppercase tracking-wider text-[var(--chat-text-muted)] mb-3 flex items-center gap-1.5">
+            <Database size={12} weight="bold" />
+            DADOS
           </p>
-          <div className="space-y-3">
-            {ADDRESS_FIELDS.map(({ key, label, placeholder }) => (
-              <div key={key}>
-                <p className="text-[10px] font-bold uppercase tracking-wider text-[var(--chat-text-muted)] mb-1">
-                  {label}
-                </p>
-                <DebouncedInput
-                  type="text"
-                  className="w-full text-[13px] font-medium border-b border-[var(--chat-border)] pb-1 focus:outline-none focus:border-[var(--chat-accent)] bg-transparent text-[var(--chat-text-secondary)] placeholder-[var(--chat-text-tertiary)]"
-                  placeholder={placeholder}
-                  value={(lead[key] as string) || ''}
-                  onChange={(val) => saveContactField(key, String(val))}
-                  debounceTime={700}
-                />
+
+          <div className="space-y-4">
+            {/* Bloco: Agenda de compromissos */}
+            <div className="rounded-xl border border-[var(--chat-border)] bg-[var(--chat-bg-panel)] p-3 space-y-2.5">
+              <div className="flex items-center gap-1.5">
+                <CalendarBlank size={13} className="text-[var(--chat-accent)]" weight="bold" />
+                <p className="text-[11px] font-bold text-[var(--chat-text-secondary)]">Agenda de compromissos</p>
               </div>
-            ))}
+
+              {appointments.length === 0 ? (
+                <p className="text-[12px] text-[var(--chat-text-tertiary)]">Nenhum compromisso agendado.</p>
+              ) : (
+                <div className="space-y-1.5">
+                  {appointments.map((apt) => (
+                    <div key={apt.id} className="flex items-center justify-between gap-2 text-[12px]">
+                      <div className="min-w-0">
+                        <p className="text-[var(--chat-text-secondary)] truncate">{apt.title}</p>
+                        <p className="text-[10px] text-[var(--chat-text-tertiary)]">
+                          {new Date(apt.date).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}
+                        </p>
+                      </div>
+                      <button
+                        onClick={() => removeAppointment(apt.id)}
+                        className="text-[var(--chat-text-tertiary)] hover:text-red-400 flex-shrink-0"
+                        aria-label="Remover compromisso"
+                      >
+                        <X size={12} />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              <div className="flex items-center gap-1.5 pt-1">
+                <input
+                  type="text"
+                  placeholder="Título..."
+                  value={newAppointmentTitle}
+                  onChange={(e) => setNewAppointmentTitle(e.target.value)}
+                  className="flex-1 min-w-0 text-[12px] border-b border-[var(--chat-border)] pb-1 focus:outline-none focus:border-[var(--chat-accent)] bg-transparent text-[var(--chat-text-secondary)] placeholder-[var(--chat-text-tertiary)]"
+                />
+                <input
+                  type="datetime-local"
+                  value={newAppointmentDate}
+                  onChange={(e) => setNewAppointmentDate(e.target.value)}
+                  className="text-[11px] border-b border-[var(--chat-border)] pb-1 focus:outline-none focus:border-[var(--chat-accent)] bg-transparent text-[var(--chat-text-secondary)]"
+                />
+                <button
+                  onClick={addAppointment}
+                  className="w-6 h-6 flex-shrink-0 flex items-center justify-center rounded-full bg-[var(--chat-accent)] text-white disabled:opacity-40"
+                  disabled={!newAppointmentTitle.trim() || !newAppointmentDate}
+                  aria-label="Adicionar compromisso"
+                >
+                  <Plus size={12} weight="bold" />
+                </button>
+              </div>
+            </div>
+
+            {/* Bloco: Definições profissionais */}
+            <div className="rounded-xl border border-[var(--chat-border)] bg-[var(--chat-bg-panel)] p-3 space-y-3">
+              <div className="flex items-center gap-1.5">
+                <Briefcase size={13} className="text-[var(--chat-accent)]" weight="bold" />
+                <p className="text-[11px] font-bold text-[var(--chat-text-secondary)]">Definições profissionais</p>
+              </div>
+              <div className="space-y-3">
+                {PROFESSIONAL_FIELDS.map(({ key, label, placeholder }) => (
+                  <div key={key}>
+                    <p className="text-[10px] font-bold uppercase tracking-wider text-[var(--chat-text-tertiary)] mb-1">
+                      {label}
+                    </p>
+                    <DebouncedInput
+                      type="text"
+                      className="w-full text-[13px] font-medium border-b border-[var(--chat-border)] pb-1 focus:outline-none focus:border-[var(--chat-accent)] bg-transparent text-[var(--chat-text-secondary)] placeholder-[var(--chat-text-tertiary)]"
+                      placeholder={placeholder}
+                      value={professionalInfo[key] || ''}
+                      onChange={(val) => setProfessionalInfo((prev) => ({ ...prev, [key]: String(val) }))}
+                      debounceTime={400}
+                    />
+                  </div>
+                ))}
+              </div>
+            </div>
           </div>
         </div>
 

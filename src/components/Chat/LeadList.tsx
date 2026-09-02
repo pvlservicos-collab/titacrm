@@ -7,7 +7,6 @@ import LoadingSpinner from '@/components/Shared/LoadingSpinner'
 import { useSession } from 'next-auth/react'
 import { useLeadSearch } from '@/hooks/useLeadSearch'
 import { useTags } from '@/hooks'
-import { getLeadChannel } from '@/lib/leadChannel'
 import LeadListItem from './LeadListItem'
 import ChatFilterTabs, { type ChatTab } from './ChatFilterTabs'
 
@@ -266,23 +265,14 @@ export default function LeadList({
   // Arquivada some das outras abas (igual WhatsApp) — só a aba "Arquivados" mostra.
   const nonArchivedHits = filteredHits.filter((hit) => !hit.lead.is_archived)
 
-  const tabCounts: Record<ChatTab, number> = { all: nonArchivedHits.length, unread: 0, whatsapp: 0, instagram: 0, archived: 0 }
+  const tabCounts: Record<ChatTab, number> = { all: nonArchivedHits.length, human: 0 }
   for (const hit of nonArchivedHits) {
-    if (hit.lead.is_unread) tabCounts.unread++
-    const channel = getLeadChannel(hit.lead)
-    if (channel === 'whatsapp') tabCounts.whatsapp++
-    else if (channel === 'instagram') tabCounts.instagram++
+    if (hit.lead.last_message_sender_type === 'human') tabCounts.human++
   }
-  tabCounts.archived = filteredHits.length - nonArchivedHits.length
 
-  const tabFilteredHitsBeforeTags = activeTab === 'archived'
-    ? filteredHits.filter((hit) => hit.lead.is_archived)
-    : activeTab === 'all'
-      ? nonArchivedHits
-      : nonArchivedHits.filter((hit) => {
-          if (activeTab === 'unread') return !!hit.lead.is_unread
-          return getLeadChannel(hit.lead) === activeTab
-        })
+  const tabFilteredHitsBeforeTags = activeTab === 'all'
+    ? nonArchivedHits
+    : nonArchivedHits.filter((hit) => hit.lead.last_message_sender_type === 'human')
 
   // Etiqueta é um filtro à parte, combinado com a aba ativa — não substitui, só
   // restringe mais. Mantém quem tem pelo menos uma das etiquetas marcadas.

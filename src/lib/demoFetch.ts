@@ -7,7 +7,7 @@
 // especificamente (LeadsContext, usePipeline, useLeadActivities) nem chegam a
 // cair aqui, porque já retornam os dados demo antes de chamar fetch. Isso é só
 // a rede de segurança pro resto do app. Reverter junto com AuthGuard/middleware.
-import { demoLeads, demoActivitiesByLeadId, demoPipeline, demoStages } from './demoData'
+import { demoLeads, demoActivitiesByLeadId, demoPipeline, demoStages, demoFunnels, demoFunnelSummaries } from './demoData'
 
 let demoModeActive = false
 let installed = false
@@ -59,6 +59,18 @@ function buildDemoResponse(path: string, method: string): Response {
   if (stageMatch && method === 'GET') {
     const stage = demoStages.find((s) => s.id === stageMatch[1])
     return stage ? jsonResponse({ data: stage }) : jsonResponse({ error: 'not found' }, 404)
+  }
+
+  if (path === '/api/funnels' && method === 'GET') {
+    return jsonResponse({ data: demoFunnelSummaries })
+  }
+  const funnelMatch = path.match(/^\/api\/funnels\/([^/]+)$/)
+  if (funnelMatch && method === 'GET') {
+    const funnel = demoFunnels.find((f) => f.id === funnelMatch[1])
+    return funnel ? jsonResponse({ data: funnel }) : jsonResponse({ error: 'not found' }, 404)
+  }
+  if (funnelMatch && (method === 'PATCH' || method === 'PUT')) {
+    return jsonResponse({ data: {} })
   }
 
   // Fallback genérico — qualquer outra rota de API vira uma resposta vazia
