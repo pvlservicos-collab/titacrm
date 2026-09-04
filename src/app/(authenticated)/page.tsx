@@ -2,6 +2,7 @@
 
 import { useAuth } from '@/hooks'
 import LoadingSpinner from '@/components/Shared/LoadingSpinner'
+import BusinessFlowDiagram from '@/components/Dashboard/BusinessFlowDiagram'
 import ChannelStatsSection from '@/components/Dashboard/ChannelStatsSection'
 import LeadsByDayChart from '@/components/Dashboard/LeadsByDayChart'
 import PurchaseMetricsSection from '@/components/Dashboard/PurchaseMetricsSection'
@@ -34,6 +35,7 @@ export default function InicioPage() {
                     <p className="text-sm text-muted mt-1">Visão geral do seu funil de aquisição e vendas.</p>
                 </div>
 
+                <BusinessFlowDiagram />
                 <ChannelStatsSection />
                 <LeadsByDayChart />
                 <PurchaseMetricsSection />
