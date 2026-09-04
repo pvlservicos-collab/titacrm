@@ -7,7 +7,7 @@
 // especificamente (LeadsContext, usePipeline, useLeadActivities) nem chegam a
 // cair aqui, porque já retornam os dados demo antes de chamar fetch. Isso é só
 // a rede de segurança pro resto do app. Reverter junto com AuthGuard/middleware.
-import { demoLeads, demoActivitiesByLeadId, demoPipeline, demoStages, demoFunnels, demoFunnelSummaries } from './demoData'
+import { demoLeads, demoActivitiesByLeadId, demoPipelines, demoStagesByPipeline, demoAllStages, demoFunnels, demoFunnelSummaries } from './demoData'
 
 let demoModeActive = false
 let installed = false
@@ -50,14 +50,15 @@ function buildDemoResponse(path: string, method: string): Response {
   }
 
   if (path === '/api/pipelines' && method === 'GET') {
-    return jsonResponse({ data: [{ ...demoPipeline, stages: demoStages }] })
+    return jsonResponse({ data: demoPipelines.map((p) => ({ ...p, stages: demoStagesByPipeline[p.id] })) })
   }
-  if (/^\/api\/pipelines\/[^/]+\/stages$/.test(path) && method === 'GET') {
-    return jsonResponse({ data: demoStages })
+  const pipelineStagesMatch = path.match(/^\/api\/pipelines\/([^/]+)\/stages$/)
+  if (pipelineStagesMatch && method === 'GET') {
+    return jsonResponse({ data: demoStagesByPipeline[pipelineStagesMatch[1]] || [] })
   }
   const stageMatch = path.match(/^\/api\/pipelines\/stages\/([^/]+)$/)
   if (stageMatch && method === 'GET') {
-    const stage = demoStages.find((s) => s.id === stageMatch[1])
+    const stage = demoAllStages.find((s) => s.id === stageMatch[1])
     return stage ? jsonResponse({ data: stage }) : jsonResponse({ error: 'not found' }, 404)
   }
 

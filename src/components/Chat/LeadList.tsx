@@ -9,6 +9,12 @@ import { useLeadSearch } from '@/hooks/useLeadSearch'
 import { useTags } from '@/hooks'
 import LeadListItem from './LeadListItem'
 import ChatFilterTabs, { type ChatTab } from './ChatFilterTabs'
+import { getWhatsAppWindowState } from '@/lib/whatsappWindow'
+
+function isUrgent(lead: LeadWithOwner): boolean {
+  const state = getWhatsAppWindowState(lead.last_activity_at)
+  return state?.zone === 'warning' || state?.zone === 'critical'
+}
 
 interface LeadListProps {
   leads: LeadWithOwner[]
@@ -265,14 +271,17 @@ export default function LeadList({
   // Arquivada some das outras abas (igual WhatsApp) — só a aba "Arquivados" mostra.
   const nonArchivedHits = filteredHits.filter((hit) => !hit.lead.is_archived)
 
-  const tabCounts: Record<ChatTab, number> = { all: nonArchivedHits.length, human: 0 }
+  const tabCounts: Record<ChatTab, number> = { all: nonArchivedHits.length, human: 0, urgent: 0 }
   for (const hit of nonArchivedHits) {
     if (hit.lead.last_message_sender_type === 'human') tabCounts.human++
+    if (isUrgent(hit.lead)) tabCounts.urgent++
   }
 
   const tabFilteredHitsBeforeTags = activeTab === 'all'
     ? nonArchivedHits
-    : nonArchivedHits.filter((hit) => hit.lead.last_message_sender_type === 'human')
+    : activeTab === 'human'
+      ? nonArchivedHits.filter((hit) => hit.lead.last_message_sender_type === 'human')
+      : nonArchivedHits.filter((hit) => isUrgent(hit.lead))
 
   // Etiqueta é um filtro à parte, combinado com a aba ativa — não substitui, só
   // restringe mais. Mantém quem tem pelo menos uma das etiquetas marcadas.

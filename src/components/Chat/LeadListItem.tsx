@@ -101,6 +101,11 @@ const LeadListItem = ({ lead, isSelected, onClick, onContextMenu, timeStr, hit, 
                             </div>
                         </div>
 
+                        {/* Status: se um humano da equipe já respondeu, isso prevalece sobre "só contactado" */}
+                        <span className={`text-[9px] font-bold uppercase tracking-wide ${lead.last_message_sender_type === 'human' ? 'text-teal-500' : 'text-[var(--chat-text-tertiary)]'}`}>
+                            {lead.last_message_sender_type === 'human' ? 'Respondeu (humano)' : 'Contactado'}
+                        </span>
+
                         <div className="flex items-center gap-1.5 overflow-hidden w-full">
                             {SenderIcon && <SenderIcon weight="fill" className={`flex-shrink-0 ${iconColor} w-3.5 h-3.5`} />}
                             <p className={`text-[13px] truncate ${lead.is_unread ? 'text-[var(--chat-text-secondary)] font-medium' : (lastMsg ? 'text-[var(--chat-text-muted)]' : 'text-[var(--chat-text-tertiary)] italic')}`}>

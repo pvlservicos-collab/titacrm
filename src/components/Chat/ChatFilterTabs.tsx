@@ -2,7 +2,7 @@
 
 import { memo } from 'react'
 
-export type ChatTab = 'all' | 'human'
+export type ChatTab = 'all' | 'human' | 'urgent'
 
 interface ChatFilterTabsProps {
   activeTab: ChatTab
@@ -11,8 +11,9 @@ interface ChatFilterTabsProps {
 }
 
 const TABS: { key: ChatTab; label: string }[] = [
-  { key: 'all', label: 'TODAS' },
-  { key: 'human', label: 'Humano' },
+  { key: 'all', label: 'TODOS' },
+  { key: 'human', label: 'HUMANO' },
+  { key: 'urgent', label: 'URGENTES' },
 ]
 
 function ChatFilterTabs({ activeTab, onChange, counts }: ChatFilterTabsProps) {

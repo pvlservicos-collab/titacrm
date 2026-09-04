@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { Pipeline, PipelineStage } from '@/lib/types'
-import { DEMO_ORG_ID, demoPipeline, demoStages } from '@/lib/demoData'
+import { DEMO_ORG_ID, demoPipelines, demoStagesByPipeline } from '@/lib/demoData'
 
 const EMPTY_ARRAY: PipelineStage[] = []
 
@@ -42,9 +42,9 @@ export function usePipeline(organizationId: string) {
     // TEMPORÁRIO: org demo do bypass de login não existe no banco — usa o
     // pipeline fake direto. Reverter junto com AuthGuard/middleware.
     if (organizationId === DEMO_ORG_ID) {
-      setPipelines([demoPipeline])
-      setSelectedPipelineId(demoPipeline.id)
-      setStages({ [demoPipeline.id]: demoStages })
+      setPipelines(demoPipelines)
+      setSelectedPipelineId(demoPipelines[0].id)
+      setStages(demoStagesByPipeline)
       setLoading(false)
       return
     }

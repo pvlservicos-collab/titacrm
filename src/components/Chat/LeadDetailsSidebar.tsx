@@ -26,7 +26,8 @@ import {
 } from '@phosphor-icons/react'
 import { CustomFieldDefinition, LeadWithOwner, PipelineStage, LeadStageHistory, Pipeline } from '@/lib/types'
 import { useSession } from 'next-auth/react'
-import { getInitials, formatPhone } from '@/lib/utils'
+import { getInitials, formatPhone, formatRelativeTime } from '@/lib/utils'
+import { getWhatsAppWindowState, WHATSAPP_WINDOW_ZONE_COLOR } from '@/lib/whatsappWindow'
 import FunnelMiniMap from './FunnelMiniMap'
 import LeadHistoryTimeline from './LeadHistoryTimeline'
 import { useTags, useCustomFields, useChatButtonSettings, useAuth } from '@/hooks'
@@ -114,6 +115,15 @@ export default function LeadDetailsSidebar({
 
   const [showOrderModal, setShowOrderModal] = useState(false)
   const [orderRefreshKey, setOrderRefreshKey] = useState(0)
+
+  // Recalcula a janela de 24h a cada minuto — sem isso, a barra e o rótulo
+  // ficariam parados no valor de quando o componente montou.
+  const [, forceTick] = useState(0)
+  useEffect(() => {
+    const interval = setInterval(() => forceTick((t) => t + 1), 60_000)
+    return () => clearInterval(interval)
+  }, [])
+  const windowState = getWhatsAppWindowState(lead.last_activity_at)
 
   // Central de DADOS — agenda de compromissos e definições profissionais. Sem
   // tabela própria ainda, fica só na sessão (não persiste ao recarregar).
@@ -514,6 +524,37 @@ export default function LeadDetailsSidebar({
               })()}
             </div>
           </div>
+        </div>
+
+        {/* Contadores + janela de 24h do WhatsApp */}
+        <div className="space-y-3">
+          <div className="grid grid-cols-2 gap-2">
+            <div className="rounded-xl border border-[var(--chat-border)] bg-[var(--chat-bg-panel)] px-3 py-2.5">
+              <p className="text-[9px] font-bold uppercase tracking-wider text-[var(--chat-text-tertiary)] mb-0.5">No funil há</p>
+              <p className="text-[13px] font-bold text-[var(--chat-text-secondary)]">{formatRelativeTime(lead.created_at)}</p>
+            </div>
+            <div className="rounded-xl border border-[var(--chat-border)] bg-[var(--chat-bg-panel)] px-3 py-2.5">
+              <p className="text-[9px] font-bold uppercase tracking-wider text-[var(--chat-text-tertiary)] mb-0.5">Última mensagem</p>
+              <p className="text-[13px] font-bold text-[var(--chat-text-secondary)]">{lead.last_activity_at ? formatRelativeTime(lead.last_activity_at) : '—'}</p>
+            </div>
+          </div>
+
+          {windowState && (
+            <div className="rounded-xl border border-[var(--chat-border)] bg-[var(--chat-bg-panel)] px-3 py-2.5">
+              <div className="flex items-center justify-between mb-1.5">
+                <p className="text-[9px] font-bold uppercase tracking-wider text-[var(--chat-text-tertiary)]">Janela de 24h</p>
+                <p className="text-[11px] font-bold" style={{ color: WHATSAPP_WINDOW_ZONE_COLOR[windowState.zone] }}>
+                  {windowState.remainingLabel}
+                </p>
+              </div>
+              <div className="h-1.5 rounded-full bg-[var(--chat-bg-hover)] overflow-hidden">
+                <div
+                  className="h-full rounded-full transition-all"
+                  style={{ width: `${windowState.percentRemaining}%`, backgroundColor: WHATSAPP_WINDOW_ZONE_COLOR[windowState.zone] }}
+                />
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Pedido do cliente — status de pagamento/entrega visíveis e editáveis */}

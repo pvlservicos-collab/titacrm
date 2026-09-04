@@ -19,25 +19,53 @@ export const demoCurrentOrganization: OrganizationMember = {
   profiles: { full_name: 'Você (demo)' },
 }
 
-const DEMO_STAGE_NOVO = 'demo-stage-novo-00000000000001'
-const DEMO_STAGE_CONVERSA = 'demo-stage-conversa-0000000001'
-const DEMO_STAGE_PROPOSTA = 'demo-stage-proposta-0000000001'
-const DEMO_STAGE_FECHADO = 'demo-stage-fechado-00000000001'
+// Duas origens de lead magnet, cada uma com o próprio pipeline/etapas — os 3
+// canais orgânicos (FORM, Site, Indicações) entram direto no funil de vendas,
+// esses dois têm o funil próprio de quem se cadastrou no material gratuito.
+const DEMO_PIPELINE_AGENDA_ID = 'demo-pipeline-agenda-00000001'
+const DEMO_PIPELINE_EVENTO_ID = 'demo-pipeline-evento-00000001'
 
-export const demoPipeline: Pipeline = {
-  id: DEMO_PIPELINE_ID,
+const DEMO_STAGE_CADASTRO = 'demo-stage-cadastro-0000000001'
+const DEMO_STAGE_VIU_AGENDA = 'demo-stage-viu-agenda-000000001'
+const DEMO_STAGE_APLICOU_SESSAO = 'demo-stage-aplicou-sessao-00001'
+const DEMO_STAGE_APLICOU_EVENTO = 'demo-stage-aplicou-evento-00001'
+const DEMO_STAGE_PREENCHEU_FORM = 'demo-stage-preencheu-form-00001'
+
+export const demoPipelineAgenda: Pipeline = {
+  id: DEMO_PIPELINE_AGENDA_ID,
   organization_id: DEMO_ORG_ID,
-  name: 'Vendas',
+  name: 'Minha Agenda em Ascensão',
   created_at: new Date().toISOString(),
   updated_at: new Date().toISOString(),
 }
 
-export const demoStages: PipelineStage[] = [
-  { id: DEMO_STAGE_NOVO, pipeline_id: DEMO_PIPELINE_ID, name: 'Novo contato', color: '#3987e5', rank: 0, created_at: new Date().toISOString() },
-  { id: DEMO_STAGE_CONVERSA, pipeline_id: DEMO_PIPELINE_ID, name: 'Em conversa', color: '#c98500', rank: 1, created_at: new Date().toISOString() },
-  { id: DEMO_STAGE_PROPOSTA, pipeline_id: DEMO_PIPELINE_ID, name: 'Proposta enviada', color: '#d95926', rank: 2, created_at: new Date().toISOString() },
-  { id: DEMO_STAGE_FECHADO, pipeline_id: DEMO_PIPELINE_ID, name: 'Fechado', color: '#199e70', rank: 3, created_at: new Date().toISOString() },
+export const demoPipelineEvento: Pipeline = {
+  id: DEMO_PIPELINE_EVENTO_ID,
+  organization_id: DEMO_ORG_ID,
+  name: 'Evento Ascensão',
+  created_at: new Date().toISOString(),
+  updated_at: new Date().toISOString(),
+}
+
+export const demoPipelines: Pipeline[] = [demoPipelineAgenda, demoPipelineEvento]
+
+export const demoStagesAgenda: PipelineStage[] = [
+  { id: DEMO_STAGE_CADASTRO, pipeline_id: DEMO_PIPELINE_AGENDA_ID, name: 'Cadastro', color: '#3987e5', rank: 0, created_at: new Date().toISOString() },
+  { id: DEMO_STAGE_VIU_AGENDA, pipeline_id: DEMO_PIPELINE_AGENDA_ID, name: 'Viu a agenda completa', color: '#c98500', rank: 1, created_at: new Date().toISOString() },
+  { id: DEMO_STAGE_APLICOU_SESSAO, pipeline_id: DEMO_PIPELINE_AGENDA_ID, name: 'Aplicou para sessão', color: '#199e70', rank: 2, created_at: new Date().toISOString() },
 ]
+
+export const demoStagesEvento: PipelineStage[] = [
+  { id: DEMO_STAGE_APLICOU_EVENTO, pipeline_id: DEMO_PIPELINE_EVENTO_ID, name: 'Aplicou para o evento', color: '#3987e5', rank: 0, created_at: new Date().toISOString() },
+  { id: DEMO_STAGE_PREENCHEU_FORM, pipeline_id: DEMO_PIPELINE_EVENTO_ID, name: 'Preencheu o form de inscrição', color: '#199e70', rank: 1, created_at: new Date().toISOString() },
+]
+
+export const demoStagesByPipeline: Record<string, PipelineStage[]> = {
+  [DEMO_PIPELINE_AGENDA_ID]: demoStagesAgenda,
+  [DEMO_PIPELINE_EVENTO_ID]: demoStagesEvento,
+}
+
+export const demoAllStages: PipelineStage[] = [...demoStagesAgenda, ...demoStagesEvento]
 
 const WHATSAPP_INTEGRATION = { id: 'demo-integration-whatsapp', organization_id: DEMO_ORG_ID, name: 'WhatsApp API', type: 'whatsapp_cloud_official', status: 'active' as const, created_at: new Date().toISOString() }
 const INSTAGRAM_INTEGRATION = { id: 'demo-integration-instagram', organization_id: DEMO_ORG_ID, name: 'Instagram Direct', type: 'instagram_direct', status: 'active' as const, created_at: new Date().toISOString() }
@@ -59,14 +87,17 @@ interface DemoLeadSeed {
 }
 
 const seeds: DemoLeadSeed[] = [
-  { id: 'demo-lead-01', title: 'Marina Alves', channel: 'whatsapp', stageId: DEMO_STAGE_PROPOSTA, lastMessage: 'Fechado, pode me mandar o link de pagamento?', senderType: 'lead', hoursAgoActivity: 0.3, value: 349.9, phone: '5511987650001' },
-  { id: 'demo-lead-02', title: 'Rafael Costa', channel: 'instagram', stageId: DEMO_STAGE_CONVERSA, lastMessage: 'Vocês entregam pra Zona Leste?', senderType: 'lead', hoursAgoActivity: 1.2 },
-  { id: 'demo-lead-03', title: 'Beatriz Nunes', channel: 'whatsapp', stageId: DEMO_STAGE_NOVO, lastMessage: 'Oi! Vi o anúncio de vocês, quero saber mais', senderType: 'lead', hoursAgoActivity: 2.5 },
-  { id: 'demo-lead-04', title: 'João Pedro Lima', channel: 'instagram', stageId: DEMO_STAGE_FECHADO, lastMessage: 'Perfeito, obrigado pela atenção!', senderType: 'lead', hoursAgoActivity: 4, value: 189.0 },
-  { id: 'demo-lead-05', title: 'Camila Duarte', channel: 'whatsapp', stageId: DEMO_STAGE_CONVERSA, lastMessage: 'Consegue parcelar em 3x?', senderType: 'lead', hoursAgoActivity: 5.5 },
-  { id: 'demo-lead-06', title: 'Studio Ipê (grupo)', channel: 'whatsapp', stageId: DEMO_STAGE_NOVO, lastMessage: 'Deixa eu confirmar com a equipe', senderType: 'human', hoursAgoActivity: 8 },
-  { id: 'demo-lead-07', title: 'Larissa Prado', channel: 'instagram', stageId: DEMO_STAGE_PROPOSTA, lastMessage: 'Amei, quero fechar!', senderType: 'lead', hoursAgoActivity: 12, value: 259.9 },
-  { id: 'demo-lead-08', title: 'Fernando Souza', channel: 'whatsapp', stageId: DEMO_STAGE_FECHADO, lastMessage: 'Recebi certinho, muito obrigado', senderType: 'lead', hoursAgoActivity: 26, value: 420.0 },
+  { id: 'demo-lead-01', title: 'Marina Alves', channel: 'whatsapp', stageId: DEMO_STAGE_APLICOU_SESSAO, lastMessage: 'Fechado, pode me mandar o link de pagamento?', senderType: 'lead', hoursAgoActivity: 0.3, value: 349.9, phone: '5511987650001' },
+  { id: 'demo-lead-02', title: 'Rafael Costa', channel: 'instagram', stageId: DEMO_STAGE_VIU_AGENDA, lastMessage: 'Vocês entregam pra Zona Leste?', senderType: 'lead', hoursAgoActivity: 1.2 },
+  { id: 'demo-lead-03', title: 'Beatriz Nunes', channel: 'whatsapp', stageId: DEMO_STAGE_CADASTRO, lastMessage: 'Oi! Vi o anúncio de vocês, quero saber mais', senderType: 'lead', hoursAgoActivity: 2.5 },
+  { id: 'demo-lead-04', title: 'João Pedro Lima', channel: 'instagram', stageId: DEMO_STAGE_PREENCHEU_FORM, lastMessage: 'Perfeito, obrigado pela atenção!', senderType: 'lead', hoursAgoActivity: 4, value: 189.0 },
+  { id: 'demo-lead-05', title: 'Camila Duarte', channel: 'whatsapp', stageId: DEMO_STAGE_VIU_AGENDA, lastMessage: 'Consegue parcelar em 3x?', senderType: 'lead', hoursAgoActivity: 5.5 },
+  // Janela quase fechando (< 6h restantes) — mostra a barra laranja e cai no filtro "Urgentes"
+  { id: 'demo-lead-06', title: 'Studio Ipê (grupo)', channel: 'whatsapp', stageId: DEMO_STAGE_APLICOU_EVENTO, lastMessage: 'Deixa eu confirmar com a equipe', senderType: 'human', hoursAgoActivity: 19 },
+  // Janela no vermelho (< 1h restante)
+  { id: 'demo-lead-07', title: 'Larissa Prado', channel: 'instagram', stageId: DEMO_STAGE_APLICOU_SESSAO, lastMessage: 'Amei, quero fechar!', senderType: 'lead', hoursAgoActivity: 23.5, value: 259.9 },
+  // Janela já encerrada (> 24h)
+  { id: 'demo-lead-08', title: 'Fernando Souza', channel: 'whatsapp', stageId: DEMO_STAGE_PREENCHEU_FORM, lastMessage: 'Recebi certinho, muito obrigado', senderType: 'lead', hoursAgoActivity: 26, value: 420.0 },
 ]
 
 export const demoLeads: LeadWithOwner[] = seeds.map((s) => ({
@@ -216,12 +247,12 @@ export const demoActivitiesByLeadId: Record<string, LeadActivityWithActor[]> = {
     { from: 'lead', text: 'Consegue parcelar em 3x?', hoursAgo: 5.5 },
   ]),
   'demo-lead-06': buildThread('demo-lead-06', [
-    { from: 'lead', text: 'Pessoal, temos interesse em fechar um pacote maior', hoursAgo: 9 },
-    { from: 'human', text: 'Deixa eu confirmar com a equipe', hoursAgo: 8 },
+    { from: 'lead', text: 'Pessoal, temos interesse em levar um grupo pro evento', hoursAgo: 20 },
+    { from: 'human', text: 'Deixa eu confirmar com a equipe', hoursAgo: 19 },
   ]),
   'demo-lead-07': buildThread('demo-lead-07', [
-    { from: 'human', text: 'Aqui está a proposta que conversamos, Larissa!', hoursAgo: 13 },
-    { from: 'lead', text: 'Amei, quero fechar!', hoursAgo: 12 },
+    { from: 'human', text: 'Aqui está a proposta que conversamos, Larissa!', hoursAgo: 24 },
+    { from: 'lead', text: 'Amei, quero fechar!', hoursAgo: 23.5 },
   ]),
   'demo-lead-08': buildThread('demo-lead-08', [
     { from: 'lead', text: 'Recebi certinho, muito obrigado', hoursAgo: 26 },
