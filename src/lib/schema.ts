@@ -317,6 +317,11 @@ export const leadSourceSubmissions = pgTable('lead_source_submissions', {
   dedupeUnique: uniqueIndex('lead_source_submissions_dedupe_unique')
     .on(t.organizationId, t.source, t.externalId)
     .where(sql`external_id IS NOT NULL`),
+  // Existe ainda lead_source_submissions_org_source_idx
+  // (organization_id, source, received_at DESC), que serve a listagem da tela.
+  // Aplicado por SQL (drizzle/0119) e não declarado aqui porque o drizzle-kit
+  // desta versão não aceita ordem por coluna no índice — mesmo caminho que a
+  // tabela `leads` já usa pros índices dela.
 }))
 
 // ── Integration Message Logs (n8n e outros sistemas externos) ────────────────
