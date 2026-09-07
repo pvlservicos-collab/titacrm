@@ -50,11 +50,11 @@ const LeadCard = ({ lead, isDragOverlay, stageColor, onClick, onInfoClick }: Lea
       onClick={onClick}
       style={style}
       className={`
-        bg-panel border border-line rounded-lg p-4 transition-all relative overflow-hidden
+        panel glass-hover rounded-xl p-4 relative overflow-hidden
         outline-none focus:outline-none focus-visible:outline-none
         ${isDragOverlay
-          ? 'shadow-xl rotate-2 scale-105 cursor-grabbing'
-          : 'shadow-sm hover:shadow-md cursor-grab active:cursor-grabbing group'
+          ? 'rotate-2 scale-105 cursor-grabbing shadow-glass-lg'
+          : 'cursor-grab active:cursor-grabbing group'
         }
       `}
     >
@@ -62,7 +62,7 @@ const LeadCard = ({ lead, isDragOverlay, stageColor, onClick, onInfoClick }: Lea
       {!isDragOverlay && stageColor && (
         <div
           className="absolute left-0 top-0 bottom-0 w-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200"
-          style={{ backgroundColor: stageColor }}
+          style={{ background: `linear-gradient(180deg, ${stageColor}, ${stageColor}33)` }}
         />
       )}
 
@@ -91,7 +91,7 @@ const LeadCard = ({ lead, isDragOverlay, stageColor, onClick, onInfoClick }: Lea
                   onInfoClick()
                 }}
                 onPointerDown={(e) => e.stopPropagation()}
-                className="text-muted hover:text-muted hover:bg-void rounded-full p-0.5 flex-shrink-0 transition-colors"
+                className="btn-icon w-6 h-6 rounded-full flex-shrink-0"
                 title="Ver detalhes do lead"
               >
                 <Info size={16} />

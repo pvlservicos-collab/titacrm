@@ -30,17 +30,17 @@ export default function CustomFieldSelect({ options, value, onChange, placeholde
       <button
         type="button"
         onClick={() => setIsOpen(!isOpen)}
-        className="w-full flex items-center justify-between text-[13px] font-medium border-b border-[#2f3b44] pb-1 focus:outline-none focus:border-[#53bdeb] bg-transparent text-left cursor-pointer transition-colors hover:border-[#53bdeb]/50"
+        className="w-full flex items-center justify-between text-[13px] font-medium border-b border-[var(--chat-border)] pb-1 focus:outline-none focus:border-[var(--chat-accent)] bg-transparent text-left cursor-pointer transition-colors hover:border-[var(--chat-accent)]"
       >
-        <span className={value ? 'text-[#d1d7db]' : 'text-[#667781]'}>{value || placeholder}</span>
-        <svg className={`w-3.5 h-3.5 text-[#8696a0] transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
+        <span className={value ? 'text-[var(--chat-text-secondary)]' : 'text-[var(--chat-text-tertiary)]'}>{value || placeholder}</span>
+        <svg className={`w-3.5 h-3.5 text-[var(--chat-text-muted)] transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
       </button>
 
       {isOpen && (
-        <div className="absolute z-50 w-full mt-1.5 bg-[#233138] border border-[#2f3b44] rounded-lg shadow-xl py-1 max-h-48 overflow-y-auto ring-1 ring-black/20 animate-in fade-in slide-in-from-top-1">
+        <div className="glass-raised absolute z-50 w-full mt-1.5 rounded-xl py-1 max-h-48 overflow-y-auto animate-in fade-in slide-in-from-top-1">
           <button
             type="button"
-            className={`w-full text-left px-3 py-2 text-[13px] hover:bg-[#2a3942] flex items-center transition-colors ${!value ? 'bg-[#2a3942] text-[#53bdeb] font-semibold' : 'text-[#667781]'}`}
+            className={`w-full text-left px-3 py-2 text-[13px] hover:bg-[var(--chat-bg-hover)] flex items-center transition-colors ${!value ? 'bg-[var(--chat-bg-hover)] text-[var(--chat-accent)] font-semibold' : 'text-[var(--chat-text-tertiary)]'}`}
             onClick={() => {
               onChange('')
               setIsOpen(false)
@@ -53,7 +53,7 @@ export default function CustomFieldSelect({ options, value, onChange, placeholde
             <button
               key={opt}
               type="button"
-              className={`w-full text-left px-3 py-2 text-[13px] hover:bg-[#2a3942] flex items-center transition-colors ${value === opt ? 'bg-[#2a3942] text-[#53bdeb] font-semibold' : 'text-[#d1d7db]'}`}
+              className={`w-full text-left px-3 py-2 text-[13px] hover:bg-[var(--chat-bg-hover)] flex items-center transition-colors ${value === opt ? 'bg-[var(--chat-bg-hover)] text-[var(--chat-accent)] font-semibold' : 'text-[var(--chat-text-secondary)]'}`}
               onClick={() => {
                 onChange(opt)
                 setIsOpen(false)

@@ -32,7 +32,7 @@ export default function SettingsLayoutWrapper({
     // If the user is on the User Profile settings, do NOT show the organizational settings sidebar
     if (pathname === '/settings/profile') {
         return (
-            <div className="bg-void min-h-[calc(100dvh-3.5rem)]">
+            <div className="min-h-[calc(100dvh-3.5rem)]">
                 <main className="p-4 sm:p-8 lg:p-12 xl:p-16 overflow-y-auto w-full flex justify-center">
                     <div className="w-full max-w-4xl">
                         {children}
@@ -47,7 +47,7 @@ export default function SettingsLayoutWrapper({
         if (isRoot) {
             return (
                 <SettingsAccessGuard>
-                    <div className="bg-void min-h-[calc(100dvh-3.5rem)] p-4">
+                    <div className="min-h-[calc(100dvh-3.5rem)] p-4">
                         <SettingsSidebar />
                     </div>
                 </SettingsAccessGuard>
@@ -57,8 +57,8 @@ export default function SettingsLayoutWrapper({
         // Seção específica: conteúdo em tela cheia, sem a barra lateral, com botão de voltar.
         return (
             <SettingsAccessGuard>
-                <div className="bg-void min-h-[calc(100dvh-3.5rem)]">
-                    <div className="sticky top-14 z-10 bg-panel border-b border-line px-4 h-12 flex items-center">
+                <div className="min-h-[calc(100dvh-3.5rem)]">
+                    <div className="sticky top-14 z-10 glass-soft rounded-none border-x-0 border-t-0 px-4 h-12 flex items-center">
                         <Link href="/settings" className="flex items-center gap-1.5 text-sm font-medium text-muted">
                             <CaretLeft size={16} weight="bold" />
                             Configurações
@@ -77,9 +77,9 @@ export default function SettingsLayoutWrapper({
 
     return (
         <SettingsAccessGuard>
-            <div className="flex bg-void min-h-[calc(100vh-3.5rem)]">
+            <div className="flex min-h-[calc(100vh-3.5rem)]">
                 {/* Sidebar Navigation */}
-                <aside className="w-64 border-r border-line bg-panel min-h-[calc(100vh-3.5rem)]">
+                <aside className="w-64 surface-rail border-r border-line min-h-[calc(100vh-3.5rem)]">
                     <div className="p-4">
                         <SettingsSidebar />
                     </div>

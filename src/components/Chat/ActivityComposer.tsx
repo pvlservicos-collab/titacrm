@@ -368,7 +368,7 @@ const ActivityComposer = forwardRef<ActivityComposerHandle, ActivityComposerProp
   const getButtonStateClass = (key: ChatButtonKey, baseClasses: string) => {
     const isThisButton = webhookStatus?.key === key
     const status = isThisButton ? webhookStatus?.status : null
-    if (status === 'success') return 'bg-sky-500/10 border-sky-500/30 text-sky-700 dark:text-sky-300'
+    if (status === 'success') return 'bg-emerald-500/10 border-emerald-500/30 text-emerald-700 dark:text-emerald-300'
     if (status === 'error') return 'bg-red-500/10 border-red-500/30 text-red-700 dark:text-red-300'
     if (status === 'sending') return 'bg-[var(--chat-bg-field)] border-[var(--chat-border)] text-[var(--chat-text-tertiary)] cursor-wait'
     return baseClasses
@@ -424,7 +424,7 @@ const ActivityComposer = forwardRef<ActivityComposerHandle, ActivityComposerProp
   }
 
   return (
-    <div className="px-6 pb-4 pt-2 space-y-3 relative z-10 bg-gradient-to-t from-[var(--chat-bg-conversation)] to-transparent">
+    <div className="px-6 pb-4 pt-3 space-y-3 relative z-10 bg-gradient-to-t from-[var(--chat-bg-conversation)] via-[var(--chat-bg-conversation)]/80 to-transparent">
       {/* Action Buttons */}
       <div className="flex gap-2 items-center mb-1 flex-wrap">
         {chatButtonSettings?.pausar_ia?.enabled && (!chatButtonSettings.pausar_ia.position || chatButtonSettings.pausar_ia.position === 'chat') && (
@@ -464,7 +464,7 @@ const ActivityComposer = forwardRef<ActivityComposerHandle, ActivityComposerProp
           <button
             onClick={() => handleChatButtonClick('resumir_conversa')}
             disabled={webhookStatus?.key === 'resumir_conversa' && webhookStatus.status === 'sending'}
-            className={`flex items-center gap-1.5 px-4 py-1.5 border rounded-full text-[11px] font-bold transition-colors ${getButtonStateClass('resumir_conversa', 'border-sky-500/30 text-sky-700 dark:text-sky-300 bg-sky-500/10 hover:bg-sky-500/20')}`}
+            className={`flex items-center gap-1.5 px-4 py-1.5 border rounded-full text-[11px] font-bold transition-colors ${getButtonStateClass('resumir_conversa', 'border-[var(--chat-border)] text-[var(--chat-text-secondary)] bg-white/[0.06] hover:bg-white/[0.1]')}`}
           >
             <ChatText size={14} weight="bold" />
             Resumir conversa
@@ -475,7 +475,7 @@ const ActivityComposer = forwardRef<ActivityComposerHandle, ActivityComposerProp
 
       {/* Media Preview Bar — mídia escolhida no clipe, aguardando confirmação/legenda */}
       {pendingMedia && (
-        <div className="flex items-center gap-3 bg-[var(--chat-bg-field)] border border-[var(--chat-border)] rounded-xl px-3 py-2 shadow-sm animate-in slide-in-from-bottom-2 duration-200">
+        <div className="glass flex items-center gap-3 rounded-xl px-3 py-2 animate-in slide-in-from-bottom-2 duration-200">
           <div className="w-14 h-14 rounded-lg overflow-hidden bg-[var(--chat-bg-hover)] flex items-center justify-center flex-shrink-0">
             {pendingMedia.file.type.startsWith('image/') ? (
               <img src={pendingMedia.previewUrl} alt="Prévia" className="w-full h-full object-cover" />
@@ -492,8 +492,8 @@ const ActivityComposer = forwardRef<ActivityComposerHandle, ActivityComposerProp
           <button
             onClick={handleConfirmSendMedia}
             disabled={uploadingMedia}
-            className="w-8 h-8 rounded-full flex items-center justify-center text-white transition-colors hover:opacity-90 disabled:opacity-50 flex-shrink-0"
-            style={{ backgroundColor: '#00B8D9' }}
+            className="w-8 h-8 rounded-full flex items-center justify-center border border-white/20 transition-colors hover:brightness-110 disabled:opacity-50 flex-shrink-0"
+            style={{ backgroundColor: 'var(--chat-accent)', color: 'var(--chat-bg-conversation)' }}
             title="Enviar"
           >
             {uploadingMedia ? <span className="animate-spin text-sm inline-block">⏳</span> : <Check size={16} weight="bold" />}
@@ -511,7 +511,7 @@ const ActivityComposer = forwardRef<ActivityComposerHandle, ActivityComposerProp
 
       {/* Reply Preview Bar */}
       {replyContext && (
-        <div className="flex items-center bg-[var(--chat-bg-field)] border border-[var(--chat-border)] rounded-xl px-3 py-2 shadow-sm animate-in slide-in-from-bottom-2 duration-200">
+        <div className="glass flex items-center rounded-xl px-3 py-2 animate-in slide-in-from-bottom-2 duration-200">
           <div className="flex items-center gap-2 flex-1 min-w-0">
             <div className="w-1 h-8 rounded-full bg-[var(--chat-accent)] flex-shrink-0" />
             <ArrowBendUpLeft size={14} weight="bold" className="text-[var(--chat-accent)] flex-shrink-0" />
@@ -536,7 +536,7 @@ const ActivityComposer = forwardRef<ActivityComposerHandle, ActivityComposerProp
       )}
 
       {/* Input Area */}
-      <div className="relative flex items-end gap-2 bg-[var(--chat-bg-field)] border border-[var(--chat-border)] rounded-xl px-4 py-2.5 shadow-sm focus-within:ring-2 focus-within:ring-[var(--chat-bg-hover)] focus-within:border-[var(--chat-accent)]/50 transition-all">
+      <div className="glass relative flex items-end gap-2 rounded-2xl px-4 py-2.5 focus-within:ring-2 focus-within:ring-white/10 focus-within:border-[var(--chat-accent)]/40 transition-all">
         {recorder.isRecording ? (
           <>
             <div className="flex items-center gap-3 flex-1 py-1">
@@ -556,8 +556,8 @@ const ActivityComposer = forwardRef<ActivityComposerHandle, ActivityComposerProp
               type="button"
               onClick={handleMicClick}
               disabled={uploadingMedia}
-              className="w-8 h-8 rounded-full flex items-center justify-center text-white transition-colors hover:opacity-90 disabled:opacity-50 flex-shrink-0 mb-0.5"
-              style={{ backgroundColor: '#00B8D9' }}
+              className="w-8 h-8 rounded-full flex items-center justify-center border border-white/20 transition-colors hover:brightness-110 disabled:opacity-50 flex-shrink-0 mb-0.5"
+              style={{ backgroundColor: 'var(--chat-accent)', color: 'var(--chat-bg-conversation)' }}
               title="Enviar áudio"
             >
               {uploadingMedia ? <span className="animate-spin text-sm inline-block">⏳</span> : <PaperPlaneRight size={16} weight="fill" />}
@@ -602,7 +602,7 @@ const ActivityComposer = forwardRef<ActivityComposerHandle, ActivityComposerProp
                   setManualSearchQuery('')
                   setShowQuickReplyPicker((prev) => !prev)
                 }}
-                className={`transition-colors ${quickReplyPickerOpen ? 'text-[#00B8D9]' : 'text-[var(--chat-text-muted)] hover:text-[var(--chat-icon)]'}`}
+                className={`transition-colors ${quickReplyPickerOpen ? 'text-[var(--chat-accent)]' : 'text-[var(--chat-text-muted)] hover:text-[var(--chat-icon)]'}`}
                 title="Respostas rápidas"
               >
                 <Lightning size={20} />
@@ -652,7 +652,7 @@ const ActivityComposer = forwardRef<ActivityComposerHandle, ActivityComposerProp
                     onChange={(e) => setManualSearchQuery(e.target.value)}
                     onKeyDown={handleComposerKeyDown}
                     placeholder="Buscar resposta rápida..."
-                    className="w-[340px] mb-1.5 px-3 py-2 text-sm rounded-lg bg-[var(--chat-bg-hover)] border border-[var(--chat-border)] text-[var(--chat-text-primary)] placeholder-[var(--chat-text-muted)] focus:outline-none focus:border-[var(--chat-accent)]/50"
+                    className="glass-raised w-[340px] mb-1.5 px-3 py-2 text-sm rounded-xl text-[var(--chat-text-primary)] placeholder-[var(--chat-text-muted)] focus:outline-none focus:border-[var(--chat-accent)]/60"
                   />
                 )}
                 <QuickReplyPicker
@@ -679,8 +679,8 @@ const ActivityComposer = forwardRef<ActivityComposerHandle, ActivityComposerProp
             <button
               onClick={pendingMedia ? handleConfirmSendMedia : handleSend}
               disabled={pendingMedia ? uploadingMedia : (!content.trim() || sending)}
-              className="w-8 h-8 rounded-full flex items-center justify-center text-white transition-colors hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed flex-shrink-0 mb-0.5"
-              style={{ backgroundColor: '#00B8D9' }}
+              className="w-8 h-8 rounded-full flex items-center justify-center border border-white/20 transition-colors hover:brightness-110 disabled:opacity-50 disabled:cursor-not-allowed flex-shrink-0 mb-0.5"
+              style={{ backgroundColor: 'var(--chat-accent)', color: 'var(--chat-bg-conversation)' }}
             >
               <PaperPlaneRight size={16} weight="fill" />
             </button>

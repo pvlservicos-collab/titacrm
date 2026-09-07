@@ -138,7 +138,7 @@ export default function Navbar() {
 
   return (
     <>
-    <nav className="app-safe-top bg-panel border-b border-line px-4 sm:px-6 h-14 flex items-center justify-between sticky top-0 z-50">
+    <nav className="app-safe-top glass-soft rounded-none border-x-0 border-t-0 px-4 sm:px-6 h-14 flex items-center justify-between sticky top-0 z-50">
       {/* Left: Logo + Nav */}
       <div className="flex items-center gap-8">
         {/* Logo */}
@@ -165,9 +165,9 @@ export default function Navbar() {
                 >
                   <Link
                     href={item.href}
-                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${isActive
-                      ? 'bg-panel-2 text-accent-2'
-                      : 'text-muted hover:bg-panel-2 hover:text-ink'
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors border ${isActive
+                      ? 'bg-graphite-6 border-white/15 text-accent-2'
+                      : 'border-transparent text-muted hover:bg-white/[0.06] hover:text-ink'
                       }`}
                   >
                     <Icon size={16} weight={isActive ? 'fill' : 'regular'} />
@@ -178,7 +178,7 @@ export default function Navbar() {
                   {/* Dropdown */}
                   {showPipelineDropdown && (
                     <div className="absolute top-full left-0 pt-2 w-48 z-50">
-                      <div className="bg-panel border border-line rounded-lg shadow-lg py-1">
+                      <div className="glass-raised rounded-xl py-1">
                         {pipelines.map((pipeline) => (
                           <button
                             key={pipeline.id}
@@ -186,7 +186,7 @@ export default function Navbar() {
                               router.push(`/pipeline?pipelineId=${pipeline.id}`)
                               setShowPipelineDropdown(false)
                             }}
-                            className={`w-full text-left px-4 py-2 text-sm hover:bg-panel-2 transition-colors ${activePipelineId === pipeline.id
+                            className={`w-full text-left px-4 py-2 text-sm hover:bg-white/[0.06] transition-colors ${activePipelineId === pipeline.id
                               ? 'text-accent-2 font-semibold'
                               : 'text-ink'
                               }`}
@@ -206,9 +206,9 @@ export default function Navbar() {
               <Link
                 key={item.href}
                 href={item.href}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${isActive
-                  ? 'bg-panel-2 text-accent-2'
-                  : 'text-muted hover:bg-panel-2 hover:text-ink'
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors border ${isActive
+                  ? 'bg-graphite-6 border-white/15 text-accent-2'
+                  : 'border-transparent text-muted hover:bg-white/[0.06] hover:text-ink'
                   }`}
               >
                 <Icon size={16} weight={isActive ? 'fill' : 'regular'} />
@@ -220,7 +220,7 @@ export default function Navbar() {
           {/* Conditional Filter Button for Pipeline */}
           {pathname.startsWith('/pipeline') && organizationId && (
             <>
-              <div className="w-[1px] h-4 bg-line mx-1"></div>
+              <div className="w-[1px] h-4 hairline-y mx-1"></div>
               <FilterButton organizationId={organizationId} onFilterChange={setFilters} />
             </>
           )}
@@ -239,7 +239,7 @@ export default function Navbar() {
         <button
           onClick={toggleTheme}
           title={isDark ? 'Modo claro' : 'Modo escuro'}
-          className="app-tap-target w-11 h-11 flex items-center justify-center rounded-lg text-muted hover:bg-panel-2 transition-colors"
+          className="app-tap-target btn-icon w-11 h-11"
         >
           {isDark ? <Sun size={18} weight="fill" className="text-yellow-400" /> : <Moon size={18} />}
         </button>
@@ -248,7 +248,7 @@ export default function Navbar() {
         <div className="relative" ref={userDropdownRef}>
           <div
             onClick={() => setShowUserDropdown(!showUserDropdown)}
-            className="flex items-center gap-2 cursor-pointer hover:bg-panel-2 rounded-lg px-2 py-1 transition-colors"
+            className="flex items-center gap-2 cursor-pointer rounded-lg px-2 py-1 border border-transparent hover:border-glass-edge hover:bg-white/[0.06] transition-colors"
           >
             {avatarUrl ? (
               <div className="w-8 h-8 rounded-full flex items-center justify-center overflow-hidden border border-line">
@@ -265,11 +265,11 @@ export default function Navbar() {
 
           {/* User Menu Popup */}
           {showUserDropdown && (
-            <div className="absolute right-0 top-full mt-2 w-48 bg-panel border border-line rounded-xl shadow-lg py-1 z-50 animate-in fade-in slide-in-from-top-2">
+            <div className="absolute right-0 top-full mt-2 w-48 glass-raised rounded-xl py-1 z-50 animate-in fade-in slide-in-from-top-2">
               <Link
                 href="/workspaces"
                 onClick={() => setShowUserDropdown(false)}
-                className="flex items-center gap-2 px-4 py-2 text-sm text-muted hover:text-ink hover:bg-panel-2 transition-colors w-full text-left"
+                className="flex items-center gap-2 px-4 py-2 text-sm text-muted hover:text-ink hover:bg-white/[0.06] transition-colors w-full text-left"
               >
                 <Buildings size={16} />
                 <span>Organizações</span>
@@ -277,12 +277,12 @@ export default function Navbar() {
               <Link
                 href="/settings/profile"
                 onClick={() => setShowUserDropdown(false)}
-                className="flex items-center gap-2 px-4 py-2 text-sm text-muted hover:text-ink hover:bg-panel-2 transition-colors w-full text-left"
+                className="flex items-center gap-2 px-4 py-2 text-sm text-muted hover:text-ink hover:bg-white/[0.06] transition-colors w-full text-left"
               >
                 <Gear size={16} />
                 <span>Configurações do Perfil</span>
               </Link>
-              <div className="h-px bg-line my-1 mx-2"></div>
+              <div className="h-px hairline-x my-1 mx-2"></div>
               <button
                 onClick={handleLogout}
                 className="flex items-center gap-2 px-4 py-2 text-sm text-red-400 hover:text-red-300 hover:bg-red-500/10 transition-colors w-full text-left"
@@ -300,22 +300,23 @@ export default function Navbar() {
     {showMobileMenu && (
       <div className="md:hidden fixed inset-0 z-[60]">
         <div
-          className="absolute inset-0 bg-black/40"
+          className="absolute inset-0 bg-black/50 backdrop-blur-sm"
           onClick={() => setShowMobileMenu(false)}
         />
-        <div className="absolute left-0 top-0 bottom-0 w-72 max-w-[85vw] bg-panel shadow-xl flex flex-col">
-          <div className="flex items-center justify-between h-14 px-4 border-b border-line">
+        <div className="absolute left-0 top-0 bottom-0 w-72 max-w-[85vw] glass-raised rounded-none border-y-0 border-l-0 flex flex-col">
+          <div className="flex items-center justify-between h-14 px-4 relative">
             <Link href="/" className="flex items-center gap-2" onClick={() => setShowMobileMenu(false)}>
               <img src="/logos/T-logo.svg" alt="TitaCRM Logo" className="h-6 w-auto object-contain" />
               <span className="font-display font-bold text-ink">TitaCRM</span>
             </Link>
             <button
               onClick={() => setShowMobileMenu(false)}
-              className="w-8 h-8 flex items-center justify-center rounded-lg text-muted hover:bg-panel-2 transition-colors"
+              className="btn-icon w-8 h-8"
               aria-label="Fechar menu"
             >
               <X size={20} />
             </button>
+            <div className="absolute bottom-0 left-0 right-0 h-px hairline-x" />
           </div>
           <div className="flex-1 overflow-y-auto p-2">
             {NAV_ITEMS.filter(item => isItemVisible(item.label)).map(item => {
@@ -326,9 +327,9 @@ export default function Navbar() {
                   key={item.href}
                   href={item.href}
                   onClick={() => setShowMobileMenu(false)}
-                  className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${isActive
-                    ? 'bg-panel-2 text-accent-2'
-                    : 'text-muted hover:bg-panel-2'
+                  className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors border ${isActive
+                    ? 'bg-graphite-6 border-white/15 text-accent-2'
+                    : 'border-transparent text-muted hover:bg-white/[0.06]'
                     }`}
                 >
                   <Icon size={18} weight={isActive ? 'fill' : 'regular'} />
@@ -343,7 +344,7 @@ export default function Navbar() {
 
     {/* Barra de navegação inferior (celular) — destinos mais usados sempre à mão,
         sem precisar abrir o menu. Padrão de app nativo (Instagram, WhatsApp etc). */}
-    <div className="app-safe-bottom md:hidden fixed bottom-0 left-0 right-0 z-50 bg-panel border-t border-line">
+    <div className="app-safe-bottom md:hidden fixed bottom-0 left-0 right-0 z-50 glass-raised rounded-none border-x-0 border-b-0">
       <div className="h-16 flex items-stretch">
         {NAV_ITEMS.filter(item => MOBILE_TAB_LABELS.includes(item.label) && isItemVisible(item.label)).map(item => {
           const isActive = pathname === item.href || (item.href !== '/' && pathname.startsWith(item.href))

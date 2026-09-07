@@ -178,7 +178,7 @@ function CustomAudioPlayer({ url, isOutgoing, senderAvatar }: { url: string; isO
             </div>
           )}
         </div>
-        <div className="absolute -bottom-1 -left-1 rounded-full p-0.5 shadow-sm" style={{ backgroundColor: isOutgoing ? '#21BCED' : 'var(--chat-bg-hover)' }}>
+        <div className="absolute -bottom-1 -left-1 rounded-full p-0.5 shadow-sm" style={{ backgroundColor: isOutgoing ? 'var(--chat-bubble-out)' : 'var(--chat-bg-hover)' }}>
           <Microphone size={12} weight="fill" className={isOutgoing ? "text-white" : "text-[var(--chat-accent)]"} />
         </div>
       </div>
@@ -286,7 +286,7 @@ function QuotedMessageBar({ metadata, isOutgoing }: { metadata: any; isOutgoing:
   if (!quotedText && !quotedMediaType) return null;
 
   // Color for the left bar: blue accent for lead replies, white-ish for outgoing
-  const barColor = isOutgoing ? 'rgba(255,255,255,0.5)' : 'var(--chat-accent)';
+  const barColor = isOutgoing ? 'rgba(255,255,255,0.45)' : 'var(--chat-accent)';
   const bgColor = isOutgoing ? 'rgba(0,0,0,0.12)' : 'rgba(255,255,255,0.06)';
   const textColor = isOutgoing ? 'text-white/90' : 'text-[var(--chat-text-secondary)]';
   const senderColor = isOutgoing ? 'text-white font-semibold' : 'text-[var(--chat-accent)] font-semibold';
@@ -372,8 +372,8 @@ const MessageBubble = memo(function MessageBubble({
   if (outgoing) {
     const isAI = senderType === 'ai'
     const isAutomated = senderType === 'automated'
-    const bubbleColor = isAI ? 'rgba(75, 59, 253, 0.85)' : isAutomated ? 'rgba(34, 197, 94, 0.85)' : 'rgba(33, 188, 237, 0.85)'
-    const labelColor = isAI ? '#4B3BFD' : isAutomated ? '#16A34A' : '#21BCED'
+    const bubbleColor = isAI ? 'rgba(75, 59, 253, 0.85)' : isAutomated ? 'rgba(34, 197, 94, 0.85)' : 'var(--chat-bubble-out)'
+    const labelColor = isAI ? '#4B3BFD' : isAutomated ? '#16A34A' : 'var(--chat-accent)'
     const label = isAI ? 'Atlas AI' : isAutomated ? 'Automático' : 'Você'
 
     return (
@@ -400,7 +400,7 @@ const MessageBubble = memo(function MessageBubble({
             ) : (
               <div
                 className="w-6 h-6 rounded-full flex items-center justify-center overflow-hidden"
-                style={{ backgroundColor: '#21BCED' }}
+                style={{ backgroundColor: 'var(--chat-bubble-out)' }}
               >
                 {activity.actor?.profiles?.avatar_url ? (
                   <img src={activity.actor.profiles.avatar_url} alt="Avatar" className="w-full h-full object-cover" />
@@ -444,7 +444,7 @@ const MessageBubble = memo(function MessageBubble({
               {onTogglePin && (
                 <button
                   onClick={() => onTogglePin(activity)}
-                  className="w-7 h-7 rounded-full bg-[var(--chat-bg-menu)] border border-[var(--chat-border)] shadow-sm flex items-center justify-center hover:bg-[var(--chat-bg-hover)]"
+                  className="glass-raised w-7 h-7 rounded-full flex items-center justify-center hover:brightness-125"
                   title={isPinned ? 'Desafixar mensagem' : 'Fixar mensagem'}
                 >
                   <PushPin size={14} weight={isPinned ? 'fill' : 'bold'} className={isPinned ? 'text-[var(--chat-accent)] -rotate-45' : 'text-[var(--chat-icon)]'} />
@@ -453,7 +453,7 @@ const MessageBubble = memo(function MessageBubble({
               {onReply && (
                 <button
                   onClick={() => onReply(activity)}
-                  className="w-7 h-7 rounded-full bg-[var(--chat-bg-menu)] border border-[var(--chat-border)] shadow-sm flex items-center justify-center hover:bg-[var(--chat-bg-hover)]"
+                  className="glass-raised w-7 h-7 rounded-full flex items-center justify-center hover:brightness-125"
                   title="Responder"
                 >
                   <ArrowBendUpLeft size={14} weight="bold" className="text-[var(--chat-icon)]" />
@@ -477,27 +477,27 @@ const MessageBubble = memo(function MessageBubble({
             </div>
           ) : (
           <div
-            className={`relative rounded-2xl px-3 pt-2 pb-1.5 min-w-[80px] ${showHeader ? 'rounded-tr-[2px]' : ''}`}
-            style={{ backgroundColor: bubbleColor }}
+            className={`relative rounded-2xl px-3 pt-2 pb-1.5 min-w-[80px] border border-white/10 shadow-[0_1px_0_0_rgba(255,255,255,0.07)_inset,0_10px_24px_-18px_rgba(0,0,0,0.9)] ${showHeader ? 'rounded-tr-[2px]' : ''}`}
+            style={{ backgroundColor: bubbleColor, color: 'var(--chat-bubble-out-ink)' }}
           >
             <QuotedMessageBar metadata={activity.metadata} isOutgoing={true} />
             {activity.metadata?.media_url && (
               <MediaRenderer metadata={activity.metadata} isOutgoing={true} onImageClick={onImageClick} senderAvatar={isAI ? undefined : activity.actor?.profiles?.avatar_url} />
             )}
             {(!activity.metadata?.media_url || !['📷 Imagem', '🎥 Vídeo', '🎵 Áudio', '📄 Documento', '✨ Figurinha'].includes(activity.content)) && (
-              <p className={`text-sm text-white leading-relaxed whitespace-pre-wrap break-words ${activity.metadata?.media_url ? 'mt-1' : ''}`}>
+              <p className={`text-sm leading-relaxed whitespace-pre-wrap break-words ${activity.metadata?.media_url ? 'mt-1' : ''}`}>
                 {activity.content}
                 <span className="inline-block w-[2.5rem]" />
               </p>
             )}
-            <span className="absolute bottom-1 right-2.5 text-[10px] text-white/70 whitespace-nowrap flex items-center gap-1">
+            <span className="absolute bottom-1 right-2.5 text-[10px] opacity-70 whitespace-nowrap flex items-center gap-1">
               {formatTime(activity.created_at)}
               {activity.metadata?.send_status === 'failed' ? (
                 <span title={activity.metadata?.send_error || 'Falha ao enviar'}>
                   <WarningCircle size={13} weight="fill" className="text-red-300" />
                 </span>
               ) : activity.metadata?.send_status === 'sent' ? (
-                <Check size={13} weight="bold" className="text-white/70" />
+                <Check size={13} weight="bold" className="opacity-70" />
               ) : null}
             </span>
           </div>
@@ -506,7 +506,7 @@ const MessageBubble = memo(function MessageBubble({
           {/* Reaction Pill Outgoing */}
           {reactions && reactions.length > 0 && (
             <div
-              className="absolute -bottom-2 right-2 bg-[var(--chat-bg-menu)] border border-[var(--chat-border)] shadow-sm rounded-full px-1.5 py-0.5 flex items-center gap-0.5 z-10"
+              className="glass-raised absolute -bottom-2 right-2 rounded-full px-1.5 py-0.5 flex items-center gap-0.5 z-10"
               title={reactions.map(r => `${r.metadata?.sender_name || 'Desconhecido'}: ${r.content}`).join('\n')}
             >
               {Array.from(new Set(reactions.map(r => r.content))).map((emoji, idx) => (
@@ -556,7 +556,7 @@ const MessageBubble = memo(function MessageBubble({
               {onTogglePin && (
                 <button
                   onClick={() => onTogglePin(activity)}
-                  className="w-7 h-7 rounded-full bg-[var(--chat-bg-menu)] border border-[var(--chat-border)] shadow-sm flex items-center justify-center hover:bg-[var(--chat-bg-hover)]"
+                  className="glass-raised w-7 h-7 rounded-full flex items-center justify-center hover:brightness-125"
                   title={isPinned ? 'Desafixar mensagem' : 'Fixar mensagem'}
                 >
                   <PushPin size={14} weight={isPinned ? 'fill' : 'bold'} className={isPinned ? 'text-[var(--chat-accent)] -rotate-45' : 'text-[var(--chat-icon)]'} />
@@ -565,7 +565,7 @@ const MessageBubble = memo(function MessageBubble({
               {onReply && (
                 <button
                   onClick={() => onReply(activity)}
-                  className="w-7 h-7 rounded-full bg-[var(--chat-bg-menu)] border border-[var(--chat-border)] shadow-sm flex items-center justify-center hover:bg-[var(--chat-bg-hover)]"
+                  className="glass-raised w-7 h-7 rounded-full flex items-center justify-center hover:brightness-125"
                   title="Responder"
                 >
                   <ArrowBendUpLeft size={14} weight="bold" className="text-[var(--chat-icon)]" />
@@ -577,7 +577,7 @@ const MessageBubble = memo(function MessageBubble({
             className={`relative rounded-2xl px-3 pt-2 pb-1.5 border shadow-sm min-w-[80px] ${showHeader ? 'rounded-tl-[2px]' : ''}`}
             style={isEvolution
               ? { backgroundColor: 'var(--chat-bg-field-evolution)', borderColor: 'var(--chat-border-evolution)' }
-              : { backgroundColor: 'var(--chat-bg-field)', borderColor: 'rgba(255,255,255,0.05)' }
+              : { backgroundColor: 'var(--chat-bg-field)', borderColor: 'var(--chat-border)' }
             }
           >
             <QuotedMessageBar metadata={activity.metadata} isOutgoing={false} />
@@ -598,7 +598,7 @@ const MessageBubble = memo(function MessageBubble({
           {/* Reaction Pill Inbound */}
           {reactions && reactions.length > 0 && (
             <div
-              className="absolute -bottom-2 right-2 bg-[var(--chat-bg-menu)] border border-[var(--chat-border)] shadow-sm rounded-full px-1.5 py-0.5 flex items-center gap-0.5 z-10"
+              className="glass-raised absolute -bottom-2 right-2 rounded-full px-1.5 py-0.5 flex items-center gap-0.5 z-10"
               title={reactions.map(r => `${r.metadata?.sender_name || 'Desconhecido'}: ${r.content}`).join('\n')}
             >
               {Array.from(new Set(reactions.map(r => r.content))).map((emoji, idx) => (
@@ -775,9 +775,9 @@ export default function ActivityTimeline({
       elements.push(
         <div key={activity.id} className="mt-4 flex justify-center">
           <div className="bg-panel-2 dark:bg-[#0f2733] border border-accent-line dark:border-[#1e4356] rounded-2xl p-4 max-w-md w-full shadow-sm">
-            <p className="text-sm font-semibold text-accent-2 dark:text-blue-200">📧 Email</p>
-            <p className="text-sm text-accent-2 dark:text-blue-100 mt-2 whitespace-pre-wrap bg-black/5 dark:bg-black/15 p-3 rounded-xl border border-accent-line dark:border-blue-900/40">{activity.content}</p>
-            <p className="text-[10px] text-accent-2 dark:text-blue-300 mt-2 text-right uppercase font-semibold tracking-wide">
+            <p className="text-sm font-semibold text-accent-2">📧 Email</p>
+            <p className="text-sm text-accent-2 mt-2 whitespace-pre-wrap bg-black/5 dark:bg-black/15 p-3 rounded-xl border border-accent-line">{activity.content}</p>
+            <p className="text-[10px] text-accent-2 mt-2 text-right uppercase font-semibold tracking-wide">
               {formatTime(activity.created_at)}
             </p>
           </div>

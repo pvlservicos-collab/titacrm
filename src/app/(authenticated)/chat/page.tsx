@@ -242,7 +242,7 @@ export default function ChatPage() {
   // em tela cheia em vez de coluna fixa. Desktop abaixo continua como sempre foi.
   if (isMobile) {
     return (
-      <div className="h-full flex flex-col">
+      <div className="chat-theme h-full flex flex-col">
         {mobileView === 'list' && (
           <LeadList
             leads={allLeads}
@@ -257,8 +257,8 @@ export default function ChatPage() {
         {mobileView === 'conversation' && (
           displayedLead ? (
             <div className="flex flex-col h-full min-h-0">
-              <div className="flex items-center gap-3 h-14 px-2 border-b border-[var(--chat-border)] bg-[var(--chat-bg-field)] flex-shrink-0">
-                <button onClick={() => setMobileView('list')} className="w-9 h-9 flex items-center justify-center rounded-lg text-[var(--chat-text-primary)]" aria-label="Voltar">
+              <div className="glass-soft rounded-none border-x-0 border-t-0 flex items-center gap-3 h-14 px-2 flex-shrink-0">
+                <button onClick={() => setMobileView('list')} className="btn-icon w-9 h-9 text-[var(--chat-text-primary)]" aria-label="Voltar">
                   <CaretLeft size={20} />
                 </button>
                 <div className="w-8 h-8 rounded-full bg-[var(--chat-bg-hover)] flex items-center justify-center overflow-hidden flex-shrink-0">
@@ -270,7 +270,7 @@ export default function ChatPage() {
                 </div>
                 <span className="flex-1 min-w-0 truncate text-sm font-medium text-[var(--chat-text-primary)]">{displayedLead.title}</span>
                 <LeadOrderStatusBadges leadId={displayedLead.id} />
-                <button onClick={() => setShowMobileDetails(true)} className="w-9 h-9 flex items-center justify-center rounded-lg text-[var(--chat-text-muted)]" aria-label="Detalhes do contato">
+                <button onClick={() => setShowMobileDetails(true)} className="btn-icon w-9 h-9" aria-label="Detalhes do contato">
                   <Info size={20} />
                 </button>
               </div>
@@ -311,7 +311,7 @@ export default function ChatPage() {
   }
 
   return (
-    <div className="flex h-full gap-0">
+    <div className="chat-theme flex h-full gap-0">
       {/* Left — Lead List */}
       <div className="w-[340px] border-r border-[var(--chat-border)] flex-shrink-0">
         <LeadList

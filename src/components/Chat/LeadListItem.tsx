@@ -45,12 +45,16 @@ const LeadListItem = ({ lead, isSelected, onClick, onContextMenu, timeStr, hit, 
         iconColor = 'text-violet-600'
     }
 
+    // Faixa de destaque à esquerda do item. Só o "lead respondeu" continua
+    // colorido — é o sinal que importa e o único que precisa saltar. Os dois
+    // estados de "você mandou" eram azul e turquesa; viraram dois níveis de
+    // cinza claro, que se distinguem entre si sem competir com o verde.
     const unreadGradient = lead.is_unread
         ? (lead.last_message_sender_type === 'lead'
             ? 'linear-gradient(to right, rgba(34,197,94,0.5), transparent 80%)'
-            : 'linear-gradient(to right, rgba(59,130,246,0.5), transparent 80%)')
+            : 'linear-gradient(to right, rgba(255,255,255,0.16), transparent 80%)')
         : (lead.last_message_sender_type === 'human' && !hideReplyHighlight
-            ? 'linear-gradient(to right, rgba(45,212,191,0.35), transparent 80%)'
+            ? 'linear-gradient(to right, rgba(255,255,255,0.07), transparent 80%)'
             : undefined)
 
     return (
@@ -58,9 +62,9 @@ const LeadListItem = ({ lead, isSelected, onClick, onContextMenu, timeStr, hit, 
             <button
                 onClick={() => onClick(lead)}
                 onContextMenu={(e) => onContextMenu(e, lead)}
-                className={`w-full text-left px-4 py-3 border-b border-[var(--chat-bg-hover)] transition-colors ${isSelected
-                    ? 'bg-[var(--chat-bg-hover)] border-l-[3px] border-l-[var(--chat-accent)]'
-                    : 'hover:bg-[var(--chat-bg-panel)] border-l-[3px] border-l-transparent'
+                className={`w-full text-left px-4 py-3 border-b border-[var(--chat-border)] transition-colors ${isSelected
+                    ? 'bg-white/[0.07] border-l-[3px] border-l-[var(--chat-accent)]'
+                    : 'hover:bg-white/[0.04] border-l-[3px] border-l-transparent'
                     }`}
                 style={unreadGradient ? { background: unreadGradient } : undefined}
             >

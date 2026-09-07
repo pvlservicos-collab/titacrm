@@ -364,7 +364,7 @@ export default function PipelineBoard({ organizationId, filters }: PipelineBoard
   }
 
   return (
-    <div className="flex-1 flex flex-col h-full min-h-0 bg-void">
+    <div className="flex-1 flex flex-col h-full min-h-0">
       {/* Kanban Board — largura rola no desktop (várias colunas lado a lado), altura
           é travada aqui e repassada pra baixo; quem rola de verdade é a lista de cards
           dentro de cada StageColumn, não essa página inteira. */}
@@ -378,10 +378,10 @@ export default function PipelineBoard({ organizationId, filters }: PipelineBoard
         >
           {stages.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-[calc(100vh-200px)] w-full -mt-8 text-center text-muted">
-              <div className="bg-panel p-8 rounded-2xl border border-dashed border-line max-w-md shadow-sm">
+              <div className="glass p-8 rounded-2xl max-w-md">
                 <h3 className="text-xl font-bold text-ink mb-3">Seu pipeline está vazio</h3>
                 <p className="mb-6 text-sm">Não há etapas configuradas para este pipeline. Acesse as configurações para adicionar as colunas do seu funil de vendas.</p>
-                <a href="/settings/pipelines" className="inline-flex items-center justify-center px-6 py-2.5 bg-accent text-white font-bold rounded-xl hover:bg-accent-2 transition shadow-sm">
+                <a href="/settings/pipelines" className="btn btn-primary">
                   Configurar Funil
                 </a>
               </div>
@@ -402,9 +402,7 @@ export default function PipelineBoard({ organizationId, filters }: PipelineBoard
                     <button
                       key={stage.id}
                       onClick={() => setActiveMobileStageId(stage.id)}
-                      className={`flex-shrink-0 px-3.5 py-2 rounded-full text-sm font-medium border transition-colors ${
-                        isActive ? 'bg-void text-white border-line' : 'bg-panel text-muted border-line'
-                      }`}
+                      className={`pill flex-shrink-0 px-3.5 py-2 text-sm ${isActive ? 'pill-active' : ''}`}
                     >
                       {stage.name} <span className="opacity-70">({count})</span>
                     </button>
@@ -468,16 +466,17 @@ export default function PipelineBoard({ organizationId, filters }: PipelineBoard
 
       {/* Mobile: "mover para" — alternativa ao arrastar entre etapas */}
       {movingLead && (
-        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
-          <div className="bg-panel rounded-2xl w-full max-w-sm shadow-2xl border border-line">
-            <div className="flex items-center justify-between p-5 border-b border-line">
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4 bg-black/55 backdrop-blur-sm">
+          <div className="glass-raised rounded-2xl w-full max-w-sm">
+            <div className="relative flex items-center justify-between p-5">
               <div>
                 <h2 className="text-base font-bold text-ink">Mover lead</h2>
                 <p className="text-xs text-muted mt-0.5 truncate">{movingLead.title}</p>
               </div>
-              <button onClick={() => setMovingLead(null)} className="text-muted hover:text-muted transition-colors">
+              <button onClick={() => setMovingLead(null)} className="btn-icon w-9 h-9" aria-label="Fechar">
                 <X size={20} />
               </button>
+              <div className="absolute bottom-0 left-0 right-0 h-px hairline-x" />
             </div>
             <div className="p-2 max-h-[60vh] overflow-y-auto">
               {stages.map(stage => (
@@ -485,10 +484,10 @@ export default function PipelineBoard({ organizationId, filters }: PipelineBoard
                   key={stage.id}
                   onClick={() => handleMoveLead(stage.id)}
                   disabled={stage.id === movingLead.stage_id}
-                  className={`w-full text-left px-4 py-3 rounded-lg text-sm transition-colors ${
+                  className={`w-full text-left px-4 py-3 rounded-lg text-sm transition-colors border border-transparent ${
                     stage.id === movingLead.stage_id
-                      ? 'text-muted cursor-default'
-                      : 'text-muted hover:bg-void'
+                      ? 'text-muted cursor-default opacity-60'
+                      : 'text-ink hover:bg-white/[0.06] hover:border-glass-edge'
                   }`}
                 >
                   {stage.name}{stage.id === movingLead.stage_id ? ' (etapa atual)' : ''}
@@ -501,7 +500,7 @@ export default function PipelineBoard({ organizationId, filters }: PipelineBoard
 
       {/* Detalhes do lead — clicar num card (desktop) ou no "ⓘ" (qualquer tela) */}
       {detailLead && (
-        <div className="fixed inset-0 z-50 bg-black/40 flex items-stretch sm:items-center sm:justify-end" onClick={() => setDetailLead(null)}>
+        <div className="fixed inset-0 z-50 bg-black/55 backdrop-blur-sm flex items-stretch sm:items-center sm:justify-end" onClick={() => setDetailLead(null)}>
           <div className="flex ml-auto h-full sm:h-[92vh] sm:my-auto sm:mr-4 sm:rounded-2xl overflow-hidden shadow-2xl w-full sm:w-auto" onClick={(e) => e.stopPropagation()}>
             <LeadDetailsSidebar
               lead={detailLead}

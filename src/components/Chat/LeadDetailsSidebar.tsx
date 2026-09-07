@@ -149,7 +149,7 @@ export default function LeadDetailsSidebar({
 
     const base = "flex flex-col items-center justify-center gap-1.5 h-[76px] px-2 border rounded-xl transition-all duration-200 active:scale-[0.96]"
 
-    if (status === 'success') return `${base} bg-sky-500/10 border-sky-500/30 shadow-sm ring-1 ring-sky-500/10`
+    if (status === 'success') return `${base} bg-emerald-500/10 border-emerald-500/30 shadow-sm ring-1 ring-emerald-500/10`
     if (status === 'error') return `${base} bg-red-500/10 border-red-500/30 shadow-sm ring-1 ring-red-500/10`
     if (status === 'sending') return `${base} bg-[var(--chat-bg-field)] border-[var(--chat-border)] opacity-80 cursor-wait`
 
@@ -160,7 +160,7 @@ export default function LeadDetailsSidebar({
     const isThisButton = webhookStatus?.key === key
     const status = isThisButton ? webhookStatus?.status : null
 
-    if (status === 'success') return <Check size={24} weight="bold" className="text-sky-400 animate-in zoom-in duration-200" />
+    if (status === 'success') return <Check size={24} weight="bold" className="text-emerald-400 animate-in zoom-in duration-200" />
     if (status === 'error') return <X size={24} weight="bold" className="text-red-400 animate-in zoom-in duration-200" />
     if (status === 'sending') return (
       <svg className="animate-spin h-5 w-5 text-[var(--chat-text-tertiary)]" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
@@ -176,7 +176,7 @@ export default function LeadDetailsSidebar({
     const isThisButton = webhookStatus?.key === key
     const status = isThisButton ? webhookStatus?.status : null
 
-    if (status === 'success') return 'text-sky-400'
+    if (status === 'success') return 'text-emerald-400'
     if (status === 'error') return 'text-red-400'
     return 'text-[var(--chat-text-secondary)]'
   }
@@ -348,7 +348,7 @@ export default function LeadDetailsSidebar({
 
   return (
     <>
-    <div className="w-full md:w-72 border-l border-[var(--chat-border)] flex flex-col flex-shrink-0 overflow-y-auto bg-[var(--chat-bg-base)] chat-dark-scroll">
+    <div className="w-full md:w-72 border-l border-[var(--chat-border)] flex flex-col flex-shrink-0 overflow-y-auto bg-[var(--chat-bg-base)] surface-rail chat-dark-scroll">
       {onClose && (
         <div className="flex items-center justify-between px-4 h-14 border-b border-[var(--chat-border)] flex-shrink-0 md:hidden">
           <span className="text-sm font-semibold text-[var(--chat-text-primary)]">Detalhes do contato</span>
@@ -495,7 +495,7 @@ export default function LeadDetailsSidebar({
                 const assignedIds = new Set(displayTags.map((lt: any) => lt.tag_id))
                 const availableTags = allTags.filter(t => !assignedIds.has(t.id))
                 return (
-                  <div className="absolute top-full mt-1 left-1/2 -translate-x-1/2 w-48 bg-[var(--chat-bg-menu)] rounded-lg shadow-lg border border-[var(--chat-border)] py-2 z-10 text-left">
+                  <div className="glass-raised absolute top-full mt-1.5 left-1/2 -translate-x-1/2 w-48 rounded-xl py-2 z-10 text-left">
                     {availableTags.length === 0 ? (
                       <div className="px-4 py-2 text-xs text-[var(--chat-text-muted)]">
                         {allTags.length === 0 ? 'Nenhuma tag disponível' : 'Todas as tags já atribuídas'}
@@ -529,18 +529,18 @@ export default function LeadDetailsSidebar({
         {/* Contadores + janela de 24h do WhatsApp */}
         <div className="space-y-3">
           <div className="grid grid-cols-2 gap-2">
-            <div className="rounded-xl border border-[var(--chat-border)] bg-[var(--chat-bg-panel)] px-3 py-2.5">
+            <div className="glass-soft rounded-xl px-3 py-2.5">
               <p className="text-[9px] font-bold uppercase tracking-wider text-[var(--chat-text-tertiary)] mb-0.5">No funil há</p>
               <p className="text-[13px] font-bold text-[var(--chat-text-secondary)]">{formatRelativeTime(lead.created_at)}</p>
             </div>
-            <div className="rounded-xl border border-[var(--chat-border)] bg-[var(--chat-bg-panel)] px-3 py-2.5">
+            <div className="glass-soft rounded-xl px-3 py-2.5">
               <p className="text-[9px] font-bold uppercase tracking-wider text-[var(--chat-text-tertiary)] mb-0.5">Última mensagem</p>
               <p className="text-[13px] font-bold text-[var(--chat-text-secondary)]">{lead.last_activity_at ? formatRelativeTime(lead.last_activity_at) : '—'}</p>
             </div>
           </div>
 
           {windowState && (
-            <div className="rounded-xl border border-[var(--chat-border)] bg-[var(--chat-bg-panel)] px-3 py-2.5">
+            <div className="glass-soft rounded-xl px-3 py-2.5">
               <div className="flex items-center justify-between mb-1.5">
                 <p className="text-[9px] font-bold uppercase tracking-wider text-[var(--chat-text-tertiary)]">Janela de 24h</p>
                 <p className="text-[11px] font-bold" style={{ color: WHATSAPP_WINDOW_ZONE_COLOR[windowState.zone] }}>
@@ -569,7 +569,7 @@ export default function LeadDetailsSidebar({
           Marcar venda concluída
         </button>
 
-        <div className="border-t border-[var(--chat-border)]" />
+        <div className="h-px hairline-x" />
 
         {/* Responsável */}
         <div className="relative" ref={ownerMenuRef}>
@@ -609,7 +609,7 @@ export default function LeadDetailsSidebar({
           </button>
 
           {showOwnerMenu && (
-            <div className="absolute top-full mt-1 left-0 right-0 bg-[var(--chat-bg-menu)] rounded-lg shadow-lg border border-[var(--chat-border)] py-2 z-10 max-h-56 overflow-y-auto">
+            <div className="glass-raised absolute top-full mt-1.5 left-0 right-0 rounded-xl py-2 z-10 max-h-56 overflow-y-auto">
               <button
                 onClick={() => handleAssignOwner(null)}
                 className="w-full text-left px-4 py-1.5 hover:bg-[var(--chat-bg-hover)] flex items-center gap-2 text-sm text-[var(--chat-text-muted)]"
@@ -679,7 +679,7 @@ export default function LeadDetailsSidebar({
               )}
               {summarizeEnabled && (
                 <button disabled={webhookStatus?.key === 'resumir_conversa' && webhookStatus.status === 'sending'} onClick={() => handleSidebarWebhook('resumir_conversa')} className={getSidebarButtonStyles('resumir_conversa', 'bg-[var(--chat-bg-hover)]')}>
-                  {renderSidebarButtonIcon('resumir_conversa', ChatText, 'text-sky-400')}
+                  {renderSidebarButtonIcon('resumir_conversa', ChatText, 'text-[var(--chat-accent)]')}
                   <span className={`text-[11px] font-bold flex items-center text-center leading-tight ${getSidebarButtonTextClass('resumir_conversa')}`}>
                     Resumir<br />Conversa
                   </span>
@@ -689,7 +689,7 @@ export default function LeadDetailsSidebar({
           )
         })()}
 
-        <div className="border-t border-[var(--chat-border)]" />
+        <div className="h-px hairline-x" />
 
         {/* Informações de Contato */}
         <div>
@@ -750,7 +750,7 @@ export default function LeadDetailsSidebar({
           </div>
         </div>
 
-        <div className="border-t border-[var(--chat-border)]" />
+        <div className="h-px hairline-x" />
 
         {/* Central de DADOS */}
         <div>
@@ -761,7 +761,7 @@ export default function LeadDetailsSidebar({
 
           <div className="space-y-4">
             {/* Bloco: Agenda de compromissos */}
-            <div className="rounded-xl border border-[var(--chat-border)] bg-[var(--chat-bg-panel)] p-3 space-y-2.5">
+            <div className="glass-soft rounded-xl p-3 space-y-2.5">
               <div className="flex items-center gap-1.5">
                 <CalendarBlank size={13} className="text-[var(--chat-accent)]" weight="bold" />
                 <p className="text-[11px] font-bold text-[var(--chat-text-secondary)]">Agenda de compromissos</p>
@@ -817,7 +817,7 @@ export default function LeadDetailsSidebar({
             </div>
 
             {/* Bloco: Definições profissionais */}
-            <div className="rounded-xl border border-[var(--chat-border)] bg-[var(--chat-bg-panel)] p-3 space-y-3">
+            <div className="glass-soft rounded-xl p-3 space-y-3">
               <div className="flex items-center gap-1.5">
                 <Briefcase size={13} className="text-[var(--chat-accent)]" weight="bold" />
                 <p className="text-[11px] font-bold text-[var(--chat-text-secondary)]">Definições profissionais</p>
@@ -843,7 +843,7 @@ export default function LeadDetailsSidebar({
           </div>
         </div>
 
-        <div className="border-t border-[var(--chat-border)]" />
+        <div className="h-px hairline-x" />
 
         {/* Campos Customizados */}
         <div>
@@ -962,7 +962,7 @@ export default function LeadDetailsSidebar({
           )}
         </div>
 
-        <div className="border-t border-[var(--chat-border)]" />
+        <div className="h-px hairline-x" />
 
         {/* Funil de Vendas — FunnelMiniMap */}
         {stages.length > 0 && lead.stage_id && (
@@ -978,7 +978,7 @@ export default function LeadDetailsSidebar({
           />
         )}
 
-        <div className="border-t border-[var(--chat-border)]" />
+        <div className="h-px hairline-x" />
 
         {/* Histórico */}
         <LeadHistoryTimeline
@@ -988,7 +988,7 @@ export default function LeadDetailsSidebar({
 
         {isAdmin && (
           <>
-            <div className="border-t border-[var(--chat-border)]" />
+            <div className="h-px hairline-x" />
             <button
               onClick={handleDeleteHistory}
               disabled={deletingHistory}

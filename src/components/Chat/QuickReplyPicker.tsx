@@ -78,7 +78,7 @@ export default function QuickReplyPicker({
   let runningIndex = -1
 
   return (
-    <div className="w-[340px] max-h-[320px] overflow-y-auto bg-[var(--chat-bg-menu)] border border-[var(--chat-border)] rounded-xl shadow-lg py-2">
+    <div className="glass-raised w-[340px] max-h-[320px] overflow-y-auto rounded-xl py-2">
       {flat.length === 0 ? (
         <div className="px-4 py-6 text-center text-xs text-[var(--chat-text-muted)]">
           {shared.length === 0 && personal.length === 0 ? (
@@ -108,7 +108,7 @@ export default function QuickReplyPicker({
                     isHighlighted ? 'bg-[var(--chat-bg-hover)]' : 'hover:bg-[var(--chat-bg-hover)]/60'
                   }`}
                 >
-                  <Lightning size={13} weight="fill" className="text-[#00B8D9] flex-shrink-0 mt-0.5" />
+                  <Lightning size={13} weight="fill" className="text-[var(--chat-accent)] flex-shrink-0 mt-0.5" />
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-1.5">
                       <span className="text-[12px] font-semibold text-[var(--chat-text-primary)]">/{qr.shortcut}</span>

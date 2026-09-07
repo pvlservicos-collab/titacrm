@@ -294,7 +294,7 @@ export default function LeadList({
   const visibleHits = tabFilteredHits.slice(0, displayLimit)
 
   return (
-    <div className="flex flex-col h-full border-r border-[var(--chat-border)] bg-[var(--chat-bg-base)]">
+    <div className="flex flex-col h-full border-r border-[var(--chat-border)] bg-[var(--chat-bg-base)] surface-rail">
       {/* Search Bar */}
       <div className="p-3 border-b border-[var(--chat-border)]">
         <div className="flex items-center gap-2">
@@ -305,7 +305,7 @@ export default function LeadList({
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Buscar leads..."
-              className="w-full pl-9 pr-3 py-2 text-sm border border-[var(--chat-border)] rounded-lg focus:outline-none focus:ring-2 focus:ring-[var(--chat-accent)] text-[var(--chat-text-primary)] placeholder-[var(--chat-text-muted)] transition-shadow bg-[var(--chat-bg-field)]"
+              className="glass-sunken w-full pl-9 pr-3 py-2 text-sm rounded-xl focus:outline-none focus:ring-2 focus:ring-white/10 focus:border-[var(--chat-accent)]/40 text-[var(--chat-text-primary)] placeholder-[var(--chat-text-muted)] transition-all"
             />
           </div>
 
@@ -314,10 +314,10 @@ export default function LeadList({
               <button
                 type="button"
                 onClick={() => setTagFilterOpen((v) => !v)}
-                className={`relative flex items-center justify-center w-9 h-9 rounded-lg border transition-colors ${
+                className={`relative flex items-center justify-center w-9 h-9 rounded-xl border transition-colors ${
                   selectedTagIds.length > 0
-                    ? 'border-[var(--chat-accent)] text-[var(--chat-accent)] bg-[var(--chat-accent)]/10'
-                    : 'border-[var(--chat-border)] text-[var(--chat-text-muted)] hover:text-[var(--chat-text-primary)] hover:bg-[var(--chat-bg-hover)]'
+                    ? 'border-[var(--chat-accent)] text-[var(--chat-accent)] bg-white/[0.08]'
+                    : 'border-[var(--chat-border)] text-[var(--chat-text-muted)] hover:text-[var(--chat-text-primary)] hover:bg-white/[0.06]'
                 }`}
                 title="Filtrar por etiqueta"
               >
@@ -330,7 +330,7 @@ export default function LeadList({
               </button>
 
               {tagFilterOpen && (
-                <div className="absolute z-50 right-0 top-full mt-1 w-56 max-h-80 overflow-y-auto bg-[var(--chat-bg-menu)] border border-[var(--chat-border)] rounded-xl shadow-xl py-1.5">
+                <div className="glass-raised absolute z-50 right-0 top-full mt-1.5 w-56 max-h-80 overflow-y-auto rounded-xl py-1.5">
                   <div className="flex items-center justify-between px-3 py-1.5">
                     <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--chat-text-muted)]">
                       Etiquetas
@@ -352,7 +352,7 @@ export default function LeadList({
                         key={tag.id}
                         type="button"
                         onClick={() => toggleTagFilter(tag.id)}
-                        className="w-full flex items-center gap-2.5 px-3 py-2 text-left text-sm text-[var(--chat-text-primary)] hover:bg-[var(--chat-bg-hover)] transition-colors"
+                        className="w-full flex items-center gap-2.5 px-3 py-2 text-left text-sm text-[var(--chat-text-primary)] hover:bg-white/[0.07] transition-colors"
                       >
                         <span
                           className={`w-4 h-4 rounded flex items-center justify-center flex-shrink-0 border-2 transition-colors`}
@@ -412,7 +412,7 @@ export default function LeadList({
       {contextMenu.visible && (
         <div
           ref={menuRef}
-          className="fixed z-50 bg-[var(--chat-bg-menu)] rounded-xl shadow-xl border border-[var(--chat-border)] py-1.5 min-w-[180px] animate-in fade-in zoom-in-95 duration-150"
+          className="glass-raised fixed z-50 rounded-xl py-1.5 min-w-[180px] animate-in fade-in zoom-in-95 duration-150"
           style={{
             left: contextMenu.x,
             top: contextMenu.y,
@@ -420,14 +420,14 @@ export default function LeadList({
         >
           <button
             onClick={handleTogglePin}
-            className="w-full text-left px-4 py-2 text-sm text-[var(--chat-text-primary)] hover:bg-[var(--chat-bg-hover)] flex items-center gap-2.5 transition-colors"
+            className="w-full text-left px-4 py-2 text-sm text-[var(--chat-text-primary)] hover:bg-white/[0.07] flex items-center gap-2.5 transition-colors"
           >
             <PushPin size={16} weight={contextMenu.lead?.is_pinned ? 'regular' : 'fill'} className={contextMenu.lead?.is_pinned ? 'text-[var(--chat-text-muted)]' : 'text-[var(--chat-accent)] -rotate-45'} />
             {contextMenu.lead?.is_pinned ? 'Desafixar conversa' : 'Fixar conversa'}
           </button>
           <button
             onClick={handleToggleArchive}
-            className="w-full text-left px-4 py-2 text-sm text-[var(--chat-text-primary)] hover:bg-[var(--chat-bg-hover)] flex items-center gap-2.5 transition-colors"
+            className="w-full text-left px-4 py-2 text-sm text-[var(--chat-text-primary)] hover:bg-white/[0.07] flex items-center gap-2.5 transition-colors"
           >
             {contextMenu.lead?.is_archived ? (
               <ArrowCounterClockwise size={16} className="text-[var(--chat-text-muted)]" />

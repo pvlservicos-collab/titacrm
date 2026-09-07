@@ -18,10 +18,11 @@ function CustomTooltip({ active, payload }: TooltipContentProps<any, any>) {
   const total = CHANNEL_ORDER.reduce((sum, c) => sum + (point[c] ?? 0), 0)
 
   return (
-    <div className="rounded-xl border border-white/10 bg-[#141414]/95 backdrop-blur-xl px-3.5 py-3 shadow-[0_8px_24px_rgba(0,0,0,0.5)] min-w-[180px]">
-      <div className="flex items-baseline justify-between gap-4 pb-2 mb-2 border-b border-white/10">
+    <div className="glass-raised rounded-xl px-3.5 py-3 min-w-[180px]">
+      <div className="relative flex items-baseline justify-between gap-4 pb-2 mb-2">
         <span className="text-[11px] text-muted">{formatDayLabel(point.date)}</span>
         <span className="text-base font-bold text-ink">{total}</span>
+        <div className="absolute bottom-0 left-0 right-0 h-px hairline-x" />
       </div>
       <div className="space-y-1.5">
         {CHANNEL_ORDER.map(channel => {
@@ -96,7 +97,8 @@ export default function LeadsByDayChart({ data = mockDailyLeads }: LeadsByDayCha
           </AreaChart>
         </ResponsiveContainer>
       </div>
-      <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 mt-3 pt-3 border-t border-white/10">
+      <div className="h-px hairline-x mt-3" />
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 pt-3">
         {CHANNEL_ORDER.map(channel => {
           const meta = CHANNEL_META[channel]
           return (

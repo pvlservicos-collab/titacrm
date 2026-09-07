@@ -27,17 +27,27 @@ export default function Modal({ isOpen, onClose, title, children, maxWidthClassN
 
     return createPortal(
         <div className="fixed inset-0 z-[100]">
-            <div className="absolute inset-0 bg-black/60 modal-overlay-enter" onClick={onClose} />
+            {/* Backdrop desfocado — o que está atrás continua legível, só fora de
+                foco; é o que amarra o modal de vidro com o resto da tela. */}
+            <div
+                className="absolute inset-0 bg-black/55 backdrop-blur-sm modal-overlay-enter"
+                onClick={onClose}
+            />
             <div className="flex items-center justify-center min-h-screen p-4 pointer-events-none">
                 <div
-                    className={`bg-panel border border-line rounded-2xl shadow-2xl w-full ${maxWidthClassName} overflow-hidden modal-content-enter pointer-events-auto relative z-10`}
+                    className={`glass-raised rounded-2xl w-full ${maxWidthClassName} overflow-hidden modal-content-enter pointer-events-auto relative z-10`}
                 >
                     {title && (
-                        <div className="flex items-center justify-between px-6 py-4 border-b border-line">
+                        <div className="flex items-center justify-between px-6 py-4 relative">
                             <h2 className="text-lg font-bold text-ink">{title}</h2>
-                            <button onClick={onClose} className="text-muted hover:text-ink transition-colors p-1">
+                            <button
+                                onClick={onClose}
+                                className="btn-icon w-9 h-9"
+                                aria-label="Fechar"
+                            >
                                 <X className="w-5 h-5" />
                             </button>
+                            <div className="absolute bottom-0 left-0 right-0 h-px hairline-x" />
                         </div>
                     )}
                     {children}

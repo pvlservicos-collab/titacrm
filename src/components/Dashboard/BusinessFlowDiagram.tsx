@@ -20,8 +20,14 @@ function FlowNode({ data }: NodeProps) {
   const Icon = d.icon
   return (
     <div
-      className="rounded-2xl border px-4 py-3 w-[220px] backdrop-blur-sm"
-      style={{ borderColor: `${d.color}55`, background: `${d.color}14` }}
+      className="glass rounded-2xl px-4 py-3 w-[220px]"
+      style={{
+        // A cor da categoria entra só como fio + lavagem por cima do vidro — o
+        // corpo do nó continua sendo a superfície cinza translúcida do sistema.
+        borderColor: `${d.color}66`,
+        boxShadow: `var(--glass-lift), 0 0 0 1px ${d.color}22, 0 0 24px -12px ${d.color}88`,
+        backgroundColor: `${d.color}12`,
+      }}
     >
       {d.hasTarget && <Handle type="target" position={Position.Left} style={{ background: d.color, border: 'none', width: 8, height: 8 }} />}
       <div className="flex items-center gap-1.5 mb-1.5">
@@ -96,7 +102,7 @@ export default function BusinessFlowDiagram() {
     <GlassCard className="p-5">
       <SectionHeader icon={<ChartLineUp size={16} weight="bold" />} title="Como os leads chegam até você" subtitle="Visão geral do funil — da origem ao WhatsApp" />
 
-      <div className="h-[340px] rounded-2xl overflow-hidden border border-white/10 bg-black/20">
+      <div className="glass-sunken h-[340px] rounded-2xl overflow-hidden">
         <ReactFlowProvider>
           <ReactFlow
             nodes={nodes}
@@ -116,7 +122,9 @@ export default function BusinessFlowDiagram() {
         </ReactFlowProvider>
       </div>
 
-      <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 mt-3 pt-3 border-t border-white/10">
+      <div className="h-px hairline-x mt-3" />
+
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 pt-3">
         {LEGEND.map((item) => (
           <span key={item.label} className="flex items-center gap-1.5 text-[11px] text-muted">
             <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: item.color }} />

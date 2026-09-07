@@ -232,7 +232,7 @@ export default function ChatInstagramPage() {
   // em tela cheia em vez de coluna fixa. Desktop abaixo continua como sempre foi.
   if (isMobile) {
     return (
-      <div className="h-full flex flex-col">
+      <div className="chat-theme h-full flex flex-col">
         {mobileView === 'list' && (
           <LeadList
             leads={allLeads}
@@ -301,7 +301,7 @@ export default function ChatInstagramPage() {
   }
 
   return (
-    <div className="flex h-full gap-0">
+    <div className="chat-theme flex h-full gap-0">
       {/* Left — Lead List */}
       <div className="w-[340px] border-r border-[var(--chat-border)] flex-shrink-0">
         <LeadList

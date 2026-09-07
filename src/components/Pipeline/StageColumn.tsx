@@ -78,10 +78,10 @@ export default function StageColumn({
   return (
     <div
       ref={setNodeRef}
-      className="flex-shrink-0 w-full md:w-[280px] h-full min-h-0 flex flex-col"
+      className="glass-sunken rounded-2xl flex-shrink-0 w-full md:w-[280px] h-full min-h-0 flex flex-col p-2"
     >
       {/* Stage Header */}
-      <div className="mb-3 px-2">
+      <div className="mb-3 px-2 pt-1">
         <div className="flex items-center justify-between mb-0.5">
           <h3
             className="uppercase font-bold text-[12.5px] tracking-wider transition-colors"
@@ -89,7 +89,7 @@ export default function StageColumn({
           >
             {stage.name}
           </h3>
-          <button className="text-muted hover:text-muted p-1 rounded transition-colors focus:outline-none">
+          <button className="btn-icon w-6 h-6 rounded-md focus:outline-none">
             <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
               <circle cx="8" cy="3" r="1.5" />
               <circle cx="8" cy="8" r="1.5" />
@@ -108,19 +108,19 @@ export default function StageColumn({
         </div>
         {/* Progress bar / Underline */}
         {isGoalsEnabled && goalLeads > 0 ? (
-          <div className="w-full h-[3px] bg-panel-2 rounded-full overflow-hidden mt-3 mb-1">
+          <div className="w-full h-[3px] bg-black/40 rounded-full overflow-hidden mt-3 mb-1 ring-1 ring-white/5">
             <div
               className="h-full rounded-full transition-all duration-500 ease-out"
               style={{
                 width: `${progressPercentage}%`,
-                backgroundColor: stageColor,
+                background: `linear-gradient(90deg, ${stageColor}99, ${stageColor})`,
               }}
             />
           </div>
         ) : (
           <div
-            className="w-full h-[2px] rounded-full mt-3 mb-1 opacity-20"
-            style={{ backgroundColor: stageColor }}
+            className="w-full h-[2px] rounded-full mt-3 mb-1"
+            style={{ background: `linear-gradient(90deg, ${stageColor}55, ${stageColor}11)` }}
           />
         )}
       </div>
@@ -132,7 +132,7 @@ export default function StageColumn({
       >
         <div
           ref={scrollContainerRef}
-          className="space-y-3 flex-1 min-h-0 px-1 overflow-y-auto"
+          className="space-y-3 flex-1 min-h-0 px-1 pb-1 overflow-y-auto scrollbar-hide"
         >
           {visibleLeads.length === 0 ? (
             <div className="text-center py-8 text-muted text-sm">

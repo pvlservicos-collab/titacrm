@@ -43,8 +43,8 @@ export default function FollowUpMetricsSection({
         </div>
         <div className="space-y-2.5">
           {topMessages.map((msg, i) => (
-            <div key={msg.id} className="flex items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.03] px-3.5 py-3">
-              <span className="w-6 h-6 rounded-full bg-accent/15 text-accent-2 text-[11px] font-bold flex items-center justify-center flex-shrink-0">
+            <div key={msg.id} className="glass-soft glass-hover flex items-center gap-3 rounded-2xl px-3.5 py-3">
+              <span className="w-6 h-6 rounded-full bg-accent/15 border border-accent/25 text-accent-2 text-[11px] font-bold flex items-center justify-center flex-shrink-0">
                 {i + 1}
               </span>
               <p className="flex-1 min-w-0 text-sm text-ink truncate">{msg.preview}</p>

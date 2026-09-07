@@ -26,17 +26,17 @@ function ChatFilterTabs({ activeTab, onChange, counts }: ChatFilterTabsProps) {
           <button
             key={key}
             onClick={() => onChange(key)}
-            className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium whitespace-nowrap transition-colors ${
+            className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium whitespace-nowrap transition-colors border ${
               isActive
-                ? 'bg-[var(--chat-accent)] text-[var(--chat-bg-conversation)]'
-                : 'bg-[var(--chat-bg-panel)] text-[var(--chat-text-muted)] hover:bg-[var(--chat-bg-menu)] hover:text-[var(--chat-text-primary)]'
+                ? 'bg-[var(--chat-accent)] border-white/20 text-[var(--chat-bg-conversation)]'
+                : 'bg-white/[0.04] border-[var(--chat-border)] text-[var(--chat-text-muted)] hover:bg-white/[0.08] hover:text-[var(--chat-text-primary)]'
             }`}
           >
             {label}
             {count > 0 && (
               <span
                 className={`px-1.5 rounded-full text-[10px] font-bold ${
-                  isActive ? 'bg-[var(--chat-bg-conversation)]/20 text-[var(--chat-bg-conversation)]' : 'bg-[var(--chat-border)] text-[var(--chat-text-primary)]'
+                  isActive ? 'bg-black/20 text-[var(--chat-bg-conversation)]' : 'bg-white/10 text-[var(--chat-text-primary)]'
                 }`}
               >
                 {count}

@@ -21,13 +21,12 @@ export default function InicioPage() {
         )
     }
 
+    // ambient-glow desenha (via ::before/::after) os dois borrões que ficam atrás
+    // dos cards translúcidos — ver globals.css. Antes eram duas divs decorativas
+    // soltas aqui no meio do conteúdo.
     return (
-        <div className="relative min-h-full">
-            {/* Glow ambiente — reforça o clima "glass" atrás dos cards translúcidos */}
-            <div className="pointer-events-none absolute -top-24 left-1/4 w-[520px] h-[520px] rounded-full bg-accent/10 blur-[120px]" />
-            <div className="pointer-events-none absolute top-40 right-0 w-[420px] h-[420px] rounded-full bg-accent/[0.06] blur-[100px]" />
-
-            <div className="relative max-w-6xl mx-auto p-4 sm:p-6 space-y-8">
+        <div className="ambient-glow min-h-full">
+            <div className="relative z-10 max-w-6xl mx-auto p-4 sm:p-6 space-y-8">
                 <div className="pb-2">
                     <h1 className="text-2xl sm:text-3xl font-bold text-ink">
                         {firstName ? `Olá, ${firstName}` : 'Olá'}

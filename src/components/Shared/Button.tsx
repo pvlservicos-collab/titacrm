@@ -1,12 +1,23 @@
 'use client'
 
+/**
+ * Botão do app. Fachada fina em cima do <Button> do design system
+ * (src/components/UI) — mantém a API antiga (`variant`, `href`, `showArrow`)
+ * que já está espalhada pelas telas.
+ *
+ * O primário era `bg-gradient-to-r from-[#4f8bff] to-[#2f6bf0]` — um azul que
+ * não existe mais na marca, e num degradê que a gente decidiu não usar em
+ * botão. Agora todas as variantes têm preenchimento sólido e o acabamento
+ * vai na borda (ver a seção BOTÕES em globals.css).
+ */
+
 import Link from 'next/link'
 import { ArrowRight } from '@phosphor-icons/react'
-
-type ButtonVariant = 'primary' | 'secondary' | 'ghost'
+import { buttonClass, type ButtonVariant, type ButtonSize } from '@/components/UI'
 
 interface ButtonProps {
     variant?: ButtonVariant
+    size?: ButtonSize
     href?: string
     onClick?: () => void
     type?: 'button' | 'submit'
@@ -16,16 +27,9 @@ interface ButtonProps {
     children: React.ReactNode
 }
 
-const base = 'group inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl text-sm font-semibold transition-all disabled:opacity-50 disabled:cursor-not-allowed'
-
-const variants: Record<ButtonVariant, string> = {
-    primary: 'bg-gradient-to-r from-[#4f8bff] to-[#2f6bf0] text-white shadow-sm hover:shadow-glow',
-    secondary: 'bg-transparent border border-line text-ink hover:border-accent-line',
-    ghost: 'bg-transparent text-muted hover:text-ink',
-}
-
 export default function Button({
     variant = 'primary',
+    size = 'md',
     href,
     onClick,
     type = 'button',
@@ -34,7 +38,7 @@ export default function Button({
     showArrow,
     children,
 }: ButtonProps) {
-    const classes = `${base} ${variants[variant]} ${className}`
+    const classes = buttonClass(variant, size, `group ${className}`)
     const content = (
         <>
             {children}

@@ -39,9 +39,9 @@ export default function SettingsSidebar() {
                     <Link
                         key={section.href}
                         href={section.href}
-                        className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${isActive
-                            ? 'bg-panel-2 text-accent-2'
-                            : 'text-muted hover:bg-panel-2'
+                        className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-colors border ${isActive
+                            ? 'bg-graphite-6 border-white/15 text-accent-2'
+                            : 'border-transparent text-muted hover:bg-white/[0.06] hover:text-ink'
                             }`}
                     >
                         <Icon size={20} weight={isActive ? "fill" : "regular"} className={isActive ? "text-accent-2" : "text-muted"} />

@@ -1,17 +1,30 @@
+/**
+ * Mantido como fachada fina em cima de <Surface> (src/components/UI) — o
+ * dashboard inteiro importa GlassCard, e o vidro de verdade agora mora no
+ * design system. Em código novo prefira <Surface>/<SectionTitle> direto.
+ */
 import type { ReactNode } from 'react'
+import { Surface, SectionTitle } from '@/components/UI'
 
 interface GlassCardProps {
   children: ReactNode
   className?: string
+  /** Realce de borda/sombra no hover — pra card clicável. */
+  interactive?: boolean
+  /** Fio amarelo da marca em volta — card em destaque. */
+  accent?: boolean
 }
 
-export default function GlassCard({ children, className = '' }: GlassCardProps) {
+export default function GlassCard({
+  children,
+  className = '',
+  interactive = true,
+  accent,
+}: GlassCardProps) {
   return (
-    <div
-      className={`rounded-3xl border border-white/10 bg-white/[0.04] backdrop-blur-xl shadow-[0_8px_32px_rgba(0,0,0,0.35)] ${className}`}
-    >
+    <Surface interactive={interactive} accent={accent} className={`rounded-3xl ${className}`}>
       {children}
-    </div>
+    </Surface>
   )
 }
 
@@ -22,15 +35,5 @@ interface SectionHeaderProps {
 }
 
 export function SectionHeader({ icon, title, subtitle }: SectionHeaderProps) {
-  return (
-    <div className="flex items-center gap-2.5 mb-4">
-      <div className="w-8 h-8 rounded-xl bg-accent/15 border border-accent/20 flex items-center justify-center text-accent-2 flex-shrink-0">
-        {icon}
-      </div>
-      <div>
-        <h2 className="text-sm font-semibold text-ink">{title}</h2>
-        {subtitle && <p className="text-xs text-muted">{subtitle}</p>}
-      </div>
-    </div>
-  )
+  return <SectionTitle icon={icon} title={title} subtitle={subtitle} className="mb-4" />
 }

@@ -76,19 +76,18 @@ export default function InstallAppBanner() {
 
   return (
     <div className="fixed bottom-[calc(64px+env(safe-area-inset-bottom))] left-3 right-3 z-[70] md:hidden">
-      <div className="bg-[#202c33] border border-[#2f3b44] rounded-2xl shadow-2xl p-4 flex items-start gap-3">
+      <div className="glass-raised rounded-2xl p-4 flex items-start gap-3">
         <div className="w-10 h-10 rounded-xl overflow-hidden flex-shrink-0">
           <img src="/icons/icon-192.png" alt="" className="w-full h-full object-cover" />
         </div>
         <div className="flex-1 min-w-0">
           {platform === 'android' ? (
             <>
-              <p className="text-sm font-semibold text-[#e9edef]">Instalar o TitaCRM</p>
-              <p className="text-xs text-[#8696a0] mt-0.5">Adicione à tela de início pra abrir como um app, em tela cheia.</p>
+              <p className="text-sm font-semibold text-ink">Instalar o TitaCRM</p>
+              <p className="text-xs text-muted mt-0.5">Adicione à tela de início pra abrir como um app, em tela cheia.</p>
               <button
                 onClick={handleInstall}
-                className="mt-2.5 flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold text-white"
-                style={{ backgroundColor: '#00B8D9' }}
+                className="btn btn-primary btn-sm mt-2.5"
               >
                 <DownloadSimple size={14} weight="bold" />
                 Instalar app
@@ -96,14 +95,14 @@ export default function InstallAppBanner() {
             </>
           ) : (
             <>
-              <p className="text-sm font-semibold text-[#e9edef]">Adicione o TitaCRM à tela de início</p>
-              <p className="text-xs text-[#8696a0] mt-1 flex items-center gap-1 flex-wrap">
-                Toque em <ShareFat size={14} weight="bold" className="text-[#53bdeb]" /> Compartilhar e depois em "Adicionar à Tela de Início"
+              <p className="text-sm font-semibold text-ink">Adicione o TitaCRM à tela de início</p>
+              <p className="text-xs text-muted mt-1 flex items-center gap-1 flex-wrap">
+                Toque em <ShareFat size={14} weight="bold" className="text-accent-2" /> Compartilhar e depois em "Adicionar à Tela de Início"
               </p>
             </>
           )}
         </div>
-        <button onClick={dismiss} className="text-[#8696a0] hover:text-[#e9edef] transition-colors flex-shrink-0" aria-label="Fechar">
+        <button onClick={dismiss} className="btn-icon w-8 h-8 flex-shrink-0" aria-label="Fechar">
           <X size={18} />
         </button>
       </div>

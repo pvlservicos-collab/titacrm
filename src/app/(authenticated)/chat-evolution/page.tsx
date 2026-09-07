@@ -186,7 +186,7 @@ export default function ChatEvolutionPage() {
   }
 
   return (
-    <div className="flex h-full gap-0">
+    <div className="chat-theme flex h-full gap-0">
       <div className="w-[340px] border-r border-[var(--chat-border)] flex-shrink-0">
         <LeadList
           leads={allLeads}
