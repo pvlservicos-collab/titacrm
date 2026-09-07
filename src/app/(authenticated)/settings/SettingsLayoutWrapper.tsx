@@ -75,6 +75,8 @@ export default function SettingsLayoutWrapper({
     // Aguarda o redirect do useEffect acima em vez de piscar a barra lateral com painel vazio
     if (isRoot) return null
 
+    const isWideSection = pathname.startsWith('/settings/leads')
+
     return (
         <SettingsAccessGuard>
             <div className="flex min-h-[calc(100vh-3.5rem)]">
@@ -85,9 +87,12 @@ export default function SettingsLayoutWrapper({
                     </div>
                 </aside>
 
-                {/* Main Content Area */}
+                {/* Main Content Area
+                    max-w-3xl e a largura de leitura das telas de formulario. A de
+                    Leads e uma planilha de ate 12 colunas: ali a restricao so
+                    espremeria a tabela num scroll horizontal desnecessario. */}
                 <main className="flex-1 p-8 lg:p-12 xl:p-16 overflow-y-auto">
-                    <div className="max-w-3xl">
+                    <div className={isWideSection ? 'max-w-none' : 'max-w-3xl'}>
                         {children}
                     </div>
                 </main>

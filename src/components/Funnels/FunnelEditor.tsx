@@ -25,22 +25,31 @@ import {
   HourglassSimple,
   GitBranch,
   FlagCheckered,
+  ArrowsLeftRight,
   Plus,
   Trash,
   X,
 } from '@phosphor-icons/react'
 
 export interface FunnelBlockData {
-  blockType: 'trigger' | 'message' | 'wait' | 'condition' | 'end'
+  blockType: 'trigger' | 'message' | 'wait' | 'condition' | 'end' | 'move_stage'
   config: Record<string, any>
   [key: string]: unknown
 }
 
 type FlowNode = Node<FunnelBlockData>
 
+/** Só o que o bloco "Mover de etapa" precisa saber sobre uma etapa. */
+export interface StageOption {
+  id: string
+  name: string
+}
+
 const TRIGGER_LABELS: Record<string, string> = {
   novo_pago: 'Novo Pago',
   novo_recuperacao: 'Novo Recuperação',
+  lead_site_evento: 'Lead novo — Site Evento',
+  lead_agenda_ascensao: 'Lead novo — Agenda Ascensão',
 }
 
 const CONDITION_TYPE_LABELS: Record<string, string> = {
@@ -52,6 +61,8 @@ const CONDITION_TYPE_LABELS: Record<string, string> = {
 const TRIGGER_WEBHOOKS: Record<string, string> = {
   novo_pago: '/api/webhooks/recuperacao (pago)',
   novo_recuperacao: '/api/webhooks/recuperacao',
+  lead_site_evento: '/api/ingest/leads/site_evento',
+  lead_agenda_ascensao: '/api/ingest/leads/agenda_ascensao',
 }
 
 const CONDITION_WEBHOOKS: Record<string, string> = {
@@ -158,18 +169,41 @@ function EndNode({ data, selected }: NodeProps<FlowNode>) {
   )
 }
 
+/**
+ * Move o lead de coluna no Kanban. O rótulo mostra o nome da etapa, não o uuid —
+ * o nome vem em config.stageName, gravado junto pelo painel de edição, porque o
+ * nó não tem como consultar a lista de etapas de dentro do canvas.
+ */
+function MoveStageNode({ data, selected }: NodeProps<FlowNode>) {
+  const config = data.config || {}
+  return (
+    <NodeShell
+      selected={selected}
+      color="#14b8a6"
+      icon={<ArrowsLeftRight size={16} weight="fill" style={{ color: '#14b8a6' }} />}
+      title="Mover de etapa"
+    >
+      {config.stageName
+        ? <p className="font-semibold text-ink">→ {config.stageName}</p>
+        : <span className="italic text-muted">Selecione a etapa</span>}
+    </NodeShell>
+  )
+}
+
 const nodeTypes = {
   trigger: TriggerNode,
   message: MessageNode,
   wait: WaitNode,
   condition: ConditionNode,
+  move_stage: MoveStageNode,
   end: EndNode,
 }
 
 // ── Block Editor Panel ──────────────────────────────────────────────────────
 
-function BlockEditorPanel({ node, onChange, onDelete, onClose }: {
+function BlockEditorPanel({ node, stages, onChange, onDelete, onClose }: {
   node: FlowNode
+  stages: StageOption[]
   onChange: (config: Record<string, any>) => void
   onDelete: () => void
   onClose: () => void
@@ -184,6 +218,7 @@ function BlockEditorPanel({ node, onChange, onDelete, onClose }: {
           {node.data.blockType === 'message' && 'Mensagem'}
           {node.data.blockType === 'wait' && 'Espera Minha Mensagem'}
           {node.data.blockType === 'condition' && 'Espera Mensagem Dele'}
+          {node.data.blockType === 'move_stage' && 'Mover de etapa'}
           {node.data.blockType === 'end' && 'Fim'}
         </h3>
         <button onClick={onClose} className="text-muted hover:text-muted">
@@ -200,8 +235,9 @@ function BlockEditorPanel({ node, onChange, onDelete, onClose }: {
               onChange={(e) => onChange({ ...config, trigger: e.target.value })}
               className="w-full px-3 py-2 border border-line rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-accent"
             >
-              <option value="novo_recuperacao">Novo Recuperação</option>
-              <option value="novo_pago">Novo Pago</option>
+              {Object.entries(TRIGGER_LABELS).map(([value, label]) => (
+                <option key={value} value={value}>{label}</option>
+              ))}
             </select>
           </div>
         )}
@@ -284,6 +320,31 @@ function BlockEditorPanel({ node, onChange, onDelete, onClose }: {
           </div>
         )}
 
+        {node.data.blockType === 'move_stage' && (
+          <div>
+            <label className="block text-xs font-semibold text-muted uppercase tracking-wide mb-1.5">Mover o lead para</label>
+            <select
+              value={config.stageId || ''}
+              onChange={(e) => {
+                const stageId = e.target.value
+                // Grava o nome junto com o id: é o que o nó exibe no canvas, e
+                // evita ter que carregar a lista de etapas lá dentro.
+                const stageName = stages.find((s) => s.id === stageId)?.name || ''
+                onChange({ ...config, stageId, stageName })
+              }}
+              className="w-full px-3 py-2 border border-line rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-accent"
+            >
+              <option value="">Selecione a etapa…</option>
+              {stages.map((stage) => (
+                <option key={stage.id} value={stage.id}>{stage.name}</option>
+              ))}
+            </select>
+            <p className="text-[11px] text-muted mt-1">
+              O lead é movido para essa coluna do Pipeline e a mudança fica registrada no histórico dele.
+            </p>
+          </div>
+        )}
+
         {node.data.blockType === 'end' && (
           <p className="text-xs text-muted">Este bloco encerra a execução do funil para o lead.</p>
         )}
@@ -313,10 +374,13 @@ export interface FunnelEditorHandle {
 export default function FunnelEditor({
   initialNodes,
   initialEdges,
+  stages = [],
   onChange,
 }: {
   initialNodes: FlowNode[]
   initialEdges: Edge[]
+  /** Etapas do pipeline, para o bloco "Mover de etapa". */
+  stages?: StageOption[]
   onChange: (nodes: FlowNode[], edges: Edge[]) => void
 }) {
   const [nodes, setNodes] = useState<FlowNode[]>(initialNodes)
@@ -380,6 +444,7 @@ export default function FunnelEditor({
       message: { text: '', trackableUrl: '' },
       wait: { value: 5, unit: 'minutes' },
       condition: { value: 60, unit: 'minutes' },
+      move_stage: { stageId: '', stageName: '' },
       end: {},
       trigger: {},
     }
@@ -425,6 +490,9 @@ export default function FunnelEditor({
           <button onClick={() => addNode('condition')} className="flex items-center gap-2 text-xs font-semibold text-muted hover:bg-orange-50 hover:text-orange-600 rounded-lg px-2 py-1.5 transition-colors">
             <Plus size={14} /> <GitBranch size={14} weight="fill" style={{ color: '#f97316' }} /> Espera Mensagem Dele
           </button>
+          <button onClick={() => addNode('move_stage')} className="flex items-center gap-2 text-xs font-semibold text-muted hover:bg-teal-500/10 hover:text-teal-400 rounded-lg px-2 py-1.5 transition-colors">
+            <Plus size={14} /> <ArrowsLeftRight size={14} weight="fill" style={{ color: '#14b8a6' }} /> Mover de etapa
+          </button>
           <button onClick={() => addNode('end')} className="flex items-center gap-2 text-xs font-semibold text-muted hover:bg-panel-2 rounded-lg px-2 py-1.5 transition-colors">
             <Plus size={14} /> <FlagCheckered size={14} weight="fill" style={{ color: '#6b7280' }} /> Fim
           </button>
@@ -433,6 +501,7 @@ export default function FunnelEditor({
         {selectedNode && (
           <BlockEditorPanel
             node={selectedNode}
+            stages={stages}
             onChange={(config) => updateNodeConfig(selectedNode.id, config)}
             onDelete={() => deleteNode(selectedNode.id)}
             onClose={() => setSelectedId(null)}

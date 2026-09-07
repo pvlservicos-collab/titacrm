@@ -196,7 +196,7 @@ export async function POST(req: NextRequest) {
         neighborhood: order.customerNeighborhood,
         city: order.customerCity,
         state: order.customerState,
-      })
+      }, order.id)
       await publishEvent(channels.orgLeads(auth.organizationId), events.LEAD_UPDATED, { id: body.lead_id })
     }
 

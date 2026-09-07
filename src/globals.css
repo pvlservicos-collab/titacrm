@@ -681,3 +681,22 @@ html {
 @supports (-webkit-touch-callout: none) {
   .glass, .glass-soft, .glass-raised, .glass-sunken { will-change: backdrop-filter; }
 }
+
+/* Piscar do card do lead — acionado ao clicar no minicard dele na coluna "Fonte:".
+   Anima a borda e o halo, não a opacidade: o card precisa continuar legível
+   enquanto chama atenção, e piscar sumindo é justamente o que faria perder de
+   vista o que se quer achar. */
+@keyframes leadCardFlash {
+  0%, 100% {
+    border-color: var(--glass-edge);
+    box-shadow: var(--glass-lift);
+  }
+  25%, 75% {
+    border-color: var(--blue);
+    box-shadow: var(--glass-lift), 0 0 0 3px rgba(242, 199, 68, 0.28), 0 0 26px -4px rgba(242, 199, 68, 0.55);
+  }
+}
+
+.lead-card-flash {
+  animation: leadCardFlash 0.75s ease-in-out 3;
+}

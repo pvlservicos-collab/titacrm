@@ -292,6 +292,33 @@ export const apiTokens = pgTable('api_tokens', {
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
 })
 
+// ── Lead Source Submissions (leads recebidos de fontes externas) ─────────────
+// Log cru do que cada fonte mandou. Campos de contato em colunas (iguais em toda
+// fonte, é o que a tela lista e o que liga no lead do CRM); o resto em `payload`,
+// pra fonte nova não exigir migration. Registro das fontes: src/lib/leadSources.ts.
+// Aplicado no banco por drizzle/0119_lead_source_submissions.sql (este projeto
+// não roda migration automática).
+export const leadSourceSubmissions = pgTable('lead_source_submissions', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  organizationId: uuid('organization_id').notNull().references(() => organizations.id),
+  source: text('source').notNull(),
+  externalId: text('external_id'),
+  name: text('name'),
+  email: text('email'),
+  phone: text('phone'),
+  instagram: text('instagram'),
+  payload: jsonb('payload').notNull().default({}),
+  leadId: uuid('lead_id'),
+  receivedAt: timestamp('received_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+}, (t) => ({
+  // O ON CONFLICT do endpoint de ingestão depende deste índice: reenviar o mesmo
+  // lead (quiz que era "w1" e virou "done") atualiza a linha em vez de duplicar.
+  dedupeUnique: uniqueIndex('lead_source_submissions_dedupe_unique')
+    .on(t.organizationId, t.source, t.externalId)
+    .where(sql`external_id IS NOT NULL`),
+}))
+
 // ── Integration Message Logs (n8n e outros sistemas externos) ────────────────
 export const integrationMessageLogs = pgTable('integration_message_logs', {
   id: uuid('id').defaultRandom().primaryKey(),
@@ -361,8 +388,12 @@ export const webhookLogs = pgTable('webhook_logs', {
 })
 
 // ── Funil de Mensagens ────────────────────────────────────────────────────────
-export const funnelTriggerEnum = pgEnum('funnel_trigger', ['novo_pago', 'novo_recuperacao', 'geracaowhatsapp', 'pedido_figurinha', 'abandono_preco'])
-export const funnelBlockTypeEnum = pgEnum('funnel_block_type', ['trigger', 'message', 'wait', 'condition', 'end'])
+// 'lead_site_evento' / 'lead_agenda_ascensao' disparam quando um lead novo entra
+// por /api/ingest/leads (ver src/lib/funnel-triggers.ts). Aplicados no banco por
+// drizzle/0120_funnel_lead_sources.sql.
+export const funnelTriggerEnum = pgEnum('funnel_trigger', ['novo_pago', 'novo_recuperacao', 'geracaowhatsapp', 'pedido_figurinha', 'abandono_preco', 'lead_site_evento', 'lead_agenda_ascensao'])
+// 'move_stage' move o lead de etapa no pipeline; config = { stageId }.
+export const funnelBlockTypeEnum = pgEnum('funnel_block_type', ['trigger', 'message', 'wait', 'condition', 'end', 'move_stage'])
 export const funnelBranchEnum = pgEnum('funnel_branch', ['default', 'yes', 'no'])
 export const funnelExecutionStatusEnum = pgEnum('funnel_execution_status', ['running', 'waiting', 'waiting_condition', 'completed', 'stopped'])
 

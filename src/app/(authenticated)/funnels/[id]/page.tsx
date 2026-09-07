@@ -4,7 +4,8 @@ import { useEffect, useState, useCallback, useRef } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { ArrowLeft, FloppyDisk, CheckCircle } from '@phosphor-icons/react'
 import type { Edge } from '@xyflow/react'
-import FunnelEditor, { type FunnelBlockData } from '@/components/Funnels/FunnelEditor'
+import FunnelEditor, { type FunnelBlockData, type StageOption } from '@/components/Funnels/FunnelEditor'
+import { useAuth, usePipeline } from '@/hooks'
 
 type FlowNode = {
   id: string
@@ -29,6 +30,11 @@ export default function FunnelEditorPage() {
   const [edges, setEdges] = useState<Edge[]>([])
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
+
+  // Etapas do pipeline — alimentam o seletor do bloco "Mover de etapa".
+  const { organizationId } = useAuth()
+  const { stages } = usePipeline(organizationId || '')
+  const stageOptions: StageOption[] = stages.map((s) => ({ id: s.id, name: s.name }))
 
   const flowRef = useRef<{ nodes: FlowNode[]; edges: Edge[] }>({ nodes: [], edges: [] })
   const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -175,7 +181,7 @@ export default function FunnelEditorPage() {
       </div>
 
       <div className="flex-1 relative">
-        <FunnelEditor initialNodes={nodes as any} initialEdges={edges} onChange={handleFlowChange as any} />
+        <FunnelEditor initialNodes={nodes as any} initialEdges={edges} stages={stageOptions} onChange={handleFlowChange as any} />
       </div>
     </div>
   )

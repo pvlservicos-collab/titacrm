@@ -150,7 +150,8 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
           neighborhood: order.customerNeighborhood,
           city: order.customerCity,
           state: order.customerState,
-        } : undefined
+        } : undefined,
+        order.id
       )
     }
     if (order.leadId) {

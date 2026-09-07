@@ -7,7 +7,7 @@
 // especificamente (LeadsContext, usePipeline, useLeadActivities) nem chegam a
 // cair aqui, porque já retornam os dados demo antes de chamar fetch. Isso é só
 // a rede de segurança pro resto do app. Reverter junto com AuthGuard/middleware.
-import { demoLeads, demoActivitiesByLeadId, demoPipelines, demoStagesByPipeline, demoAllStages, demoFunnels, demoFunnelSummaries } from './demoData'
+import { demoLeads, demoActivitiesByLeadId, demoPipelines, demoStagesByPipeline, demoAllStages, demoFunnels, demoFunnelSummaries, demoLeadSources, demoSubmissionsBySource, demoProducts } from './demoData'
 
 let demoModeActive = false
 let installed = false
@@ -72,6 +72,22 @@ function buildDemoResponse(path: string, method: string): Response {
   }
   if (funnelMatch && (method === 'PATCH' || method === 'PUT')) {
     return jsonResponse({ data: {} })
+  }
+
+  // Tela /leads. Sem isto o fallback genérico devolveria { data: [] } pra
+  // /api/lead-sources e a tela não teria nem aba pra mostrar.
+  if (path === '/api/lead-sources' && method === 'GET') {
+    return jsonResponse({ data: demoLeadSources })
+  }
+  const submissionsMatch = path.match(/^\/api\/lead-sources\/([^/]+)\/submissions$/)
+  if (submissionsMatch && method === 'GET') {
+    const rows = demoSubmissionsBySource[submissionsMatch[1]] || []
+    return jsonResponse({ data: rows, total: rows.length, limit: rows.length, offset: 0 })
+  }
+
+  // Produtos — a coluna "Comprou produto" do Kanban lista eles.
+  if (path === '/api/products' && method === 'GET') {
+    return jsonResponse({ data: demoProducts })
   }
 
   // Fallback genérico — qualquer outra rota de API vira uma resposta vazia

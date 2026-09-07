@@ -1,7 +1,7 @@
 import { db } from '@/lib/db'
 import {
   leads, leadActivities, messageFunnels, funnelBlocks, funnelConnections,
-  funnelExecutions, funnelClickEvents, funnelResponseEvents,
+  funnelExecutions, funnelClickEvents, funnelResponseEvents, leadStageHistory,
 } from '@/lib/schema'
 import { eq, and, lte } from 'drizzle-orm'
 import { publishEvent, channels, events } from '@/lib/realtime'
@@ -10,10 +10,22 @@ import { randomBytes } from 'crypto'
 
 const MAX_STEPS_PER_RUN = 25
 
+/**
+ * Base das URLs rastreaveis ({link} nas mensagens do funil).
+ *
+ * A ordem importa: VERCEL_PROJECT_PRODUCTION_URL e o dominio estavel do projeto,
+ * VERCEL_URL e o do deploy especifico (muda a cada push, serve pra preview).
+ * NEXT_PUBLIC_APP_URL cobre quem roda fora da Vercel (a VPS, por exemplo).
+ *
+ * O ultimo fallback e o dominio deste projeto — antes apontava pro
+ * 'whatsappfm.vercel.app', do projeto de onde este codigo foi copiado, o que
+ * mandaria o cliente pra um link de outra aplicacao se as env faltassem.
+ */
 function getBaseUrl() {
   if (process.env.VERCEL_PROJECT_PRODUCTION_URL) return `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`
   if (process.env.VERCEL_URL) return `https://${process.env.VERCEL_URL}`
-  return 'https://whatsappfm.vercel.app'
+  if (process.env.NEXT_PUBLIC_APP_URL) return process.env.NEXT_PUBLIC_APP_URL.replace(/\/+$/, '')
+  return 'https://titacrm.vercel.app'
 }
 
 function waitMs(value: number, unit: string) {
@@ -116,6 +128,42 @@ async function sendMessageBlock(execution: { id: string; funnelId: string; organ
 }
 
 /**
+ * Bloco "Mover de etapa" — leva o lead para outra coluna do Kanban.
+ *
+ * É o que fecha o fluxo pedido: assim que o lead responde, o ramo "Sim" da
+ * condição cai aqui e ele sai de "Contactado por IA" para "Atendimento por
+ * humano" sozinho, sem ninguém arrastar card.
+ *
+ * Registra em lead_stage_history igual a uma movimentação manual, pra a linha do
+ * tempo do lead não ter buraco quando quem moveu foi o funil.
+ */
+async function moveStageBlock(
+  execution: { organizationId: string; leadId: string },
+  block: { config: any }
+) {
+  const stageId = (block.config as { stageId?: string })?.stageId
+  if (!stageId) return
+
+  const [lead] = await db.select({ stageId: leads.stageId })
+    .from(leads).where(eq(leads.id, execution.leadId)).limit(1)
+  if (!lead) return
+  if (lead.stageId === stageId) return // já está lá — não polui o histórico
+
+  await db.update(leads)
+    .set({ stageId, updatedAt: new Date() })
+    .where(eq(leads.id, execution.leadId))
+
+  await db.insert(leadStageHistory).values({
+    organizationId: execution.organizationId,
+    leadId: execution.leadId,
+    fromStageId: lead.stageId,
+    toStageId: stageId,
+  })
+
+  await publishEvent(channels.orgLeads(execution.organizationId), events.LEAD_UPDATED, { id: execution.leadId })
+}
+
+/**
  * Avança a execução do funil a partir do bloco atual, processando blocos em sequência
  * até encontrar um bloco que precise aguardar (espera, condição) ou finalizar (fim).
  */
@@ -168,6 +216,17 @@ export async function advanceExecution(executionId: string) {
       const waitUntil = new Date(Date.now() + waitMs(config?.value || 0, config?.unit || 'minutes'))
       await db.update(funnelExecutions).set({ status: 'waiting_condition', waitUntil, updatedAt: new Date() }).where(eq(funnelExecutions.id, executionId))
       return
+    }
+
+    if (block.type === 'move_stage') {
+      await moveStageBlock(execution as any, block as any)
+      const next = await getNextBlock(execution.funnelId, block.id, 'default')
+      if (!next) {
+        await db.update(funnelExecutions).set({ status: 'completed', updatedAt: new Date() }).where(eq(funnelExecutions.id, executionId))
+        return
+      }
+      await db.update(funnelExecutions).set({ currentBlockId: next.id, updatedAt: new Date() }).where(eq(funnelExecutions.id, executionId))
+      continue
     }
 
     if (block.type === 'end') {

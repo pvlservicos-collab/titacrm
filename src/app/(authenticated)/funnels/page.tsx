@@ -9,7 +9,12 @@ import NotAuthorized from '@/components/Shared/NotAuthorized'
 interface FunnelSummary {
   id: string
   name: string
-  trigger: 'novo_pago' | 'novo_recuperacao'
+  // string, e não uma união fechada: o enum funnel_trigger no banco já tinha
+  // 'geracaowhatsapp' e outros que este tipo não listava — o código comparava
+  // com eles e o TS acusava "sem sobreposição". Com as fontes de lead entrando
+  // no enum, manter a lista duplicada aqui só multiplicaria o problema; os
+  // rótulos vêm de TRIGGER_LABELS, que já trata valor desconhecido.
+  trigger: string
   is_active: boolean
   created_at: string
   metrics: {
@@ -24,6 +29,8 @@ interface FunnelSummary {
 const TRIGGER_LABELS: Record<string, string> = {
   novo_pago: 'Novo Pago',
   novo_recuperacao: 'Novo Recuperação',
+  lead_site_evento: 'Lead novo — Site Evento',
+  lead_agenda_ascensao: 'Lead novo — Agenda Ascensão',
 }
 
 export default function FunnelsPage() {
@@ -35,7 +42,7 @@ export default function FunnelsPage() {
   const [creating, setCreating] = useState(false)
   const [showNewModal, setShowNewModal] = useState(false)
   const [newName, setNewName] = useState('')
-  const [newTrigger, setNewTrigger] = useState<'novo_pago' | 'novo_recuperacao'>('novo_recuperacao')
+  const [newTrigger, setNewTrigger] = useState<string>('lead_site_evento')
 
   const fetchFunnels = async () => {
     setLoading(true)
@@ -212,8 +219,9 @@ export default function FunnelsPage() {
               onChange={(e) => setNewTrigger(e.target.value as any)}
               className="w-full px-3 py-2 border border-line rounded-lg text-sm mb-6 focus:outline-none focus:ring-2 focus:ring-accent"
             >
-              <option value="novo_recuperacao">Novo Recuperação</option>
-              <option value="novo_pago">Novo Pago</option>
+              {Object.entries(TRIGGER_LABELS).map(([value, label]) => (
+                <option key={value} value={value}>{label}</option>
+              ))}
             </select>
 
             <div className="flex justify-end gap-2">

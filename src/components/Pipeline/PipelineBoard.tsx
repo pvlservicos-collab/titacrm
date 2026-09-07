@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo, useCallback, useEffect } from 'react'
+import { useState, useMemo, useCallback, useEffect, useRef } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
 import {
   DndContext,
@@ -20,12 +20,19 @@ import { usePipeline, useAuth, useIsMobile, useStageHistory } from '@/hooks'
 import { useLeadsContext } from '@/contexts/LeadsContext'
 import { usePipelineFilters } from '@/contexts/FilterContext'
 import { LeadWithOwner } from '@/lib/types'
+import { getStageColor } from '@/lib/stageColors'
 import FilterButton, { FilterState } from '@/components/Shared/FilterButton'
 import StageColumn from './StageColumn'
+import SourceRail from './SourceRail'
 import LeadCard from './LeadCard'
 import LoadingSpinner from '@/components/Shared/LoadingSpinner'
 import { LeadDetailsSidebar } from '@/components/Chat'
 import { X } from '@phosphor-icons/react'
+
+// A coluna "Fonte:" não é uma etapa, então no celular ela precisa de um id
+// próprio pra virar uma aba junto com as etapas de verdade. Prefixo improvável de
+// colidir com um uuid do banco.
+const SOURCE_TAB_ID = '__source_rail__'
 
 interface PipelineBoardProps {
   organizationId: string
@@ -71,6 +78,27 @@ export default function PipelineBoard({ organizationId, filters }: PipelineBoard
   const [activeMobileStageId, setActiveMobileStageId] = useState<string | null>(null)
   const [movingLead, setMovingLead] = useState<LeadWithOwner | null>(null)
   const [detailLead, setDetailLead] = useState<LeadWithOwner | null>(null)
+
+  // Lead aceso pelo clique num minicard da coluna "Fonte:". Limpa sozinho depois
+  // da animação (3 pulsos de 0,75s em globals.css) — senão clicar de novo no
+  // mesmo minicard não repetiria o efeito, já que a prop não mudaria de valor.
+  const [highlightedLeadId, setHighlightedLeadId] = useState<string | null>(null)
+  const highlightTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  const handleHighlightLead = useCallback((leadId: string) => {
+    if (highlightTimerRef.current) clearTimeout(highlightTimerRef.current)
+    setHighlightedLeadId(null)
+    // rAF garante um render com null no meio, senão o React vê o mesmo valor e
+    // a animação CSS não reinicia.
+    requestAnimationFrame(() => {
+      setHighlightedLeadId(leadId)
+      highlightTimerRef.current = setTimeout(() => setHighlightedLeadId(null), 2400)
+    })
+  }, [])
+
+  useEffect(() => () => {
+    if (highlightTimerRef.current) clearTimeout(highlightTimerRef.current)
+  }, [])
   const { history: detailStageHistory, loading: detailHistoryLoading } = useStageHistory(detailLead?.id || '')
 
   // Sync URL pipelineId with selected pipeline
@@ -83,9 +111,10 @@ export default function PipelineBoard({ organizationId, filters }: PipelineBoard
   // Mobile: garante que sempre haja uma etapa selecionada pra mostrar (a primeira, por padrão)
   useEffect(() => {
     if (stages.length === 0) return
-    if (!activeMobileStageId || !stages.some(s => s.id === activeMobileStageId)) {
-      setActiveMobileStageId(stages[0].id)
-    }
+    const isValid = activeMobileStageId === SOURCE_TAB_ID || stages.some(s => s.id === activeMobileStageId)
+    // Abre na coluna "Fonte:" — é por onde o lead entra, então é o começo natural
+    // da leitura no celular, onde só cabe uma coluna por vez.
+    if (!isValid) setActiveMobileStageId(SOURCE_TAB_ID)
   }, [stages, activeMobileStageId])
 
   const sensors = useSensors(
@@ -176,6 +205,19 @@ export default function PipelineBoard({ organizationId, filters }: PipelineBoard
       {} as Record<string, LeadWithOwner[]>
     )
   }, [stages, pipelineLeads])
+
+  // Nome e cor de cada etapa, pro minicard da coluna "Fonte:" conseguir mostrar
+  // em que status o lead está sem ter que carregar as etapas por conta própria.
+  const stageNameById = useMemo(
+    () => Object.fromEntries(stages.map((s) => [s.id, s.name])) as Record<string, string>,
+    [stages]
+  )
+  const stageColorById = useMemo(
+    () => Object.fromEntries(
+      stages.map((s, i) => [s.id, s.color || getStageColor(i).bar])
+    ) as Record<string, string>,
+    [stages]
+  )
 
   // Find which stage a lead belongs to
   const findStageForLead = useCallback(
@@ -395,6 +437,14 @@ export default function PipelineBoard({ organizationId, filters }: PipelineBoard
 
               {/* Seletor de etapa — abas roláveis horizontalmente */}
               <div className="flex gap-2 overflow-x-auto pb-3 -mx-1 px-1 flex-shrink-0">
+                <button
+                  onClick={() => setActiveMobileStageId(SOURCE_TAB_ID)}
+                  className={`pill flex-shrink-0 px-3.5 py-2 text-sm !border-accent/40 ${
+                    activeMobileStageId === SOURCE_TAB_ID ? 'pill-active !text-accent-2' : '!text-accent-2/70'
+                  }`}
+                >
+                  Fonte:
+                </button>
                 {stages.map(stage => {
                   const count = stageStats[stage.id]?.count ?? leadsByStage[stage.id]?.length ?? 0
                   const isActive = stage.id === activeMobileStageId
@@ -413,6 +463,15 @@ export default function PipelineBoard({ organizationId, filters }: PipelineBoard
               {/* Uma etapa por vez — arrastar entre etapas não funciona bem no toque,
                   então mover um lead é feito clicando no card (abre "mover para"). */}
               <div className="flex-1 min-h-0">
+                {activeMobileStageId === SOURCE_TAB_ID && (
+                  <SourceRail
+                    leads={pipelineLeads}
+                    stageNameById={stageNameById}
+                    stageColorById={stageColorById}
+                    highlightedLeadId={highlightedLeadId}
+                    onHighlightLead={handleHighlightLead}
+                  />
+                )}
                 {stages.filter(s => s.id === activeMobileStageId).map(stage => (
                   <StageColumn
                     key={stage.id}
@@ -422,6 +481,7 @@ export default function PipelineBoard({ organizationId, filters }: PipelineBoard
                     totalLeads={pipelineLeads.length}
                     isGoalsEnabled={isGoalsEnabled}
                     stageStats={stageStats[stage.id]}
+                    highlightedLeadId={highlightedLeadId}
                     onLeadClick={setMovingLead}
                     onLeadInfoClick={setDetailLead}
                   />
@@ -430,6 +490,14 @@ export default function PipelineBoard({ organizationId, filters }: PipelineBoard
             </div>
           ) : (
             <div className="flex gap-4 pb-4 h-full">
+              {/* Coluna fixa, fora do DnD — ver o comentário no topo de SourceRail */}
+              <SourceRail
+                leads={pipelineLeads}
+                stageNameById={stageNameById}
+                stageColorById={stageColorById}
+                highlightedLeadId={highlightedLeadId}
+                onHighlightLead={handleHighlightLead}
+              />
               {stages.map((stage) => (
                 <StageColumn
                   key={stage.id}
@@ -439,6 +507,7 @@ export default function PipelineBoard({ organizationId, filters }: PipelineBoard
                   totalLeads={pipelineLeads.length}
                   isGoalsEnabled={isGoalsEnabled}
                   stageStats={stageStats[stage.id]}
+                  highlightedLeadId={highlightedLeadId}
                   onLeadClick={setDetailLead}
                   onLeadInfoClick={setDetailLead}
                 />

@@ -11,7 +11,7 @@ import { db } from './db'
 import {
   leads, leadActivities, leadTags, tags, organizationMembers,
   profiles, pipelineStages, pipelines, integrations, organizationRoles,
-  customFieldDefinitions, customFieldCategories, notifications,
+  customFieldDefinitions, customFieldCategories, notifications, orderItems,
 } from './schema'
 
 // ── Concorrência ──────────────────────────────────────────────────────────────
@@ -41,10 +41,22 @@ export interface OrderAddressSync {
 }
 
 /**
- * Espelha o último status/forma de pagamento do pedido no lead, usado pela
- * etiqueta "Pago/Pendente" da lista de conversas do Chat (LeadListItem).
+ * Espelha o último pedido no lead: status/forma de pagamento (etiqueta
+ * "Pago/Pendente" da lista de conversas) e os nomes dos produtos comprados
+ * (etiqueta de produto no card do Pipeline).
+ *
  * Precisa ser chamado tanto na criação quanto em qualquer atualização do
- * payment_status de um pedido, senão a etiqueta da lista fica desatualizada.
+ * payment_status de um pedido, senão as etiquetas ficam desatualizadas.
+ *
+ * Por que denormalizar em vez de fazer join na hora de listar: o Pipeline
+ * carrega centenas de leads de uma vez e não passa perto da tabela de pedidos —
+ * juntar orders + order_items pra cada card sairia caro pra mostrar um rótulo.
+ * É o mesmo motivo (e o mesmo lugar) de last_order_payment_status.
+ *
+ * `orderId` faz a função buscar os itens do pedido sozinha, em vez de os
+ * chamadores passarem a lista: são dois call sites (criar e atualizar pedido) e
+ * o de atualizar nem sempre mexe nos itens, então deixar a leitura aqui é o que
+ * garante que os dois gravem a mesma coisa.
  *
  * Quando `address` é passado, também grava o endereço nas colunas do lead
  * (cep/address/address_number/...) — assim o endereço do último pedido já
@@ -55,18 +67,40 @@ export async function syncLeadLastOrderAttributes(
   leadId: string,
   paymentStatus: string,
   paymentMethod: string,
-  address?: OrderAddressSync
+  address?: OrderAddressSync,
+  orderId?: string
 ) {
+  // Nomes dos produtos do pedido, sem repetir (um pedido pode ter o mesmo
+  // produto em duas linhas). Sem orderId, mantém o que já estava gravado.
+  let products: string[] | null = null
+  if (orderId) {
+    const rows = await db
+      .select({ name: orderItems.productName })
+      .from(orderItems)
+      .where(eq(orderItems.orderId, orderId))
+    products = [...new Set(rows.map((r) => r.name).filter(Boolean))]
+  }
+
+  const basePatch = sql`jsonb_set(
+    jsonb_set(
+      COALESCE(custom_attributes, '{}'),
+      '{last_order_payment_status}', ${JSON.stringify(paymentStatus)}::jsonb
+    ),
+    '{last_order_payment_method}', ${JSON.stringify(paymentMethod)}::jsonb
+  )`
+
+  // Expressao montada por composicao (e nao com subquery/CTE) porque uma
+  // subquery derivada no SET nao consegue enxergar custom_attributes da linha
+  // que esta sendo atualizada sem LATERAL — jsonb_set aninhado le a coluna
+  // direto e nao tem esse problema.
+  const attributes = products
+    ? sql`jsonb_set(${basePatch}, '{last_order_products}', ${JSON.stringify(products)}::jsonb)`
+    : basePatch
+
   if (address) {
     await db.execute(sql`
       UPDATE leads
-      SET custom_attributes = jsonb_set(
-        jsonb_set(
-          COALESCE(custom_attributes, '{}'),
-          '{last_order_payment_status}', ${JSON.stringify(paymentStatus)}::jsonb
-        ),
-        '{last_order_payment_method}', ${JSON.stringify(paymentMethod)}::jsonb
-      ),
+      SET custom_attributes = ${attributes},
       cep = ${address.cep ?? null},
       address = ${address.address ?? null},
       address_number = ${address.addressNumber ?? null},
@@ -82,13 +116,7 @@ export async function syncLeadLastOrderAttributes(
 
   await db.execute(sql`
     UPDATE leads
-    SET custom_attributes = jsonb_set(
-      jsonb_set(
-        COALESCE(custom_attributes, '{}'),
-        '{last_order_payment_status}', ${JSON.stringify(paymentStatus)}::jsonb
-      ),
-      '{last_order_payment_method}', ${JSON.stringify(paymentMethod)}::jsonb
-    ),
+    SET custom_attributes = ${attributes},
     updated_at = NOW()
     WHERE id = ${leadId} AND organization_id = ${organizationId}
   `)

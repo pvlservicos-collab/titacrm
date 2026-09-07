@@ -1,7 +1,7 @@
 {
-  "name": "follemcrm",
+  "name": "titacrm",
   "version": "1.0.0",
-  "description": "Follem CRM - Next.js 15 with Postgres + Vercel Blob",
+  "description": "TitaCRM - Next.js 15 with Postgres + Vercel Blob",
   "scripts": {
     "dev": "next dev --turbopack",
     "build": "next build",

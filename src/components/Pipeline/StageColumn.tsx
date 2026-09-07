@@ -18,6 +18,8 @@ interface StageColumnProps {
   onLeadClick?: (lead: LeadWithOwner) => void
   /** Botão "ⓘ" do card — abre os detalhes do lead (funciona em mobile e desktop, mesmo quando onLeadClick já está sendo usado pra outra coisa). */
   onLeadInfoClick?: (lead: LeadWithOwner) => void
+  /** Lead a destacar — o card dele pisca. Vem do clique num minicard da coluna "Fonte:". */
+  highlightedLeadId?: string | null
 }
 
 const INITIAL_DISPLAY = 30
@@ -32,6 +34,7 @@ export default function StageColumn({
   stageStats,
   onLeadClick,
   onLeadInfoClick,
+  highlightedLeadId,
 }: StageColumnProps) {
   const { setNodeRef } = useDroppable({ id: stage.id })
   const fallbackColor = getStageColor(stage.rank)
@@ -145,6 +148,7 @@ export default function StageColumn({
                 lead={lead}
                 organizationId={organizationId}
                 stageColor={stageColor}
+                isHighlighted={highlightedLeadId === lead.id}
                 onClick={onLeadClick ? () => onLeadClick(lead) : undefined}
                 onInfoClick={onLeadInfoClick ? () => onLeadInfoClick(lead) : undefined}
               />

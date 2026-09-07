@@ -12,12 +12,14 @@ import {
     Bell,
     Package,
     Lightning,
+    Table,
 } from '@phosphor-icons/react'
 
 const SETTINGS_SECTIONS = [
     { label: 'Perfil da Organização', href: '/settings/organization', icon: Buildings },
     { label: 'Membros e Permissões', href: '/settings/members', icon: UsersThree },
     { label: 'Configurações do Pipeline', href: '/settings/pipelines', icon: TreeStructure },
+    { label: 'Leads', href: '/settings/leads', icon: Table },
     { label: 'Campos Customizados', href: '/settings/custom-fields', icon: PencilSimpleLine },
     { label: 'Tags', href: '/settings/tags', icon: Tag },
     { label: 'Respostas Rápidas', href: '/settings/quick-replies', icon: Lightning },
