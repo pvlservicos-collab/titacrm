@@ -80,6 +80,30 @@ export function digitsOnly(value: unknown): string | null {
   return digits || null
 }
 
+/**
+ * Telefone pronto pro WhatsApp: dígitos + DDI do Brasil.
+ *
+ * Formulário de site e a Agenda mandam "(11) 97158-4474" — DDD + número, sem o
+ * 55. A Cloud API precisa de DDI+DDD+número, então um lead gravado assim entra
+ * no CRM, aparece na lista e no Kanban, mas a mensagem simplesmente não sai —
+ * falha silenciosa, descoberta só quando alguém repara que o lead nunca foi
+ * contactado. Por isso o DDI entra aqui, na porta de entrada, e não na hora de
+ * enviar: assim o número certo é o que fica gravado, e o dedupe do site_evento
+ * (que usa o telefone como chave) compara sempre o mesmo formato.
+ *
+ * Só acrescenta em número de 10 ou 11 dígitos que ainda não comece com 55, pra
+ * não estragar um contato internacional que já venha completo. Mesma regra do
+ * scripts/importar-csv-leads.mjs — os 644 da planilha já estão com o 55.
+ */
+export function normalizePhone(value: unknown): string | null {
+  const digits = digitsOnly(value)
+  if (!digits) return null
+  if ((digits.length === 10 || digits.length === 11) && !digits.startsWith('55')) {
+    return '55' + digits
+  }
+  return digits
+}
+
 function trimmed(value: unknown): string | null {
   if (value === null || value === undefined) return null
   const s = String(value).trim()
@@ -132,7 +156,7 @@ const siteEvento: LeadSourceDef = {
       externalId: null,
       name: trimmed(body.nome) || 'Sem nome',
       email: trimmed(body.email),
-      phone: digitsOnly(body.whatsapp),
+      phone: normalizePhone(body.whatsapp),
       instagram: normalizeInstagram(body.instagram),
       fields: extras,
     }
@@ -237,7 +261,7 @@ const agendaAscensao: LeadSourceDef = {
       // vazia; trimmed() já converte pra null, então a coluna fica vazia em vez
       // de guardar "".
       email: trimmed(body.email),
-      phone: digitsOnly(body.whatsapp),
+      phone: normalizePhone(body.whatsapp),
       instagram: normalizeInstagram(body.instagram),
       fields: {
         area: trimmed(body.area),
@@ -310,7 +334,7 @@ const agendaAntigos: LeadSourceDef = {
       externalId: trimmed(body.id),
       name: trimmed(body.nome) || 'Sem nome',
       email: trimmed(body.email) === '\u2014' ? null : trimmed(body.email),
-      phone: digitsOnly(body.whatsapp),
+      phone: normalizePhone(body.whatsapp),
       instagram: normalizeInstagram(body.instagram),
       fields,
     }
