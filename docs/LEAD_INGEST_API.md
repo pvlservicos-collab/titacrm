@@ -33,7 +33,8 @@ por isso:
 1. **Cabeçalho customizado** — muitos não têm campo pra `Authorization`. Então a
    chave também vale na URL: `?key=atl_...`
 2. **Corpo em JSON** — muitos postam o formulário cru. `application/x-www-form-urlencoded`
-   e `multipart/form-data` são aceitos junto com JSON.
+   e `multipart/form-data` são aceitos junto com JSON. O Elementor Pro manda cada
+   campo como `form_fields[nome]`; a notação de colchete é achatada automaticamente.
 3. **Nome dos campos** — o nome é o que o autor do formulário escolheu. São
    reconhecidos automaticamente:
 
@@ -254,7 +255,7 @@ Categorias (`c`):
 
 ## Respostas
 
-### `201` — recebido
+### `200` — recebido
 
 ```json
 {
@@ -295,7 +296,7 @@ Categorias (`c`):
    os campos da fonte em `custom_attributes`. Se já existe um lead com o mesmo
    telefone, ele é reaproveitado em vez de duplicar.
 
-O passo 2 é best-effort: se falhar, a requisição ainda responde `201` e o dado
+O passo 2 é best-effort: se falhar, a requisição ainda responde `200` e o dado
 recebido não se perde.
 
 ## Reenvio do mesmo lead

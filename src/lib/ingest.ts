@@ -63,6 +63,32 @@ function fieldKey(value: string): string {
 }
 
 /**
+ * Achata nomes de campo em notação de colchete.
+ *
+ * O Elementor Pro manda todo campo do formulário como `form_fields[nome]`,
+ * `form_fields[email]` — nunca `nome` direto. Sem achatar, nenhum apelido casa
+ * e a requisição morre em "campos obrigatórios ausentes". Outros plugins fazem
+ * o mesmo com prefixos diferentes, então a regra é geral: qualquer
+ * `wrapper[chave]` também passa a valer como `chave`.
+ *
+ * Só preenche o que ainda não existe no topo — se o corpo já trouxe `nome`
+ * solto, ele ganha do `form_fields[nome]`.
+ */
+export function flattenBracketKeys(body: Record<string, any>): Record<string, any> {
+  const out: Record<string, any> = { ...body }
+  for (const [key, value] of Object.entries(body)) {
+    const match = key.match(/^[A-Za-z_][\w.-]*\[(.+)\]$/)
+    if (!match) continue
+    const inner = match[1].trim()
+    if (!inner) continue
+    const atual = out[inner]
+    if (atual !== undefined && atual !== null && String(atual).trim() !== '') continue
+    out[inner] = value
+  }
+  return out
+}
+
+/**
  * Preenche os nomes canônicos a partir dos apelidos, sem sobrescrever o que já
  * veio com o nome certo.
  *
@@ -249,7 +275,7 @@ export async function handleIngest(req: NextRequest, sourceFromPath?: string) {
     if (rawBody === null) {
       return apiError(400, 'Corpo inválido: envie JSON ou os campos do formulário (urlencoded / multipart).')
     }
-    const body = applyAliases(rawBody)
+    const body = applyAliases(flattenBracketKeys(rawBody))
 
     const sourceDef = getLeadSource(sourceFromPath ?? body.source)
     if (!sourceDef) {
@@ -348,18 +374,21 @@ export async function handleIngest(req: NextRequest, sourceFromPath?: string) {
       }
     }
 
-    return Response.json(
-      {
-        data: {
-          id: submission?.id ?? null,
-          source: sourceDef.key,
-          external_id: dedupeKey,
-          lead_id: leadId,
-          lead_created: leadCreated,
-        },
+    // 200, e não 201: o Elementor Pro (e outros plugins de webhook) só tratam
+    // 200 como sucesso — qualquer outro 2xx vira "Webhook error." na tela do
+    // formulário, mesmo com o lead gravado certinho. O corpo já diz o que
+    // aconteceu (lead_created), então a distinção 200/201 não carrega nenhuma
+    // informação que se perca, e a compatibilidade vale mais que o rigor do
+    // verbo HTTP.
+    return Response.json({
+      data: {
+        id: submission?.id ?? null,
+        source: sourceDef.key,
+        external_id: dedupeKey,
+        lead_id: leadId,
+        lead_created: leadCreated,
       },
-      { status: 201 }
-    )
+    })
   } catch (err: any) {
     // Erro com `status` veio de authenticate() e a mensagem é pra quem chamou
     // ("token inválido"). Sem `status` é falha nossa (banco fora, bug) — aí loga
