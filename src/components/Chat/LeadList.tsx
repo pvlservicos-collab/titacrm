@@ -269,7 +269,22 @@ export default function LeadList({
   })
 
   // Arquivada some das outras abas (igual WhatsApp) — só a aba "Arquivados" mostra.
-  const nonArchivedHits = filteredHits.filter((hit) => !hit.lead.is_archived)
+  const semArquivados = filteredHits.filter((hit) => !hit.lead.is_archived)
+
+  // Lista de CONVERSAS, não de leads cadastrados. Um lead sem nenhuma mensagem
+  // não é conversa: depois de importar uma planilha de 644 contatos, o chat
+  // virava 644 entradas vazias e a conversa de verdade sumia no meio.
+  //
+  // `last_activity_type` é o marcador certo: nulo até a primeira mensagem, e
+  // preenchido por qualquer caminho que registre atividade. `last_activity_at`
+  // não serve — a importação preenche.
+  //
+  // Durante uma busca a regra é suspensa de propósito: aí a pessoa está
+  // procurando alguém específico pra começar a falar, e esconder quem ainda não
+  // tem conversa impediria justamente isso.
+  const nonArchivedHits = search.trim()
+    ? semArquivados
+    : semArquivados.filter((hit) => !!hit.lead.last_activity_type)
 
   const tabCounts: Record<ChatTab, number> = { all: nonArchivedHits.length, human: 0, urgent: 0 }
   for (const hit of nonArchivedHits) {
@@ -379,8 +394,21 @@ export default function LeadList({
       {/* Leads List */}
       <div ref={scrollContainerRef} className="flex-1 overflow-y-auto overflow-x-hidden chat-dark-scroll">
         {tabFilteredHits.length === 0 ? (
-          <div className="flex items-center justify-center h-full text-[var(--chat-text-muted)] text-sm">
-            {searching ? 'Buscando…' : 'Nenhum lead encontrado'}
+          <div className="flex flex-col items-center justify-center h-full px-6 text-center text-[var(--chat-text-muted)] text-sm">
+            {searching ? (
+              'Buscando…'
+            ) : search.trim() ? (
+              'Nenhum lead encontrado'
+            ) : (
+              <>
+                <p>Nenhuma conversa ainda.</p>
+                <p className="text-xs mt-1.5 leading-relaxed">
+                  Só aparece aqui quem já trocou mensagem. Para começar uma, use
+                  o botão <span className="text-[var(--chat-text-primary)]">Enviar mensagem</span> em
+                  Configurações → Leads, ou busque a pessoa pelo nome acima.
+                </p>
+              </>
+            )}
           </div>
         ) : (
           <div className="flex flex-col min-h-full">
