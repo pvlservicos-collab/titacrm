@@ -27,7 +27,7 @@ import { NextRequest } from 'next/server'
 import { and, asc, eq, isNull, sql } from 'drizzle-orm'
 import { authenticateRequest, apiError } from '@/lib/api-auth'
 import { db } from '@/lib/db'
-import { leadSourceSubmissions, leads, pipelineStages } from '@/lib/schema'
+import { leadSourceSubmissions, leads, pipelineStages, webhookLogs } from '@/lib/schema'
 import { isUniqueViolation } from '@/lib/db-helpers'
 import {
   LEAD_SOURCE_ORDER,
@@ -262,6 +262,62 @@ async function upsertCrmLead(
 }
 
 /**
+ * Registra toda tentativa de ingestão em `webhook_logs`, inclusive as que
+ * falham.
+ *
+ * Existe porque uma requisição recusada (401 por chave errada, 400 por campo
+ * faltando) não cria linha em lead_source_submissions — então, quando alguém do
+ * outro lado diz "não está entrando", não havia como distinguir "a requisição
+ * nem chegou" de "chegou e foi recusada". Sem isso a investigação vira adivinha.
+ *
+ * A chave NUNCA é gravada: a URL vai com o `key`/`token` mascarado, e o
+ * cabeçalho Authorization não é registrado.
+ *
+ * Nunca lança: log é diagnóstico, não pode derrubar a entrada de um lead.
+ */
+async function logAttempt(
+  req: NextRequest,
+  dados: {
+    resultado: string
+    source?: string | null
+    detalhe?: string | null
+    camposRecebidos?: string[]
+    organizationId?: string | null
+    submissionId?: string | null
+    leadId?: string | null
+  }
+) {
+  try {
+    const url = new URL(req.nextUrl.toString())
+    for (const p of ['key', 'token']) {
+      if (url.searchParams.has(p)) url.searchParams.set(p, '***')
+    }
+
+    await db.insert(webhookLogs).values({
+      payload: {
+        origem: 'ingest',
+        resultado: dados.resultado,
+        source: dados.source ?? null,
+        detalhe: dados.detalhe ?? null,
+        campos_recebidos: dados.camposRecebidos ?? null,
+        url: url.pathname + url.search,
+        metodo: req.method,
+        content_type: req.headers.get('content-type') || null,
+        user_agent: req.headers.get('user-agent') || null,
+        tem_cabecalho_auth: !!req.headers.get('authorization'),
+        tem_key_na_url: !!(req.nextUrl.searchParams.get('key') || req.nextUrl.searchParams.get('token')),
+        organization_id: dados.organizationId ?? null,
+        submission_id: dados.submissionId ?? null,
+        lead_id: dados.leadId ?? null,
+        em: new Date().toISOString(),
+      },
+    })
+  } catch (err) {
+    console.error('[ingest] falhou ao gravar o log da tentativa:', err)
+  }
+}
+
+/**
  * Trata uma requisição de entrada de lead.
  *
  * `sourceFromPath` vem preenchido quando a rota é /api/ingest/leads/{source};
@@ -269,16 +325,31 @@ async function upsertCrmLead(
  */
 export async function handleIngest(req: NextRequest, sourceFromPath?: string) {
   try {
-    const auth = await authenticate(req)
+    let auth
+    try {
+      auth = await authenticate(req)
+    } catch (err: any) {
+      // Registra a recusa por credencial ANTES de propagar — e o caso mais
+      // comum de "o webhook nao entra" e o mais invisivel sem isto.
+      await logAttempt(req, { resultado: 'credencial_recusada', detalhe: err?.message ?? null })
+      throw err
+    }
 
     const rawBody = await parseBody(req)
     if (rawBody === null) {
+      await logAttempt(req, { resultado: 'corpo_ilegivel', organizationId: auth.organizationId })
       return apiError(400, 'Corpo inválido: envie JSON ou os campos do formulário (urlencoded / multipart).')
     }
     const body = applyAliases(flattenBracketKeys(rawBody))
 
     const sourceDef = getLeadSource(sourceFromPath ?? body.source)
     if (!sourceDef) {
+      await logAttempt(req, {
+        resultado: 'fonte_desconhecida',
+        source: String(sourceFromPath ?? body.source ?? ''),
+        camposRecebidos: Object.keys(rawBody),
+        organizationId: auth.organizationId,
+      })
       return apiError(
         400,
         `Fonte desconhecida: ${JSON.stringify(sourceFromPath ?? body.source ?? null)}. ` +
@@ -291,6 +362,13 @@ export async function handleIngest(req: NextRequest, sourceFromPath?: string) {
       return value === undefined || value === null || String(value).trim() === ''
     })
     if (faltando.length > 0) {
+      await logAttempt(req, {
+        resultado: 'campos_faltando',
+        source: sourceDef.key,
+        detalhe: faltando.join(', '),
+        camposRecebidos: Object.keys(rawBody),
+        organizationId: auth.organizationId,
+      })
       return apiError(
         400,
         `Campos obrigatórios ausentes para a fonte "${sourceDef.key}": ${faltando.join(', ')}. ` +
@@ -380,6 +458,15 @@ export async function handleIngest(req: NextRequest, sourceFromPath?: string) {
     // aconteceu (lead_created), então a distinção 200/201 não carrega nenhuma
     // informação que se perca, e a compatibilidade vale mais que o rigor do
     // verbo HTTP.
+    await logAttempt(req, {
+      resultado: 'ok',
+      source: sourceDef.key,
+      camposRecebidos: Object.keys(rawBody),
+      organizationId: auth.organizationId,
+      submissionId: submission?.id ?? null,
+      leadId,
+    })
+
     return Response.json({
       data: {
         id: submission?.id ?? null,
