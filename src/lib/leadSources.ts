@@ -94,23 +94,39 @@ const siteEvento: LeadSourceDef = {
   key: 'site_evento',
   label: 'Site Evento',
   description: 'Formulário de captura do site do evento.',
-  required: ['nome', 'whatsapp'],
+  // Sem campo obrigatório de propósito: é um formulário de WordPress, onde os
+  // nomes dos campos mudam a cada edição e quem preenche não tem culpa da
+  // configuração. Melhor gravar incompleto (e completar depois) do que recusar
+  // e perder o lead. A fonte agenda_ascensao continua exigindo id/nome/whatsapp
+  // porque ali quem chama é um sistema nosso, e faltar campo é bug, não acaso.
+  required: [],
   columns: [
     { key: 'name', label: 'Nome', width: 220 },
     { key: 'email', label: 'E-mail', format: 'email', width: 240 },
     { key: 'phone', label: 'WhatsApp', format: 'phone', width: 160 },
     { key: 'received_at', label: 'Recebido em', format: 'datetime', width: 170 },
   ],
-  normalize: (body) => ({
-    // O site não manda id próprio, então quem identifica o lead é o telefone
-    // (ver dedupeKeyFor) — reenvio do mesmo formulário atualiza, não duplica.
-    externalId: null,
-    name: trimmed(body.nome) || 'Sem nome',
-    email: trimmed(body.email),
-    phone: digitsOnly(body.whatsapp),
-    instagram: null,
-    fields: {},
-  }),
+  normalize: (body) => {
+    // Guarda o corpo inteiro como veio, tirando só o que já virou coluna. Assim
+    // um campo que o formulário mandou e a gente não soube interpretar continua
+    // visível no detalhe do lead, em vez de sumir.
+    const extras: Record<string, unknown> = {}
+    for (const [chave, valor] of Object.entries(body)) {
+      if (['source', 'nome', 'email', 'whatsapp', 'instagram', 'key', 'token'].includes(chave)) continue
+      extras[chave] = valor
+    }
+
+    return {
+      // O site não manda id próprio, então quem identifica o lead é o telefone
+      // (ver dedupeKeyFor) — reenvio do mesmo formulário atualiza, não duplica.
+      externalId: null,
+      name: trimmed(body.nome) || 'Sem nome',
+      email: trimmed(body.email),
+      phone: digitsOnly(body.whatsapp),
+      instagram: normalizeInstagram(body.instagram),
+      fields: extras,
+    }
+  },
 }
 
 /** Rótulos legíveis das respostas do quiz (`agenda.a1`), na ordem de exibição. */

@@ -120,6 +120,80 @@ export function applyAliases(body: Record<string, any>): Record<string, any> {
 }
 
 /**
+ * Descobre nome / e-mail / telefone pelo CONTEÚDO, quando o nome do campo não
+ * ajudou.
+ *
+ * Um formulário de WordPress pode chegar com os campos batizados de qualquer
+ * coisa — `field_1`, `campo-2`, `Qual seu contato?`. Nenhuma lista de apelidos
+ * cobre isso. Então, no que sobrou sem identificação, a gente olha o valor:
+ * e-mail tem @ e ponto, telefone é um punhado de dígitos, nome é o texto que
+ * não é nenhum dos dois.
+ *
+ * É deliberadamente conservador: só preenche o que ainda está vazio, nunca
+ * sobrescreve um campo que veio nomeado direito, e ignora valores que são
+ * claramente metadados do plugin (id de formulário, url da página).
+ */
+
+/** Campos que os plugins mandam junto e que não são resposta do usuário. */
+const META_KEYS = new Set([
+  'formid', 'formname', 'form', 'pageurl', 'pagetitle', 'pageid', 'referrer',
+  'remoteip', 'userAgent', 'useragent', 'queriedid', 'source', 'key', 'token',
+  'submittedat', 'date', 'time', 'id',
+])
+
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/
+
+function pareceTelefone(valor: string): boolean {
+  const digitos = valor.replace(/\D/g, '')
+  // 8 a 15 dígitos cobre fixo local até DDI+DDD+9 dígitos (padrão E.164).
+  if (digitos.length < 8 || digitos.length > 15) return false
+  // Precisa ser majoritariamente dígito — evita confundir com um endereço
+  // ("Rua 7 de Setembro, 1500") ou com uma data.
+  const naoDigitos = valor.replace(/[\d\s()+.\-]/g, '').length
+  return naoDigitos === 0
+}
+
+function pareceNome(valor: string): boolean {
+  if (EMAIL_RE.test(valor)) return false
+  if (pareceTelefone(valor)) return false
+  if (/^https?:\/\//i.test(valor)) return false
+  // Pelo menos duas letras seguidas: descarta "12345", "---", "R$ 10".
+  return /\p{L}{2,}/u.test(valor)
+}
+
+export function inferContactFields(body: Record<string, any>): Record<string, any> {
+  const out = { ...body }
+  const vazio = (k: string) => {
+    const v = out[k]
+    return v === undefined || v === null || String(v).trim() === ''
+  }
+
+  const candidatos: string[] = []
+  for (const [chave, valor] of Object.entries(body)) {
+    if (typeof valor !== 'string') continue
+    const texto = valor.trim()
+    if (!texto) continue
+    if (META_KEYS.has(fieldKey(chave))) continue
+    candidatos.push(texto)
+  }
+
+  if (vazio('email')) {
+    const achado = candidatos.find((v) => EMAIL_RE.test(v))
+    if (achado) out.email = achado
+  }
+  if (vazio('whatsapp')) {
+    const achado = candidatos.find((v) => pareceTelefone(v))
+    if (achado) out.whatsapp = achado
+  }
+  if (vazio('nome')) {
+    const achado = candidatos.find((v) => pareceNome(v))
+    if (achado) out.nome = achado
+  }
+
+  return out
+}
+
+/**
  * Lê o corpo em qualquer um dos formatos que os plugins mandam.
  *
  * Em formulário urlencoded tudo chega string, inclusive o que deveria ser
@@ -340,7 +414,7 @@ export async function handleIngest(req: NextRequest, sourceFromPath?: string) {
       await logAttempt(req, { resultado: 'corpo_ilegivel', organizationId: auth.organizationId })
       return apiError(400, 'Corpo inválido: envie JSON ou os campos do formulário (urlencoded / multipart).')
     }
-    const body = applyAliases(flattenBracketKeys(rawBody))
+    const body = inferContactFields(applyAliases(flattenBracketKeys(rawBody)))
 
     const sourceDef = getLeadSource(sourceFromPath ?? body.source)
     if (!sourceDef) {
@@ -357,6 +431,10 @@ export async function handleIngest(req: NextRequest, sourceFromPath?: string) {
       )
     }
 
+    // Fonte sem `required` (o formulário do site) nunca recusa: registra o que
+    // chegou e segue. Recusar dá "Webhook error." na cara de quem preencheu o
+    // formulário e o dado se perde — pior que guardar um lead incompleto, que
+    // pelo menos dá pra completar depois.
     const faltando = sourceDef.required.filter((field) => {
       const value = body[field]
       return value === undefined || value === null || String(value).trim() === ''
