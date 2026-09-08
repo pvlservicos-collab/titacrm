@@ -19,6 +19,23 @@ import type { Submission } from './types'
 
 const FIXED_KEYS = new Set(['name', 'email', 'phone', 'instagram', 'external_id', 'received_at', 'updated_at'])
 
+/**
+ * A linha inteira abre o painel de detalhe, então todo link dentro dela precisa
+ * parar a propagação — senão clicar no Instagram abre o perfil numa aba nova E
+ * o painel aqui atrás, ao mesmo tempo.
+ */
+const pararPropagacao = (e: React.MouseEvent) => e.stopPropagation()
+
+/** URL do perfil a partir do que está guardado (`@handle`). */
+export function instagramUrl(value: string): string {
+  const handle = value
+    .trim()
+    .replace(/^https?:\/\/(www\.)?instagram\.com\//i, '')
+    .replace(/^@/, '')
+    .replace(/\/+$/, '')
+  return `https://instagram.com/${handle}`
+}
+
 function resolveValue(row: Submission, key: string): unknown {
   if (FIXED_KEYS.has(key)) return (row as any)[key]
   return row.payload?.[key]
@@ -81,20 +98,24 @@ function Cell({ row, column }: { row: Submission; column: LeadSourceColumn }) {
 
   if (column.format === 'email' && value) {
     return (
-      <a href={`mailto:${value}`} className="text-ink hover:text-accent-2 transition-colors">
+      <a
+        href={`mailto:${value}`}
+        onClick={pararPropagacao}
+        className="text-ink hover:text-accent-2 underline decoration-dotted underline-offset-2 transition-colors"
+      >
         {String(value)}
       </a>
     )
   }
 
   if (column.format === 'instagram' && value) {
-    const handle = String(value).replace(/^@/, '')
     return (
       <a
-        href={`https://instagram.com/${handle}`}
+        href={instagramUrl(String(value))}
         target="_blank"
         rel="noopener noreferrer"
-        className="text-ink hover:text-accent-2 transition-colors"
+        onClick={pararPropagacao}
+        className="text-ink hover:text-accent-2 underline decoration-dotted underline-offset-2 transition-colors"
       >
         {String(value)}
       </a>

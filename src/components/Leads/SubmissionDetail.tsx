@@ -17,6 +17,7 @@ import {
   AGENDA_WEEKDAYS,
 } from '@/lib/leadSources'
 import type { Submission } from './types'
+import { instagramUrl } from './SubmissionsTable'
 
 /** Minutos desde 00:00 → "08:30". */
 function minutesToClock(minutes: number): string {
@@ -106,7 +107,11 @@ export default function SubmissionDetail({
             <dl className="panel rounded-xl divide-y divide-white/5">
               <Row label="WhatsApp" value={submission.phone} />
               <Row label="E-mail" value={submission.email} />
-              <Row label="Instagram" value={submission.instagram} />
+              <Row
+                label="Instagram"
+                value={submission.instagram}
+                href={submission.instagram ? instagramUrl(submission.instagram) : undefined}
+              />
             </dl>
             {submission.lead_id && (
               <Link
@@ -230,14 +235,38 @@ export default function SubmissionDetail({
   )
 }
 
-function Row({ label, value, hint }: { label: string; value?: string | null; hint?: string }) {
+function Row({
+  label,
+  value,
+  hint,
+  href,
+}: {
+  label: string
+  value?: string | null
+  hint?: string
+  /** Quando presente, o valor vira link (abre em aba nova). */
+  href?: string
+}) {
   return (
     <div className="flex items-baseline justify-between gap-4 px-3.5 py-2.5">
       <dt className="text-xs text-muted flex-shrink-0">
         {label}
         {hint && <span className="block text-[10px] text-muted/60">{hint}</span>}
       </dt>
-      <dd className="text-xs text-ink text-right break-words min-w-0">{value || '—'}</dd>
+      <dd className="text-xs text-ink text-right break-words min-w-0">
+        {value && href ? (
+          <a
+            href={href}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="hover:text-accent-2 underline decoration-dotted underline-offset-2 transition-colors"
+          >
+            {value}
+          </a>
+        ) : (
+          value || '—'
+        )}
+      </dd>
     </div>
   )
 }
