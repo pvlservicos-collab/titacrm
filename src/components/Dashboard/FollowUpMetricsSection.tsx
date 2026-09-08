@@ -1,15 +1,15 @@
 import { Robot, ChatCircleText, ArrowsClockwise, ChatsCircle, Trophy } from '@phosphor-icons/react'
 import GlassCard, { SectionHeader } from './GlassCard'
-import { mockFollowUpMetrics, mockTopFollowUpMessages, type FollowUpMetrics, type TopFollowUpMessage } from './mockData'
+import { type FollowUpMetrics, type TopFollowUpMessage } from './mockData'
 
 interface FollowUpMetricsSectionProps {
-  metrics?: FollowUpMetrics
-  topMessages?: TopFollowUpMessage[]
+  metrics: FollowUpMetrics
+  topMessages: TopFollowUpMessage[]
 }
 
 export default function FollowUpMetricsSection({
-  metrics = mockFollowUpMetrics,
-  topMessages = mockTopFollowUpMessages,
+  metrics,
+  topMessages,
 }: FollowUpMetricsSectionProps) {
   const stats = [
     { key: 'initial', label: 'Contatos respondidos inicialmente', value: metrics.initialRepliesCount, icon: ChatCircleText },
@@ -41,6 +41,12 @@ export default function FollowUpMetricsSection({
           <Trophy size={16} className="text-accent-2" weight="fill" />
           <p className="text-xs font-medium text-muted">Melhores mensagens de follow up</p>
         </div>
+        {topMessages.length === 0 ? (
+          <p className="text-xs text-muted py-3">
+            Nenhum funil enviou mensagem ainda. Assim que um funil for ativado, os
+            mais efetivos aparecem aqui.
+          </p>
+        ) : (
         <div className="space-y-2.5">
           {topMessages.map((msg, i) => (
             <div key={msg.id} className="glass-soft glass-hover flex items-center gap-3 rounded-2xl px-3.5 py-3">
@@ -55,6 +61,7 @@ export default function FollowUpMetricsSection({
             </div>
           ))}
         </div>
+        )}
       </GlassCard>
     </section>
   )

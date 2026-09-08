@@ -18,7 +18,7 @@
  * criar uma aba fantasma que ninguém olha.
  */
 
-export type LeadSourceKey = 'agenda_ascensao' | 'site_evento'
+export type LeadSourceKey = 'agenda_ascensao' | 'site_evento' | 'agenda_antigos'
 
 /** Como a célula é renderizada na planilha. */
 export type ColumnFormat =
@@ -246,15 +246,74 @@ const agendaAscensao: LeadSourceDef = {
   },
 }
 
+const agendaAntigos: LeadSourceDef = {
+  key: 'agenda_antigos',
+  label: 'Agenda — lista antiga',
+  description: 'Leads exportados da Agenda antes da integração automática.',
+  // Importada por planilha (scripts/importar-csv-leads.mjs), não por webhook.
+  // Sem obrigatório porque a exportação já veio pronta: recusar linha aqui só
+  // faria perder lead de uma lista que já é histórica.
+  required: [],
+  columns: [
+    { key: 'external_id', label: 'ID', format: 'number', width: 80 },
+    { key: 'name', label: 'Nome', width: 190 },
+    { key: 'phone', label: 'WhatsApp', format: 'phone', width: 150 },
+    { key: 'instagram', label: 'Instagram', format: 'instagram', width: 160 },
+    { key: 'email', label: 'E-mail', format: 'email', width: 180 },
+    { key: 'criado_em', label: 'Cadastro', width: 150 },
+    { key: 'fase', label: 'Quiz', format: 'badge', width: 110 },
+    { key: 'area', label: 'Área', width: 150 },
+    { key: 'aumento', label: 'Aumento esperado', width: 170 },
+    { key: 'investimento', label: 'Já investiu', width: 170 },
+    { key: 'sono', label: 'Sono', width: 130 },
+    { key: 'trabalho', label: 'Trabalho', width: 240 },
+    { key: 'deslocamento', label: 'Deslocamento', width: 130 },
+    { key: 'reunioes', label: 'Reuniões', width: 150 },
+    { key: 'cafe', label: 'Café da manhã', width: 140 },
+    { key: 'almoco', label: 'Almoço', width: 140 },
+    { key: 'jantar', label: 'Jantar', width: 140 },
+    { key: 'treino', label: 'Treino', width: 220 },
+    { key: 'pessoas', label: 'Pessoas importantes', width: 240 },
+    { key: 'procrastinacao', label: 'Procrastinação', width: 170 },
+  ],
+  // A planilha já vem com tudo em texto legível ("22:00–05:00", "noite 1h"), ao
+  // contrário da fonte ao vivo, que traz o quiz cru em `a1`/`real`. Por isso são
+  // duas fontes e não uma: o formato do dado é outro, e misturá-los deixaria
+  // metade das colunas vazia em qualquer uma das telas.
+  normalize: (body) => {
+    const guardar = [
+      'criado_em', 'fase', 'area', 'aumento', 'investimento', 'sono', 'trabalho',
+      'deslocamento', 'reunioes', 'cafe', 'almoco', 'jantar', 'treino',
+      'pessoas', 'procrastinacao',
+    ]
+    const fields: Record<string, unknown> = {}
+    for (const chave of guardar) {
+      const valor = trimmed(body[chave])
+      // "—" é como a exportação marca campo vazio; vira ausência de verdade.
+      if (valor && valor !== '\u2014') fields[chave] = valor
+    }
+
+    return {
+      externalId: trimmed(body.id),
+      name: trimmed(body.nome) || 'Sem nome',
+      email: trimmed(body.email) === '\u2014' ? null : trimmed(body.email),
+      phone: digitsOnly(body.whatsapp),
+      instagram: normalizeInstagram(body.instagram),
+      fields,
+    }
+  },
+}
+
 /* ── Registro ─────────────────────────────────────────────────────────────── */
 
 export const LEAD_SOURCES: Record<LeadSourceKey, LeadSourceDef> = {
   agenda_ascensao: agendaAscensao,
   site_evento: siteEvento,
+  agenda_antigos: agendaAntigos,
 }
 
 /** Ordem das abas na tela. */
-export const LEAD_SOURCE_ORDER: LeadSourceKey[] = ['agenda_ascensao', 'site_evento']
+export const LEAD_SOURCE_ORDER: LeadSourceKey[] = ['agenda_ascensao', 'site_evento', 'agenda_antigos']
 
 export function isLeadSourceKey(value: unknown): value is LeadSourceKey {
   return typeof value === 'string' && value in LEAD_SOURCES
@@ -276,6 +335,7 @@ export function getLeadSource(key: string): LeadSourceDef | null {
  */
 export function dedupeKeyFor(source: LeadSourceKey, normalized: NormalizedLead): string | null {
   if (source === 'agenda_ascensao') return normalized.externalId
+  if (source === 'agenda_antigos') return normalized.externalId
   if (source === 'site_evento') return normalized.phone
   return null
 }

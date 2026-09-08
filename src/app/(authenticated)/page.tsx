@@ -1,6 +1,8 @@
 'use client'
 
+import { useEffect, useState } from 'react'
 import { useAuth } from '@/hooks'
+import { EMPTY_METRICS, type DashboardMetrics, type TopFollowUpMessage } from '@/components/Dashboard/mockData'
 import LoadingSpinner from '@/components/Shared/LoadingSpinner'
 import BusinessFlowDiagram from '@/components/Dashboard/BusinessFlowDiagram'
 import ChannelStatsSection from '@/components/Dashboard/ChannelStatsSection'
@@ -12,6 +14,33 @@ export default function InicioPage() {
     const { profileName, user, loading } = useAuth()
 
     const firstName = (profileName || user?.email || '').split(' ')[0] || ''
+
+    // Números reais, contados no banco. Começa zerado e não com valor de
+    // exemplo: um dashboard que mostra número plausível e falso engana sem
+    // ninguém perceber, o que é pior que um zero honesto enquanto carrega.
+    const [metrics, setMetrics] = useState<DashboardMetrics>(EMPTY_METRICS)
+    const [metricsLoading, setMetricsLoading] = useState(true)
+
+    useEffect(() => {
+        let cancelado = false
+        fetch('/api/metrics/dashboard?dias=30')
+            .then((res) => (res.ok ? res.json() : null))
+            .then((json) => { if (!cancelado && json?.data) setMetrics(json.data) })
+            .catch(() => { /* fica no zerado — a tela continua legível */ })
+            .finally(() => { if (!cancelado) setMetricsLoading(false) })
+        return () => { cancelado = true }
+    }, [])
+
+    // O funil ainda não guarda o texto de cada mensagem separadamente, então o
+    // "melhores mensagens" mostra por funil — que é o dado que existe hoje.
+    const topMessages: TopFollowUpMessage[] = metrics.top_funis.map((f, i) => ({
+        id: String(i),
+        preview: f.name,
+        responseRate: metrics.follow_up.followUpsSentCount > 0
+            ? Math.round((metrics.follow_up.followUpRepliesCount / metrics.follow_up.followUpsSentCount) * 100)
+            : 0,
+        sentCount: f.sentCount,
+    }))
 
     if (loading) {
         return (
@@ -31,14 +60,17 @@ export default function InicioPage() {
                     <h1 className="text-2xl sm:text-3xl font-bold text-ink">
                         {firstName ? `Olá, ${firstName}` : 'Olá'}
                     </h1>
-                    <p className="text-sm text-muted mt-1">Visão geral do seu funil de aquisição e vendas.</p>
+                    <p className="text-sm text-muted mt-1">
+                        Visão geral do seu funil de aquisição e vendas
+                        {metricsLoading ? ' — carregando…' : ` — últimos ${metrics.periodo_dias} dias`}.
+                    </p>
                 </div>
 
                 <BusinessFlowDiagram />
-                <ChannelStatsSection />
-                <LeadsByDayChart />
-                <PurchaseMetricsSection />
-                <FollowUpMetricsSection />
+                <ChannelStatsSection totals={metrics.fontes} />
+                <LeadsByDayChart data={metrics.serie_diaria} />
+                <PurchaseMetricsSection metrics={metrics.compras} />
+                <FollowUpMetricsSection metrics={metrics.follow_up} topMessages={topMessages} />
             </div>
         </div>
     )

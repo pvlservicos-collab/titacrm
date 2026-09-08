@@ -1,12 +1,12 @@
 import { ShareNetwork } from '@phosphor-icons/react'
 import GlassCard, { SectionHeader } from './GlassCard'
-import { CHANNEL_META, CHANNEL_ORDER, mockChannelTotals, type ChannelTotals } from './mockData'
+import { CHANNEL_META, CHANNEL_ORDER, type ChannelTotals } from './mockData'
 
 interface ChannelStatsSectionProps {
-  totals?: ChannelTotals[]
+  totals: ChannelTotals[]
 }
 
-export default function ChannelStatsSection({ totals = mockChannelTotals }: ChannelStatsSectionProps) {
+export default function ChannelStatsSection({ totals }: ChannelStatsSectionProps) {
   const totalsByChannel = Object.fromEntries(totals.map(t => [t.channel, t.newCustomers]))
   const grandTotal = totals.reduce((sum, t) => sum + t.newCustomers, 0)
 

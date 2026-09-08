@@ -75,7 +75,7 @@ export default function SettingsLayoutWrapper({
     // Aguarda o redirect do useEffect acima em vez de piscar a barra lateral com painel vazio
     if (isRoot) return null
 
-    const isWideSection = pathname.startsWith('/settings/leads')
+    const isWideSection = pathname.startsWith('/settings/leads') || pathname.startsWith('/settings/log')
 
     return (
         <SettingsAccessGuard>

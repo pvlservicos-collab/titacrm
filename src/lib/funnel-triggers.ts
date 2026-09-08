@@ -19,12 +19,16 @@ import type { LeadSourceKey } from '@/lib/leadSources'
  * o prefixo `lead_` deixa claro, olhando só o valor no banco, que aquele gatilho
  * vem da entrada de um lead novo e não de um evento de pagamento.
  */
-const TRIGGER_BY_SOURCE: Record<LeadSourceKey, string> = {
+const TRIGGER_BY_SOURCE: Record<LeadSourceKey, string | null> = {
   site_evento: 'lead_site_evento',
   agenda_ascensao: 'lead_agenda_ascensao',
+  // null de propósito: `agenda_antigos` é uma lista histórica importada por
+  // planilha. Se ela disparasse o funil, importar o arquivo mandaria a mensagem
+  // de boas-vindas pra centenas de pessoas cadastradas meses atrás — de uma vez.
+  agenda_antigos: null,
 }
 
-export function triggerForSource(source: LeadSourceKey): string {
+export function triggerForSource(source: LeadSourceKey): string | null {
   return TRIGGER_BY_SOURCE[source]
 }
 

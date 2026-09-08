@@ -28,6 +28,7 @@ import { LEAD_SOURCES, LEAD_SOURCE_ORDER, type LeadSourceKey } from '@/lib/leadS
 const SOURCE_COLORS: Record<LeadSourceKey, string> = {
   agenda_ascensao: '#c98500',
   site_evento: '#3987e5',
+  agenda_antigos: '#7b7b76',
 }
 
 interface SourceRailProps {

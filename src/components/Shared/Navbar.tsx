@@ -37,7 +37,6 @@ const NAV_ITEMS = [
   { label: 'WhatsApp API', href: '/chat', icon: WhatsappLogo },
   { label: 'DM Instagram', href: '/chat/instagram', icon: InstagramLogo },
   { label: 'Funil de Mensagens', href: '/funnels', icon: FlowArrow },
-  { label: 'Métricas', href: '/metrics', icon: ChartBar },
   { label: 'Configurações', href: '/settings/organization', icon: Gear },
   { label: 'Admin', href: '/admin', icon: ShieldCheck },
 ]

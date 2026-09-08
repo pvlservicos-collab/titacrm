@@ -13,6 +13,8 @@
  */
 
 import { memo } from 'react'
+import Link from 'next/link'
+import { ChatCircleDots } from '@phosphor-icons/react'
 import { formatPhone } from '@/lib/utils'
 import type { LeadSourceColumn } from '@/lib/leadSources'
 import type { Submission } from './types'
@@ -130,6 +132,43 @@ function Cell({ row, column }: { row: Submission; column: LeadSourceColumn }) {
   )
 }
 
+/**
+ * Botão "Enviar mensagem" — primeira coluna de toda linha.
+ *
+ * Leva pro chat já com a conversa daquele lead aberta: /chat?leadId=... é lido
+ * pela tela de conversas, que carrega o lead mesmo que ele ainda não esteja na
+ * lista em memória.
+ *
+ * Fica desabilitado quando a linha não virou lead no CRM — o que acontece
+ * quando o envio não trouxe telefone. Sem número não há pra onde mandar, e um
+ * botão que leva a uma conversa vazia seria pior que um botão apagado.
+ */
+function BotaoMensagem({ row }: { row: Submission }) {
+  if (!row.lead_id) {
+    return (
+      <span
+        className="btn btn-sm btn-ghost !px-2 opacity-40 cursor-not-allowed"
+        title={row.phone ? 'Lead ainda não criado no CRM' : 'Sem telefone — não há para onde enviar'}
+      >
+        <ChatCircleDots size={14} weight="bold" />
+        Enviar mensagem
+      </span>
+    )
+  }
+
+  return (
+    <Link
+      href={`/chat?leadId=${row.lead_id}`}
+      onClick={pararPropagacao}
+      className="btn btn-sm btn-outline !px-2 whitespace-nowrap"
+      title={`Abrir conversa com ${row.name ?? 'este lead'}`}
+    >
+      <ChatCircleDots size={14} weight="bold" />
+      Enviar mensagem
+    </Link>
+  )
+}
+
 interface SubmissionsTableProps {
   columns: LeadSourceColumn[]
   rows: Submission[]
@@ -145,6 +184,15 @@ function SubmissionsTable({ columns, rows, onSelect }: SubmissionsTableProps) {
         <table className="w-full border-collapse text-xs">
           <thead>
             <tr>
+              {/* Coluna de ação, fora da definição da fonte: vale pra toda aba,
+                  e é a primeira porque a pessoa varre a lista pra agir, não
+                  pra ler o ID. */}
+              <th
+                style={{ minWidth: 168 }}
+                className="sticky top-0 left-0 z-20 text-left font-semibold text-muted uppercase tracking-wider text-[10px] px-3.5 py-2.5 whitespace-nowrap surface-raised"
+              >
+                Ação
+              </th>
               {columns.map((column) => (
                 <th
                   key={column.key}
@@ -163,6 +211,9 @@ function SubmissionsTable({ columns, rows, onSelect }: SubmissionsTableProps) {
                 onClick={() => onSelect(row)}
                 className="cursor-pointer border-t border-white/[0.06] hover:bg-white/[0.04] transition-colors"
               >
+                <td className="px-3.5 py-2 align-middle whitespace-nowrap">
+                  <BotaoMensagem row={row} />
+                </td>
                 {columns.map((column) => (
                   <td key={column.key} className="px-3.5 py-2.5 align-top whitespace-nowrap">
                     <Cell row={row} column={column} />

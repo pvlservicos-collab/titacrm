@@ -3,7 +3,7 @@
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, TooltipContentProps } from 'recharts'
 import { ChartLineUp } from '@phosphor-icons/react'
 import GlassCard, { SectionHeader } from './GlassCard'
-import { CHANNEL_META, CHANNEL_ORDER, mockDailyLeads, type DailyLeadPoint } from './mockData'
+import { CHANNEL_META, CHANNEL_ORDER, type DailyLeadPoint } from './mockData'
 
 const ACCENT = '#f2c744'
 
@@ -43,10 +43,10 @@ function CustomTooltip({ active, payload }: TooltipContentProps<any, any>) {
 }
 
 interface LeadsByDayChartProps {
-  data?: DailyLeadPoint[]
+  data: DailyLeadPoint[]
 }
 
-export default function LeadsByDayChart({ data = mockDailyLeads }: LeadsByDayChartProps) {
+export default function LeadsByDayChart({ data }: LeadsByDayChartProps) {
   const chartData = data.map(p => ({
     ...p,
     total: CHANNEL_ORDER.reduce((sum, c) => sum + (p[c] ?? 0), 0),

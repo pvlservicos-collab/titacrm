@@ -1,16 +1,16 @@
 import { ShoppingCart, Package, CurrencyCircleDollar } from '@phosphor-icons/react'
 import GlassCard, { SectionHeader } from './GlassCard'
-import { mockPurchaseMetrics, type PurchaseMetrics } from './mockData'
+import { type PurchaseMetrics } from './mockData'
 
 function formatCurrency(value: number) {
   return value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
 }
 
 interface PurchaseMetricsSectionProps {
-  metrics?: PurchaseMetrics
+  metrics: PurchaseMetrics
 }
 
-export default function PurchaseMetricsSection({ metrics = mockPurchaseMetrics }: PurchaseMetricsSectionProps) {
+export default function PurchaseMetricsSection({ metrics }: PurchaseMetricsSectionProps) {
   const items = [
     { key: 'sales', label: 'Vendas realizadas', value: metrics.salesCount.toLocaleString('pt-BR'), icon: ShoppingCart },
     { key: 'products', label: 'Produtos comprados', value: metrics.productsSold.toLocaleString('pt-BR'), icon: Package },
