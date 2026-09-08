@@ -46,16 +46,21 @@ interface SourceRailProps {
 }
 
 /**
- * De qual fonte veio o lead.
+ * De qual canal de aquisição o lead veio, ou null.
  *
- * `custom_attributes.lead_source` é gravado pela ingestão (src/lib/ingest.ts).
- * Lead que entrou por outro caminho (importação, cadastro manual, WhatsApp) não
- * tem o campo e simplesmente não aparece aqui — a coluna Fonte é sobre origem
- * rastreada, não sobre todo lead do sistema.
+ * `custom_attributes.lead_source` é gravado pela ingestão (src/lib/ingest.ts) e
+ * também pela importação por planilha. Só interessa aqui quem veio de um canal
+ * ao vivo: lead de importação, cadastro manual ou WhatsApp não aparece nesta
+ * coluna, que é sobre por onde o lead está ENTRANDO.
+ *
+ * Checa contra ACQUISITION_SOURCE_ORDER, e não contra LEAD_SOURCES: o segundo
+ * inclui a lista importada, e devolver ela aqui quebrava a montagem dos grupos
+ * abaixo — que só cria balde pras fontes de aquisição.
  */
 function sourceOf(lead: LeadWithOwner): LeadSourceKey | null {
   const value = (lead.custom_attributes as Record<string, unknown> | undefined)?.lead_source
-  return typeof value === 'string' && value in LEAD_SOURCES ? (value as LeadSourceKey) : null
+  if (typeof value !== 'string') return null
+  return (ACQUISITION_SOURCE_ORDER as string[]).includes(value) ? (value as LeadSourceKey) : null
 }
 
 function MiniCard({
@@ -218,7 +223,10 @@ export default function SourceRail({
 
     for (const lead of leads) {
       const source = sourceOf(lead)
-      if (source) groups[source].push(lead)
+      // O `groups[source]` é garantido pelo laço acima, mas o guarda fica: se
+      // amanhã alguém alargar o sourceOf sem alargar os baldes, isso volta a
+      // derrubar a tela inteira do Pipeline em vez de só omitir um card.
+      if (source && groups[source]) groups[source].push(lead)
     }
 
     const timeOf = (lead: LeadWithOwner) =>

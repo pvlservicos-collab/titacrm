@@ -6,6 +6,38 @@ import { eq, and } from 'drizzle-orm'
 
 type Params = { params: Promise<{ stage_id: string }> }
 
+/**
+ * Busca uma etapa pelo id. Usado por useLeadPipelineStages: o chat sabe em que
+ * etapa o lead está, mas precisa descobrir a qual pipeline ela pertence pra
+ * listar as etapas irmãs no seletor.
+ *
+ * A rota só tinha PATCH e DELETE, então esse GET respondia 405 e o seletor
+ * ficava vazio. Passou despercebido porque o modo demo interceptava esta
+ * chamada no cliente e devolvia uma etapa fake — quando o demo saiu, o buraco
+ * apareceu.
+ */
+export async function GET(req: NextRequest, { params }: Params) {
+  try {
+    const auth = await authenticateRequest(req)
+    const { stage_id } = await params
+    const [stage] = await db.select().from(pipelineStages)
+      .where(and(eq(pipelineStages.id, stage_id), eq(pipelineStages.organizationId, auth.organizationId)))
+      .limit(1)
+    if (!stage) return apiError(404, 'Etapa não encontrada.')
+    // pipeline_id em snake_case: é o nome que o hook lê (e o resto da API usa).
+    return Response.json({
+      data: {
+        id: stage.id,
+        pipeline_id: stage.pipelineId,
+        name: stage.name,
+        color: stage.color,
+        rank: stage.rank,
+        target_volume: stage.targetVolume,
+      },
+    })
+  } catch (err: any) { return apiError(err.status || 500, err.message || 'Erro interno.') }
+}
+
 export async function PATCH(req: NextRequest, { params }: Params) {
   try {
     const auth = await authenticateRequest(req)
