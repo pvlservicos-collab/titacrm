@@ -3,7 +3,6 @@
 import { Suspense, useState, useEffect } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { signIn } from 'next-auth/react'
-import { RocketLaunch } from '@phosphor-icons/react/dist/ssr'
 
 type TokenState = 'checking' | 'valid' | 'invalid'
 
@@ -102,14 +101,16 @@ function AtivarContaForm() {
     return (
         <div className="min-h-screen bg-void relative overflow-hidden flex flex-col items-center justify-center p-4">
             <div className="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden="true">
-                <div className="absolute -top-40 left-1/2 -translate-x-1/2 w-[700px] h-[700px] rounded-full bg-[radial-gradient(circle,rgba(61,123,255,0.14)_0%,transparent_70%)]" />
+                <div className="absolute -top-40 left-1/2 -translate-x-1/2 w-[700px] h-[700px] rounded-full bg-[radial-gradient(circle,rgba(242,199,68,0.14)_0%,transparent_70%)]" />
             </div>
 
             <div className="relative w-full max-w-sm">
                 <div className="text-center mb-8">
-                    <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-panel-2 border border-accent-line mb-5 shadow-glow">
-                        <RocketLaunch size={26} weight="fill" className="text-accent-2" />
-                    </div>
+                    <img
+                        src="/logos/tita-logo.png"
+                        alt="TitaCRM"
+                        className="w-20 h-20 mx-auto mb-4 object-contain drop-shadow-[0_0_28px_rgba(242,199,68,0.35)]"
+                    />
                     <h1 className="text-2xl font-light text-ink tracking-tight">Vamos ativar sua conta</h1>
                     {orgName && (
                         <p className="text-muted text-sm mt-1">

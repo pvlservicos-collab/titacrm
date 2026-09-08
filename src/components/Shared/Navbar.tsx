@@ -143,7 +143,7 @@ export default function Navbar() {
       <div className="flex items-center gap-8">
         {/* Logo */}
         <Link href="/" className="flex items-center gap-2">
-          <img src="/logos/T-logo.svg" alt="TitaCRM Logo" className="h-6 w-auto object-contain" />
+          <img src="/logos/tita-logo.png" alt="TitaCRM" className="h-7 w-7 object-contain" />
           <span className="font-display font-bold text-ink hidden sm:inline">TitaCRM</span>
         </Link>
 
@@ -306,7 +306,7 @@ export default function Navbar() {
         <div className="absolute left-0 top-0 bottom-0 w-72 max-w-[85vw] glass-raised rounded-none border-y-0 border-l-0 flex flex-col">
           <div className="flex items-center justify-between h-14 px-4 relative">
             <Link href="/" className="flex items-center gap-2" onClick={() => setShowMobileMenu(false)}>
-              <img src="/logos/T-logo.svg" alt="TitaCRM Logo" className="h-6 w-auto object-contain" />
+              <img src="/logos/tita-logo.png" alt="TitaCRM" className="h-7 w-7 object-contain" />
               <span className="font-display font-bold text-ink">TitaCRM</span>
             </Link>
             <button

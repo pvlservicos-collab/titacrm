@@ -14,6 +14,10 @@ export const metadata: Metadata = {
     title: 'TitaCRM',
   },
   icons: {
+    // src/app/icon.png ja e detectado pelo Next e vira o favicon sozinho; estes
+    // ficam explicitos porque o iOS e a aba do navegador buscam caminhos fixos.
+    icon: '/icons/icon-192.png',
+    shortcut: '/icons/icon-192.png',
     apple: '/icons/apple-touch-icon.png',
   },
 }
