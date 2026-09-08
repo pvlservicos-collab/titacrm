@@ -6,6 +6,12 @@ export function middleware(req: NextRequest) {
 
   const publicPaths = [
     '/login', '/ativar-conta', '/api/auth', '/api/webhooks', '/api/funnels/tick', '/api/integrations/instagram/check-tokens',
+    // Entrada de leads: o handler autentica sozinho (chave `atl_` no cabeçalho
+    // OU em ?key=, porque plugin de formulário do WordPress muitas vezes não
+    // deixa mandar cabeçalho). O bypass de Bearer logo abaixo não cobre o caso
+    // do ?key=, então sem esta linha o webhook do site caía no redirect de
+    // login e o lead se perdia.
+    '/api/ingest',
     // Cron da Vercel não manda cookie de sessão nem Authorization (CRON_SECRET não está
     // configurado no projeto) — sem isso na lista, toda chamada do cron caía no redirect
     // de login e a reconciliação nunca rodou de verdade desde que foi criada (13/07).
