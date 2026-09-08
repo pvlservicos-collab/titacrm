@@ -16,7 +16,7 @@
 import type { LeadSourceKey } from '@/lib/leadSources'
 
 /** Identifica cada etapa no código sem depender do uuid que o banco vai gerar. */
-export type StageKey = 'contactado_ia' | 'follow_up' | 'atendimento_humano' | 'comprou'
+export type StageKey = 'em_aguardo' | 'contactado_ia' | 'follow_up' | 'atendimento_humano' | 'comprou'
 
 export interface DefaultStage {
   key: StageKey
@@ -28,10 +28,15 @@ export interface DefaultStage {
 export const DEFAULT_PIPELINE_NAME = 'Atendimento'
 
 export const DEFAULT_STAGES: DefaultStage[] = [
-  { key: 'contactado_ia', name: 'Contactado por IA', color: '#8b5cf6', rank: 0 },
-  { key: 'follow_up', name: 'Em follow up', color: '#f59e0b', rank: 1 },
-  { key: 'atendimento_humano', name: 'Atendimento por humano', color: '#3987e5', rank: 2 },
-  { key: 'comprou', name: 'Comprou produto', color: '#199e70', rank: 3 },
+  // "Em aguardo" é a primeira de propósito: a ingestão põe todo lead novo na
+  // etapa de menor rank, então quem entra cai aqui e só sai quando a IA (ou
+  // alguém) realmente falar com ele. Sem esta coluna, o lead nascia em
+  // "Contactado por IA" sem ninguém ter contactado nada.
+  { key: 'em_aguardo', name: 'Em aguardo', color: '#7b7b76', rank: 0 },
+  { key: 'contactado_ia', name: 'Contactado por IA', color: '#8b5cf6', rank: 1 },
+  { key: 'follow_up', name: 'Em follow up', color: '#f59e0b', rank: 2 },
+  { key: 'atendimento_humano', name: 'Atendimento por humano', color: '#3987e5', rank: 3 },
+  { key: 'comprou', name: 'Comprou produto', color: '#199e70', rank: 4 },
 ]
 
 /** Minutos de espera pela resposta antes de cair no follow-up. */
@@ -67,15 +72,16 @@ export interface DefaultFunnel {
 /**
  * O fluxo pedido, igual para as duas fontes — só muda o texto das mensagens:
  *
- *   entrou → [Contactado por IA] → mensagem de abertura
+ *   entrou em [Em aguardo] → [Contactado por IA] → mensagem de abertura
  *                                      ↓
  *                            respondeu em 15 min?
  *                       sim ↙                    ↘ não
  *          [Atendimento por humano]      [Em follow up] → mensagem de follow-up
  *
- * O move_stage logo depois do gatilho é redundante quando "Contactado por IA" já
- * é a primeira etapa (a ingestão põe o lead na de menor rank), mas deixa o fluxo
- * legível sozinho e continua correto se alguém reordenar as colunas depois.
+ * O move_stage logo depois do gatilho é o que tira o lead de "Em aguardo": ele
+ * entra lá (etapa de menor rank) e só vira "Contactado por IA" quando o funil
+ * de fato dispara. Sem esse bloco, todo lead novo já nasceria marcado como
+ * contactado sem ninguém ter falado com ele.
  */
 function buildFlow(opts: { abertura: string; followUp: string }): {
   blocks: DefaultBlock[]
