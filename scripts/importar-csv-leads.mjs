@@ -8,10 +8,15 @@
 // Idempotente: reexecutar atualiza as linhas pelo ID da planilha em vez de
 // duplicar — mesma regra de deduplicação do webhook.
 //
-// NÃO dispara funil de mensagem. É lista histórica: disparar mandaria a mensagem
-// de boas-vindas pra centenas de pessoas cadastradas meses atrás, de uma vez.
-// Quem garante isso é o `agenda_antigos: null` em src/lib/funnel-triggers.ts —
-// aqui a gente nem chama o funil.
+// Duas coisas que este script NÃO faz, as duas de propósito:
+//
+// 1. Não dispara funil de mensagem. É lista histórica: disparar mandaria a
+//    mensagem de boas-vindas pra centenas de pessoas cadastradas meses atrás,
+//    de uma vez. Quem garante isso é o `agenda_antigos: null` em
+//    src/lib/funnel-triggers.ts — aqui a gente nem chama o funil.
+//
+// 2. Não coloca o lead em etapa do Kanban. O board é sobre o atendimento de
+//    agora; a base histórica vive na aba Leads.
 import { config } from 'dotenv'
 import pg from 'pg'
 import { readFileSync } from 'node:fs'
@@ -150,14 +155,16 @@ try {
   if (orgs.length > 1) { console.error('Mais de uma organização — ajuste o script pra escolher.'); process.exit(1) }
   const organizationId = orgs[0].id
 
-  // Etapa de entrada: a de menor rank do pipeline, igual faz a ingestão.
-  const { rows: etapas } = await client.query(
-    `SELECT id FROM pipeline_stages WHERE organization_id = $1 AND deleted_at IS NULL
-     ORDER BY rank ASC LIMIT 1`,
-    [organizationId]
-  )
-  const stageId = etapas[0]?.id ?? null
-  if (!stageId) console.warn('AVISO: nenhum pipeline configurado — os leads entram sem etapa.')
+  // Os leads importados entram SEM etapa, de proposito.
+  //
+  // O Kanban mostra por onde o atendimento esta andando agora; uma base
+  // historica de centenas de contatos enterraria os leads do dia numa coluna
+  // com 600 cards. Sem stage_id, o lead nao pertence a coluna nenhuma e some do
+  // board — sem sair do banco, entao a aba Leads e o botao "Enviar mensagem"
+  // continuam funcionando normalmente (os dois so precisam da linha existir).
+  //
+  // Quando alguem trabalhar um desses leads, e so arrastar pra uma coluna.
+  const stageId = null
 
   let novos = 0, atualizados = 0, semTelefone = 0, leadsCriados = 0, leadsExistentes = 0
 
