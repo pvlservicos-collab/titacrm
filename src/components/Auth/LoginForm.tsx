@@ -51,15 +51,19 @@ export default function LoginForm() {
       )}
 
       <div>
-        <label className="block text-sm font-medium text-ink mb-1">Email</label>
+        <label className="block text-sm font-medium text-ink mb-1">Usuário ou e-mail</label>
         <input
-          type="email"
+          // text, e nao email: o campo aceita usuario simples ("tita") alem de
+          // e-mail. Com type="email" o proprio navegador barra o envio antes de
+          // chegar no servidor. O authorize() do NextAuth compara a string como
+          // ela veio (minusculas, sem espaco), entao os dois formatos funcionam.
+          type="text"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           required
-          autoComplete="email"
+          autoComplete="username"
           className="w-full bg-panel-2 border border-line rounded-lg px-3 py-2 text-sm text-ink placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-accent focus:border-transparent"
-          placeholder="seu@email.com"
+          placeholder="tita ou seu@email.com"
         />
       </div>
 

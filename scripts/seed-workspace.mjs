@@ -31,8 +31,11 @@ if (!orgName || !email || !password) {
   process.exit(1)
 }
 if (password.length < 8) {
-  console.error('A senha precisa ter pelo menos 8 caracteres (mesma regra do setup-owner).')
-  process.exit(1)
+  // Aviso, e nao bloqueio: este script e ferramenta de dono do sistema, rodada
+  // com acesso direto ao banco. Quem o executa ja pode fazer qualquer coisa —
+  // impedir aqui so atrapalharia. A regra de 8+ continua valendo no cadastro
+  // pela tela (setup-owner), que e por onde passa qualquer outra pessoa.
+  console.warn(`AVISO: senha de ${password.length} caracteres. Facil de adivinhar em ataque automatizado.`)
 }
 
 const client = new pg.Client({ connectionString })
