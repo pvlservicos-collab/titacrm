@@ -14,6 +14,7 @@ import {
     Lightning,
     Table,
     ClipboardText,
+    Robot,
 } from '@phosphor-icons/react'
 
 const SETTINGS_SECTIONS = [
@@ -22,6 +23,7 @@ const SETTINGS_SECTIONS = [
     { label: 'Configurações do Pipeline', href: '/settings/pipelines', icon: TreeStructure },
     { label: 'Leads', href: '/settings/leads', icon: Table },
     { label: 'Log de eventos', href: '/settings/log', icon: ClipboardText },
+    { label: 'Inteligência Artificial', href: '/settings/ia', icon: Robot },
     { label: 'Campos Customizados', href: '/settings/custom-fields', icon: PencilSimpleLine },
     { label: 'Tags', href: '/settings/tags', icon: Tag },
     { label: 'Respostas Rápidas', href: '/settings/quick-replies', icon: Lightning },
