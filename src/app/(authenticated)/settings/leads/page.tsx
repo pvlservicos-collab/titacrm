@@ -6,24 +6,34 @@
  * Cada aba é uma planilha cujas colunas vêm da definição da fonte no servidor
  * (GET /api/lead-sources → src/lib/leadSources.ts), não daqui. Clicar numa linha
  * abre o detalhe com o payload inteiro.
+ *
+ * A barra de controles (abas, filtros, busca) é sticky: com 644 linhas, rolar
+ * até o fim e ter que voltar ao topo pra trocar de filtro seria o caminho normal
+ * de uso, não a exceção.
  */
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { MagnifyingGlass, ArrowClockwise, Table, PlugsConnected } from '@phosphor-icons/react'
+import { MagnifyingGlass, ArrowClockwise, Table, PlugsConnected, Check } from '@phosphor-icons/react'
 import LoadingSpinner from '@/components/Shared/LoadingSpinner'
 import SubmissionsTable from '@/components/Leads/SubmissionsTable'
 import SubmissionDetail from '@/components/Leads/SubmissionDetail'
 import ApiPanel from '@/components/Leads/ApiPanel'
-import type { LeadSourceTab, Submission } from '@/components/Leads/types'
+import type { EtapaFiltro, LeadSourceTab, Submission } from '@/components/Leads/types'
 
-const PAGE_SIZE = 100
+const PAGE_SIZE = 200
+
+type FiltroContato = 'todos' | 'nao' | 'sim'
 
 export default function LeadsPage() {
   const [sources, setSources] = useState<LeadSourceTab[]>([])
   const [activeSource, setActiveSource] = useState<string | null>(null)
   const [rows, setRows] = useState<Submission[]>([])
+  const [etapas, setEtapas] = useState<EtapaFiltro[]>([])
+  const [contato, setContato] = useState({ contatados: 0, pendentes: 0 })
   const [total, setTotal] = useState(0)
   const [search, setSearch] = useState('')
+  const [etapaFiltro, setEtapaFiltro] = useState<string | null>(null)
+  const [contatoFiltro, setContatoFiltro] = useState<FiltroContato>('todos')
   const [loadingSources, setLoadingSources] = useState(true)
   const [loadingRows, setLoadingRows] = useState(false)
   const [selected, setSelected] = useState<Submission | null>(null)
@@ -49,37 +59,82 @@ export default function LeadsPage() {
     return () => { cancelled = true }
   }, [])
 
-  const loadRows = useCallback(async (source: string, q: string) => {
-    setLoadingRows(true)
-    setError(null)
-    try {
-      const params = new URLSearchParams({ limit: String(PAGE_SIZE) })
-      if (q) params.set('q', q)
-      const res = await fetch(`/api/lead-sources/${source}/submissions?${params}`)
-      const json = await res.json()
-      if (!res.ok) throw new Error(json.error || 'Falha ao carregar os leads.')
-      setRows(json.data || [])
-      setTotal(json.total ?? 0)
-    } catch (err: any) {
-      setError(err.message || 'Falha ao carregar os leads.')
-      setRows([])
-      setTotal(0)
-    } finally {
-      setLoadingRows(false)
-    }
-  }, [])
+  const loadRows = useCallback(
+    async (source: string, q: string, etapa: string | null, cont: FiltroContato) => {
+      setLoadingRows(true)
+      setError(null)
+      try {
+        const params = new URLSearchParams({ limit: String(PAGE_SIZE) })
+        if (q) params.set('q', q)
+        if (etapa) params.set('stage', etapa)
+        if (cont !== 'todos') params.set('contatados', cont)
+        const res = await fetch(`/api/lead-sources/${source}/submissions?${params}`)
+        const json = await res.json()
+        if (!res.ok) throw new Error(json.error || 'Falha ao carregar os leads.')
+        setRows(json.data || [])
+        setTotal(json.total ?? 0)
+        setEtapas(json.etapas || [])
+        setContato(json.contato || { contatados: 0, pendentes: 0 })
+      } catch (err: any) {
+        setError(err.message || 'Falha ao carregar os leads.')
+        setRows([])
+        setTotal(0)
+      } finally {
+        setLoadingRows(false)
+      }
+    },
+    []
+  )
 
   // Busca com atraso: digitar não dispara uma requisição por tecla.
   useEffect(() => {
     if (!activeSource) return
-    const timer = setTimeout(() => { loadRows(activeSource, search.trim()) }, search ? 300 : 0)
+    const timer = setTimeout(
+      () => { loadRows(activeSource, search.trim(), etapaFiltro, contatoFiltro) },
+      search ? 300 : 0
+    )
     return () => clearTimeout(timer)
-  }, [activeSource, search, loadRows])
+  }, [activeSource, search, etapaFiltro, contatoFiltro, loadRows])
 
   const activeDef = useMemo(
     () => sources.find((s) => s.key === activeSource) ?? null,
     [sources, activeSource]
   )
+
+  /**
+   * Marca o contato ao abrir a conversa.
+   *
+   * Pinta a linha na hora e só depois grava — o clique já está navegando pro
+   * chat, então esperar a resposta significaria a pessoa voltar e ver o botão
+   * ainda azul. Se a gravação falhar, desfaz a pintura em vez de mentir.
+   */
+  const marcarContato = useCallback(
+    async (row: Submission) => {
+      if (!activeSource || row.contacted_at) return
+      const agora = new Date().toISOString()
+      setRows((prev) => prev.map((r) => (r.id === row.id ? { ...r, contacted_at: agora } : r)))
+      setContato((c) => ({ contatados: c.contatados + 1, pendentes: Math.max(0, c.pendentes - 1) }))
+      try {
+        const res = await fetch(`/api/lead-sources/${activeSource}/submissions`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ id: row.id }),
+        })
+        if (!res.ok) throw new Error()
+      } catch {
+        setRows((prev) => prev.map((r) => (r.id === row.id ? { ...r, contacted_at: null } : r)))
+        setContato((c) => ({ contatados: Math.max(0, c.contatados - 1), pendentes: c.pendentes + 1 }))
+      }
+    },
+    [activeSource]
+  )
+
+  const trocarFonte = (key: string) => {
+    setActiveSource(key)
+    setSearch('')
+    setEtapaFiltro(null)
+    setContatoFiltro('todos')
+  }
 
   if (loadingSources) {
     return (
@@ -112,62 +167,122 @@ export default function LeadsPage() {
           <ApiPanel sources={sources} activeSource={activeSource} />
         )}
 
-        {/* Abas — uma por fonte */}
-        <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-hide">
-          {sources.map((source) => (
-            <button
-              key={source.key}
-              onClick={() => { setActiveSource(source.key); setSearch('') }}
-              className={`pill flex-shrink-0 !px-4 !py-2 !text-sm ${
-                source.key === activeSource ? 'pill-active' : ''
-              }`}
-            >
-              <Table size={15} weight="bold" />
-              {source.label}
-              <span
-                className={`ml-0.5 px-1.5 rounded-full text-[10px] font-bold ${
-                  source.key === activeSource ? 'bg-black/30 text-ink' : 'bg-white/10 text-muted'
+        {/* Barra de controles presa no topo. top-14 = altura da navbar do app,
+            senão ela encobriria a primeira linha ao rolar. */}
+        <div className="sticky top-14 z-30 -mx-2 px-2 py-3 glass-raised rounded-2xl space-y-3">
+          {/* Fontes */}
+          <div className="flex items-center gap-2 overflow-x-auto scrollbar-hide">
+            {sources.map((source) => (
+              <button
+                key={source.key}
+                onClick={() => trocarFonte(source.key)}
+                className={`pill flex-shrink-0 !px-4 !py-2 !text-sm ${
+                  source.key === activeSource ? 'pill-active' : ''
                 }`}
               >
-                {source.total}
+                <Table size={15} weight="bold" />
+                {source.label}
+                <span
+                  className={`ml-0.5 px-1.5 rounded-full text-[10px] font-bold ${
+                    source.key === activeSource ? 'bg-black/30 text-ink' : 'bg-white/10 text-muted'
+                  }`}
+                >
+                  {source.total}
+                </span>
+              </button>
+            ))}
+          </div>
+
+          <div className="h-px hairline-x" />
+
+          {/* Etapas — cada chip já traz quantos leads estão nela */}
+          {etapas.length > 0 && (
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-muted mr-1">
+                Etapa
               </span>
+              <button
+                onClick={() => setEtapaFiltro(null)}
+                className={`pill !py-1 ${etapaFiltro === null ? 'pill-active' : ''}`}
+              >
+                Todas
+                <span className="ml-1 px-1.5 rounded-full bg-white/10 text-[10px] font-bold">
+                  {etapas.reduce((a, e) => a + e.total, 0)}
+                </span>
+              </button>
+              {etapas.map((etapa) => (
+                <button
+                  key={etapa.id}
+                  onClick={() => setEtapaFiltro(etapaFiltro === etapa.id ? null : etapa.id)}
+                  className={`pill !py-1 ${etapaFiltro === etapa.id ? 'pill-active' : ''}`}
+                >
+                  {etapa.color && (
+                    <span
+                      className="w-2 h-2 rounded-full flex-shrink-0"
+                      style={{ backgroundColor: etapa.color }}
+                    />
+                  )}
+                  {etapa.name}
+                  <span className="ml-1 px-1.5 rounded-full bg-white/10 text-[10px] font-bold">
+                    {etapa.total}
+                  </span>
+                </button>
+              ))}
+            </div>
+          )}
+
+          {/* Contato + busca */}
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-muted mr-1">
+              Contato
+            </span>
+            {([
+              ['todos', 'Todos', contato.contatados + contato.pendentes],
+              ['nao', 'A contatar', contato.pendentes],
+              ['sim', 'Já contatados', contato.contatados],
+            ] as [FiltroContato, string, number][]).map(([valor, rotulo, qtd]) => (
+              <button
+                key={valor}
+                onClick={() => setContatoFiltro(valor)}
+                className={`pill !py-1 ${contatoFiltro === valor ? 'pill-active' : ''}`}
+              >
+                {valor === 'sim' && <Check size={12} weight="bold" />}
+                {rotulo}
+                <span className="ml-1 px-1.5 rounded-full bg-white/10 text-[10px] font-bold">{qtd}</span>
+              </button>
+            ))}
+
+            <div className="relative ml-auto">
+              <MagnifyingGlass
+                size={15}
+                className="absolute left-3 top-1/2 -translate-y-1/2 text-muted pointer-events-none"
+              />
+              <input
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Buscar nome, telefone, e-mail…"
+                className="field !pl-9 !py-1.5 !text-xs w-[240px]"
+              />
+            </div>
+            <button
+              onClick={() => activeSource && loadRows(activeSource, search.trim(), etapaFiltro, contatoFiltro)}
+              className="btn-icon w-8 h-8"
+              title="Atualizar"
+            >
+              <ArrowClockwise size={15} weight="bold" />
             </button>
-          ))}
+          </div>
         </div>
 
         {activeDef && (
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div className="min-w-0">
-              <p className="text-xs text-muted">{activeDef.description}</p>
-              {activeDef.last_received_at && (
-                <p className="text-[11px] text-muted/70 mt-0.5">
-                  Último recebido em {new Date(activeDef.last_received_at).toLocaleString('pt-BR')}
-                </p>
-              )}
-            </div>
-
-            <div className="flex items-center gap-2 flex-shrink-0">
-              <div className="relative">
-                <MagnifyingGlass
-                  size={15}
-                  className="absolute left-3 top-1/2 -translate-y-1/2 text-muted pointer-events-none"
-                />
-                <input
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  placeholder="Buscar nome, telefone, e-mail…"
-                  className="field !pl-9 !py-2 !text-xs w-[260px]"
-                />
-              </div>
-              <button
-                onClick={() => activeSource && loadRows(activeSource, search.trim())}
-                className="btn-icon w-9 h-9"
-                title="Atualizar"
-              >
-                <ArrowClockwise size={16} weight="bold" />
-              </button>
-            </div>
-          </div>
+          <p className="text-xs text-muted">
+            {activeDef.description}
+            {activeDef.last_received_at && (
+              <span className="text-muted/70">
+                {' '}· último recebido em {new Date(activeDef.last_received_at).toLocaleString('pt-BR')}
+              </span>
+            )}
+          </p>
         )}
 
         {error && (
@@ -183,9 +298,11 @@ export default function LeadsPage() {
         ) : rows.length === 0 ? (
           <div className="glass rounded-2xl px-6 py-16 text-center">
             <p className="text-sm font-semibold text-ink">
-              {search ? 'Nenhum lead encontrado para essa busca.' : 'Nenhum lead recebido ainda.'}
+              {search || etapaFiltro || contatoFiltro !== 'todos'
+                ? 'Nenhum lead com esses filtros.'
+                : 'Nenhum lead recebido ainda.'}
             </p>
-            {!search && (
+            {!search && !etapaFiltro && contatoFiltro === 'todos' && (
               <p className="text-xs text-muted mt-1.5">
                 Assim que a fonte começar a enviar, os leads aparecem aqui.{' '}
                 <button
@@ -204,11 +321,12 @@ export default function LeadsPage() {
                 columns={activeDef.columns}
                 rows={rows}
                 onSelect={setSelected}
+                onContatar={marcarContato}
               />
             )}
             <p className="text-[11px] text-muted text-center">
               Mostrando {rows.length} de {total}
-              {total > rows.length && ' — use a busca para encontrar leads mais antigos'}
+              {total > rows.length && ' — refine com os filtros ou a busca para ver os demais'}
             </p>
           </>
         )}

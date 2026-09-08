@@ -22,9 +22,14 @@ import { useMemo, useState } from 'react'
 import { MagnifyingGlass, X, CaretDown } from '@phosphor-icons/react'
 import { LeadWithOwner } from '@/lib/types'
 import { formatPhone } from '@/lib/utils'
-import { LEAD_SOURCES, LEAD_SOURCE_ORDER, type LeadSourceKey } from '@/lib/leadSources'
+import { LEAD_SOURCES, ACQUISITION_SOURCE_ORDER, type LeadSourceKey } from '@/lib/leadSources'
 
-/** Cor de identificação de cada fonte — só na coluna Fonte, pra distinguir os cards. */
+/**
+ * Cor de identificação de cada fonte — só na coluna Fonte, pra distinguir os
+ * cards. O mapa cobre todas as fontes, mas a coluna só desenha as de aquisição
+ * (ACQUISITION_SOURCE_ORDER): lista importada de planilha não é "por onde o
+ * lead está entrando", que é a pergunta que esta coluna responde.
+ */
 const SOURCE_COLORS: Record<LeadSourceKey, string> = {
   agenda_ascensao: '#c98500',
   site_evento: '#3987e5',
@@ -209,7 +214,7 @@ export default function SourceRail({
   // Agrupa por fonte, mais recente em cima dentro de cada uma.
   const bySource = useMemo(() => {
     const groups: Record<string, LeadWithOwner[]> = {}
-    for (const key of LEAD_SOURCE_ORDER) groups[key] = []
+    for (const key of ACQUISITION_SOURCE_ORDER) groups[key] = []
 
     for (const lead of leads) {
       const source = sourceOf(lead)
@@ -218,7 +223,7 @@ export default function SourceRail({
 
     const timeOf = (lead: LeadWithOwner) =>
       new Date(lead.last_activity_at || lead.created_at || 0).getTime()
-    for (const key of LEAD_SOURCE_ORDER) groups[key].sort((a, b) => timeOf(b) - timeOf(a))
+    for (const key of ACQUISITION_SOURCE_ORDER) groups[key].sort((a, b) => timeOf(b) - timeOf(a))
 
     return groups
   }, [leads])
@@ -237,7 +242,7 @@ export default function SourceRail({
 
       {/* glass-accent + a borda amarela à esquerda separam esta coluna das etapas */}
       <div className="glass glass-accent rounded-2xl border-l-2 border-l-accent/50 flex-1 min-h-0 overflow-y-auto scrollbar-hide p-2 space-y-2">
-        {LEAD_SOURCE_ORDER.map((key) => (
+        {ACQUISITION_SOURCE_ORDER.map((key) => (
           <SourceCard
             key={key}
             sourceKey={key}

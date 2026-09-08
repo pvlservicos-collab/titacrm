@@ -59,6 +59,16 @@ export interface LeadSourceDef {
   required: string[]
   columns: LeadSourceColumn[]
   normalize: (body: Record<string, any>) => NormalizedLead
+  /**
+   * Se a fonte é um canal de aquisição ao vivo. Padrão: true.
+   *
+   * `false` para lista importada de planilha: os leads não chegaram por aquele
+   * canal naquele dia, chegaram meses atrás e entraram todos de uma vez. Isso a
+   * mantém fora do dashboard (onde criaria um pico falso na série diária) e da
+   * coluna "Fonte:" do Kanban (que mostra por onde o lead está entrando agora).
+   * A aba dela em Configurações → Leads continua existindo normalmente.
+   */
+  isAcquisitionChannel?: boolean
 }
 
 /* ── Helpers de normalização ──────────────────────────────────────────────── */
@@ -250,6 +260,9 @@ const agendaAntigos: LeadSourceDef = {
   key: 'agenda_antigos',
   label: 'Agenda — lista antiga',
   description: 'Leads exportados da Agenda antes da integração automática.',
+  // Importação manual de planilha, não aquisição: fica fora do dashboard e da
+  // coluna "Fonte:" do Kanban.
+  isAcquisitionChannel: false,
   // Importada por planilha (scripts/importar-csv-leads.mjs), não por webhook.
   // Sem obrigatório porque a exportação já veio pronta: recusar linha aqui só
   // faria perder lead de uma lista que já é histórica.
@@ -314,6 +327,15 @@ export const LEAD_SOURCES: Record<LeadSourceKey, LeadSourceDef> = {
 
 /** Ordem das abas na tela. */
 export const LEAD_SOURCE_ORDER: LeadSourceKey[] = ['agenda_ascensao', 'site_evento', 'agenda_antigos']
+
+/**
+ * Só os canais de aquisição ao vivo. É o que o dashboard e a coluna "Fonte:" do
+ * Kanban usam — os dois falam sobre por onde o lead está entrando, e uma lista
+ * importada não responde a essa pergunta.
+ */
+export const ACQUISITION_SOURCE_ORDER: LeadSourceKey[] = LEAD_SOURCE_ORDER.filter(
+  (key) => LEAD_SOURCES[key].isAcquisitionChannel !== false
+)
 
 export function isLeadSourceKey(value: unknown): value is LeadSourceKey {
   return typeof value === 'string' && value in LEAD_SOURCES

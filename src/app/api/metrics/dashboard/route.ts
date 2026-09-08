@@ -10,14 +10,14 @@
  * período; o total de leads por fonte é histórico e ignora o recorte.
  */
 import { NextRequest } from 'next/server'
-import { and, eq, gte, isNull, sql } from 'drizzle-orm'
+import { and, eq, gte, inArray, isNull, sql } from 'drizzle-orm'
 import { authenticateRequest, apiError } from '@/lib/api-auth'
 import { db } from '@/lib/db'
 import {
   leadSourceSubmissions, leads, orders, orderItems, leadActivities,
   funnelExecutions, funnelResponseEvents, messageFunnels,
 } from '@/lib/schema'
-import { LEAD_SOURCES, LEAD_SOURCE_ORDER } from '@/lib/leadSources'
+import { LEAD_SOURCES, ACQUISITION_SOURCE_ORDER } from '@/lib/leadSources'
 
 export async function GET(req: NextRequest) {
   try {
@@ -44,7 +44,10 @@ export async function GET(req: NextRequest) {
         total: sql<number>`count(*)::int`,
       })
         .from(leadSourceSubmissions)
-        .where(eq(leadSourceSubmissions.organizationId, org))
+        .where(and(
+          eq(leadSourceSubmissions.organizationId, org),
+          inArray(leadSourceSubmissions.source, ACQUISITION_SOURCE_ORDER)
+        ))
         .groupBy(leadSourceSubmissions.source),
 
       // Série diária por fonte, dentro do período.
@@ -56,6 +59,7 @@ export async function GET(req: NextRequest) {
         .from(leadSourceSubmissions)
         .where(and(
           eq(leadSourceSubmissions.organizationId, org),
+          inArray(leadSourceSubmissions.source, ACQUISITION_SOURCE_ORDER),
           gte(leadSourceSubmissions.receivedAt, desde)
         ))
         .groupBy(sql`1`, leadSourceSubmissions.source)
@@ -146,7 +150,7 @@ export async function GET(req: NextRequest) {
     for (let i = dias - 1; i >= 0; i--) {
       const d = new Date(Date.now() - i * 24 * 60 * 60 * 1000).toISOString().slice(0, 10)
       serie[d] = { date: d }
-      for (const key of LEAD_SOURCE_ORDER) serie[d][key] = 0
+      for (const key of ACQUISITION_SOURCE_ORDER) serie[d][key] = 0
     }
     for (const linha of porDia) {
       if (serie[linha.dia]) serie[linha.dia][linha.source] = linha.total
@@ -158,7 +162,7 @@ export async function GET(req: NextRequest) {
     return Response.json({
       data: {
         periodo_dias: dias,
-        fontes: LEAD_SOURCE_ORDER.map((key) => ({
+        fontes: ACQUISITION_SOURCE_ORDER.map((key) => ({
           channel: key,
           label: LEAD_SOURCES[key].label,
           newCustomers: totalPorFonte.get(key) ?? 0,

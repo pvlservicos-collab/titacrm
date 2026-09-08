@@ -14,7 +14,7 @@
 
 import { memo } from 'react'
 import Link from 'next/link'
-import { ChatCircleDots } from '@phosphor-icons/react'
+import { ChatCircleDots, Check } from '@phosphor-icons/react'
 import { formatPhone } from '@/lib/utils'
 import type { LeadSourceColumn } from '@/lib/leadSources'
 import type { Submission } from './types'
@@ -139,11 +139,33 @@ function Cell({ row, column }: { row: Submission; column: LeadSourceColumn }) {
  * pela tela de conversas, que carrega o lead mesmo que ele ainda não esteja na
  * lista em memória.
  *
- * Fica desabilitado quando a linha não virou lead no CRM — o que acontece
- * quando o envio não trouxe telefone. Sem número não há pra onde mandar, e um
- * botão que leva a uma conversa vazia seria pior que um botão apagado.
+ * Três estados:
+ *   - **contatado**: cinza escuro e sem ação. Cada lead é abordado uma vez só
+ *     por esta lista, e a marca fica no banco (`contacted_at`), não na tela —
+ *     senão recarregar a página zeraria o controle e a pessoa mandaria de novo.
+ *   - **sem lead no CRM**: apagado. Acontece quando o envio não trouxe telefone;
+ *     um botão que abre conversa vazia é pior que um botão desabilitado.
+ *   - **disponível**: leva pro chat e marca o contato no caminho.
  */
-function BotaoMensagem({ row }: { row: Submission }) {
+function BotaoMensagem({
+  row,
+  onContatar,
+}: {
+  row: Submission
+  onContatar: (row: Submission) => void
+}) {
+  if (row.contacted_at) {
+    return (
+      <span
+        className="btn btn-sm !px-2 whitespace-nowrap cursor-default !bg-graphite-4 !border-white/[0.06] !text-muted !shadow-none"
+        title={`Já contatado em ${new Date(row.contacted_at).toLocaleString('pt-BR')}`}
+      >
+        <Check size={14} weight="bold" />
+        Contatado
+      </span>
+    )
+  }
+
   if (!row.lead_id) {
     return (
       <span
@@ -159,7 +181,10 @@ function BotaoMensagem({ row }: { row: Submission }) {
   return (
     <Link
       href={`/chat?leadId=${row.lead_id}`}
-      onClick={pararPropagacao}
+      onClick={(e) => {
+        pararPropagacao(e)
+        onContatar(row)
+      }}
       className="btn btn-sm btn-outline !px-2 whitespace-nowrap"
       title={`Abrir conversa com ${row.name ?? 'este lead'}`}
     >
@@ -173,9 +198,10 @@ interface SubmissionsTableProps {
   columns: LeadSourceColumn[]
   rows: Submission[]
   onSelect: (row: Submission) => void
+  onContatar: (row: Submission) => void
 }
 
-function SubmissionsTable({ columns, rows, onSelect }: SubmissionsTableProps) {
+function SubmissionsTable({ columns, rows, onSelect, onContatar }: SubmissionsTableProps) {
   return (
     // overflow-x no wrapper (não no body da página): planilha larga rola dentro
     // do próprio card, a página nunca escorrega na horizontal.
@@ -192,6 +218,12 @@ function SubmissionsTable({ columns, rows, onSelect }: SubmissionsTableProps) {
                 className="sticky top-0 left-0 z-20 text-left font-semibold text-muted uppercase tracking-wider text-[10px] px-3.5 py-2.5 whitespace-nowrap surface-raised"
               >
                 Ação
+              </th>
+              <th
+                style={{ minWidth: 150 }}
+                className="sticky top-0 z-10 text-left font-semibold text-muted uppercase tracking-wider text-[10px] px-3.5 py-2.5 whitespace-nowrap surface-raised"
+              >
+                Etapa
               </th>
               {columns.map((column) => (
                 <th
@@ -212,7 +244,22 @@ function SubmissionsTable({ columns, rows, onSelect }: SubmissionsTableProps) {
                 className="cursor-pointer border-t border-white/[0.06] hover:bg-white/[0.04] transition-colors"
               >
                 <td className="px-3.5 py-2 align-middle whitespace-nowrap">
-                  <BotaoMensagem row={row} />
+                  <BotaoMensagem row={row} onContatar={onContatar} />
+                </td>
+                <td className="px-3.5 py-2.5 align-middle whitespace-nowrap">
+                  {row.stage_name ? (
+                    <span
+                      className="text-[10px] font-bold uppercase tracking-wide px-2 py-0.5 rounded-full"
+                      style={{
+                        color: row.stage_color ?? 'var(--muted)',
+                        backgroundColor: `${row.stage_color ?? '#9a9a94'}1f`,
+                      }}
+                    >
+                      {row.stage_name}
+                    </span>
+                  ) : (
+                    <span className="text-muted">—</span>
+                  )}
                 </td>
                 {columns.map((column) => (
                   <td key={column.key} className="px-3.5 py-2.5 align-top whitespace-nowrap">

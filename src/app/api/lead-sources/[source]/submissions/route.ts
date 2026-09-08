@@ -1,18 +1,25 @@
 /**
- * GET /api/lead-sources/{source}/submissions — as linhas da planilha de uma aba.
+ * GET  /api/lead-sources/{source}/submissions — linhas da planilha de uma aba.
+ * POST /api/lead-sources/{source}/submissions — marca uma linha como contatada.
  *
- * Paginado por limit/offset (é um log: cresce sem teto e a tela carrega mais ao
- * rolar). `q` filtra por nome / telefone / e-mail / instagram / id externo.
+ * O GET junta a etapa do lead no pipeline (o filtro por etapa da tela precisa
+ * dela) e devolve, junto, a contagem por etapa — assim os chips de filtro já
+ * nascem enumerados sem uma segunda requisição.
+ *
+ * Paginado por limit/offset: é um log, cresce sem teto.
  */
 import { NextRequest } from 'next/server'
-import { and, desc, eq, ilike, or, sql } from 'drizzle-orm'
+import { and, desc, eq, ilike, isNull, or, sql } from 'drizzle-orm'
 import { authenticateRequest, apiError } from '@/lib/api-auth'
 import { db } from '@/lib/db'
-import { leadSourceSubmissions } from '@/lib/schema'
+import { leadSourceSubmissions, leads, pipelineStages } from '@/lib/schema'
 import { getLeadSource, LEAD_SOURCE_ORDER } from '@/lib/leadSources'
 
 const DEFAULT_LIMIT = 100
 const MAX_LIMIT = 500
+
+/** Valor de `stage` que pede só as linhas sem etapa (sem lead no CRM). */
+const SEM_ETAPA = 'sem_etapa'
 
 export async function GET(
   req: NextRequest,
@@ -31,11 +38,16 @@ export async function GET(
     const limit = Math.min(Number(url.searchParams.get('limit')) || DEFAULT_LIMIT, MAX_LIMIT)
     const offset = Math.max(Number(url.searchParams.get('offset')) || 0, 0)
     const q = url.searchParams.get('q')?.trim()
+    const stage = url.searchParams.get('stage')?.trim()
+    // `contatados=nao` deixa à vista só quem ainda falta abordar.
+    const contatados = url.searchParams.get('contatados')?.trim()
 
-    const filters = [
+    const base = [
       eq(leadSourceSubmissions.organizationId, auth.organizationId),
       eq(leadSourceSubmissions.source, sourceDef.key),
     ]
+
+    const filtros = [...base]
     if (q) {
       const like = `%${q}%`
       const match = or(
@@ -45,11 +57,16 @@ export async function GET(
         ilike(leadSourceSubmissions.instagram, like),
         ilike(leadSourceSubmissions.externalId, like)
       )
-      if (match) filters.push(match)
+      if (match) filtros.push(match)
     }
-    const where = and(...filters)
+    if (stage === SEM_ETAPA) filtros.push(isNull(leads.stageId))
+    else if (stage) filtros.push(eq(leads.stageId, stage))
+    if (contatados === 'nao') filtros.push(isNull(leadSourceSubmissions.contactedAt))
+    else if (contatados === 'sim') filtros.push(sql`${leadSourceSubmissions.contactedAt} IS NOT NULL`)
 
-    const [rows, [{ total }]] = await Promise.all([
+    const where = and(...filtros)
+
+    const [rows, [{ total }], porEtapa] = await Promise.all([
       db
         .select({
           id: leadSourceSubmissions.id,
@@ -60,22 +77,122 @@ export async function GET(
           instagram: leadSourceSubmissions.instagram,
           payload: leadSourceSubmissions.payload,
           lead_id: leadSourceSubmissions.leadId,
+          contacted_at: leadSourceSubmissions.contactedAt,
           received_at: leadSourceSubmissions.receivedAt,
           updated_at: leadSourceSubmissions.updatedAt,
+          stage_id: leads.stageId,
+          stage_name: pipelineStages.name,
+          stage_color: pipelineStages.color,
         })
         .from(leadSourceSubmissions)
+        .leftJoin(leads, eq(leads.id, leadSourceSubmissions.leadId))
+        .leftJoin(pipelineStages, eq(pipelineStages.id, leads.stageId))
         .where(where)
         .orderBy(desc(leadSourceSubmissions.receivedAt))
         .limit(limit)
         .offset(offset),
+
       db
         .select({ total: sql<number>`count(*)::int` })
         .from(leadSourceSubmissions)
+        .leftJoin(leads, eq(leads.id, leadSourceSubmissions.leadId))
         .where(where),
+
+      // Contagem por etapa — NÃO aplica o filtro de etapa, senão o chip
+      // selecionado zeraria os outros e não daria pra trocar de filtro.
+      db
+        .select({
+          stage_id: leads.stageId,
+          stage_name: pipelineStages.name,
+          stage_color: pipelineStages.color,
+          rank: pipelineStages.rank,
+          total: sql<number>`count(*)::int`,
+        })
+        .from(leadSourceSubmissions)
+        .leftJoin(leads, eq(leads.id, leadSourceSubmissions.leadId))
+        .leftJoin(pipelineStages, eq(pipelineStages.id, leads.stageId))
+        .where(and(...base))
+        .groupBy(leads.stageId, pipelineStages.name, pipelineStages.color, pipelineStages.rank)
+        .orderBy(pipelineStages.rank),
     ])
 
-    return Response.json({ data: rows, total, limit, offset })
+    const [contagens] = await db
+      .select({
+        contatados: sql<number>`count(*) filter (where ${leadSourceSubmissions.contactedAt} is not null)::int`,
+        pendentes: sql<number>`count(*) filter (where ${leadSourceSubmissions.contactedAt} is null)::int`,
+      })
+      .from(leadSourceSubmissions)
+      .where(and(...base))
+
+    return Response.json({
+      data: rows,
+      total,
+      limit,
+      offset,
+      etapas: porEtapa.map((e) => ({
+        id: e.stage_id ?? SEM_ETAPA,
+        name: e.stage_name ?? 'Sem etapa',
+        color: e.stage_color ?? null,
+        total: e.total,
+      })),
+      contato: contagens ?? { contatados: 0, pendentes: 0 },
+    })
   } catch (err: any) {
-    return apiError(err?.status || 500, err?.message || 'Erro interno.')
+    if (err?.status) return apiError(err.status, err.message)
+    console.error('[submissions] GET falhou:', err)
+    return apiError(500, 'Erro ao carregar os leads.')
+  }
+}
+
+/**
+ * Marca a linha como contatada. Idempotente: se já estava marcada, mantém a
+ * data original — o registro é de quando o contato aconteceu pela primeira vez,
+ * e reescrever isso apagaria a informação.
+ */
+export async function POST(
+  req: NextRequest,
+  { params }: { params: Promise<{ source: string }> }
+) {
+  try {
+    const auth = await authenticateRequest(req)
+    const { source } = await params
+    if (!getLeadSource(source)) return apiError(404, `Fonte desconhecida: "${source}".`)
+
+    const body = await req.json().catch(() => null)
+    const id = body?.id
+    if (!id || typeof id !== 'string') return apiError(400, 'Campo obrigatório: id.')
+
+    const [linha] = await db
+      .update(leadSourceSubmissions)
+      .set({
+        contactedAt: new Date(),
+        contactedByMemberId: auth.memberId ?? null,
+      })
+      .where(and(
+        eq(leadSourceSubmissions.id, id),
+        eq(leadSourceSubmissions.organizationId, auth.organizationId),
+        eq(leadSourceSubmissions.source, source),
+        isNull(leadSourceSubmissions.contactedAt)
+      ))
+      .returning({ id: leadSourceSubmissions.id, contactedAt: leadSourceSubmissions.contactedAt })
+
+    if (linha) return Response.json({ data: { id: linha.id, contacted_at: linha.contactedAt } })
+
+    // Nada atualizado: ou já estava contatada, ou o id não é desta organização.
+    const [existente] = await db
+      .select({ id: leadSourceSubmissions.id, contactedAt: leadSourceSubmissions.contactedAt })
+      .from(leadSourceSubmissions)
+      .where(and(
+        eq(leadSourceSubmissions.id, id),
+        eq(leadSourceSubmissions.organizationId, auth.organizationId)
+      ))
+      .limit(1)
+
+    if (!existente) return apiError(404, 'Lead não encontrado.')
+    return Response.json({ data: { id: existente.id, contacted_at: existente.contactedAt } })
+  } catch (err: any) {
+    if (err?.status) return apiError(err.status, err.message)
+    console.error('[submissions] POST falhou:', err)
+    return apiError(500, 'Erro ao marcar o contato.')
   }
 }

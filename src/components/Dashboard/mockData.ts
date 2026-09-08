@@ -10,7 +10,7 @@
  * declaradas em src/lib/leadSources.ts. Assim acrescentar uma fonte nova
  * aparece no dashboard sozinho.
  */
-import { LEAD_SOURCES, LEAD_SOURCE_ORDER, type LeadSourceKey } from '@/lib/leadSources'
+import { LEAD_SOURCES, LEAD_SOURCE_ORDER, ACQUISITION_SOURCE_ORDER, type LeadSourceKey } from '@/lib/leadSources'
 
 export type AcquisitionChannel = LeadSourceKey
 
@@ -26,7 +26,11 @@ export const CHANNEL_META: Record<AcquisitionChannel, { label: string; color: st
     LEAD_SOURCE_ORDER.map((key) => [key, { label: LEAD_SOURCES[key].label, color: CHANNEL_COLORS[key] }])
   ) as Record<AcquisitionChannel, { label: string; color: string }>
 
-export const CHANNEL_ORDER: AcquisitionChannel[] = LEAD_SOURCE_ORDER
+/**
+ * O dashboard mostra só as fontes que são aquisição de verdade — lista
+ * importada de planilha fica de fora (ver countsInMetrics em leadSources).
+ */
+export const CHANNEL_ORDER: AcquisitionChannel[] = ACQUISITION_SOURCE_ORDER
 
 export interface ChannelTotals {
   channel: AcquisitionChannel

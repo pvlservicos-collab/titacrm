@@ -329,6 +329,11 @@ export const leadSourceSubmissions = pgTable('lead_source_submissions', {
   instagram: text('instagram'),
   payload: jsonb('payload').notNull().default({}),
   leadId: uuid('lead_id'),
+  // Quem já foi abordado pelo botão "Enviar mensagem" da lista. Fica aqui e não
+  // em `leads` porque a marca é sobre a linha da lista ter sido trabalhada — o
+  // lead recebe mensagem por vários outros caminhos sem que isso conte.
+  contactedAt: timestamp('contacted_at', { withTimezone: true }),
+  contactedByMemberId: uuid('contacted_by_member_id'),
   receivedAt: timestamp('received_at', { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 }, (t) => ({
