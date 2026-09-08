@@ -281,6 +281,26 @@ export const leadStageHistory = pgTable('lead_stage_history', {
   movedAt: timestamp('moved_at', { withTimezone: true }).defaultNow(),
 })
 
+// ── Configuração da IA ────────────────────────────────────────────────────────
+// Uma linha por organização. Nasce DESLIGADA de propósito: o prompt pode ser
+// escrito e revisado com calma antes de qualquer coisa responder cliente no
+// lugar de uma pessoa. Nada no app lê esta tabela ainda — ela guarda a
+// configuração pra quando a IA for conectada.
+// Aplicada por drizzle/0121_ai_settings.sql.
+export const aiSettings = pgTable('ai_settings', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  organizationId: uuid('organization_id').notNull().references(() => organizations.id),
+  enabled: boolean('enabled').notNull().default(false),
+  model: text('model').notNull().default('claude-opus-5'),
+  systemPrompt: text('system_prompt').notNull().default(''),
+  guardrails: text('guardrails').notNull().default(''),
+  updatedByMemberId: uuid('updated_by_member_id'),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+}, (t) => ({
+  orgUnique: uniqueIndex('ai_settings_org_unique').on(t.organizationId),
+}))
+
 // ── API Tokens ────────────────────────────────────────────────────────────────
 export const apiTokens = pgTable('api_tokens', {
   id: uuid('id').defaultRandom().primaryKey(),

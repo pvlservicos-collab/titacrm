@@ -9,19 +9,21 @@ import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import LoadingSpinner from '@/components/Shared/LoadingSpinner'
 
-// TEMPORÁRIO: redirecionamento pro /login desativado a pedido (revisão visual do
-// redesign sem precisar logar toda hora). Sem sessão real, páginas autenticadas
-// ficam sem organizationId/permissions e chamadas de API retornam 401 — pedido
-// consciente do Pedro. Reativar: descomentar o useEffect e o `if (!session)` abaixo.
+/**
+ * Segunda barreira, no cliente: o middleware já redireciona quem não tem cookie
+ * de sessão, mas ele não roda em navegação client-side do Next. Sem isto, uma
+ * sessão que expira com a aba aberta deixaria a pessoa numa tela que parece
+ * funcionar e só devolve 401 em toda chamada.
+ */
 export default function AuthGuard({ children }: { children: ReactNode }) {
   const { data: session, status } = useSession()
   const router = useRouter()
 
-  // useEffect(() => {
-  //   if (status === 'unauthenticated') {
-  //     router.push('/login')
-  //   }
-  // }, [status, router])
+  useEffect(() => {
+    if (status === 'unauthenticated') {
+      router.push('/login')
+    }
+  }, [status, router])
 
   if (status === 'loading') {
     return (
@@ -31,7 +33,7 @@ export default function AuthGuard({ children }: { children: ReactNode }) {
     )
   }
 
-  // if (!session) return null
+  if (!session) return null
 
   return <>{children}</>
 }

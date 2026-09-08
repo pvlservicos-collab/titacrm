@@ -7,8 +7,6 @@
 import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react'
 import { useSession } from 'next-auth/react'
 import { OrganizationMember } from '@/lib/types'
-import { DEMO_ORG_ID, DEMO_USER_ID, demoCurrentOrganization } from '@/lib/demoData'
-import { installDemoFetchInterceptor, setDemoMode } from '@/lib/demoFetch'
 
 interface AuthContextType {
   user: { id: string; email: string; name?: string | null; image?: string | null } | null
@@ -53,17 +51,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [onboardingStatusLoaded, setOnboardingStatusLoaded] = useState(false)
 
   const loading = status === 'loading'
-  // TEMPORÁRIO: com o bypass de login (AuthGuard/middleware) nunca existe sessão
-  // real, então sem isso `user`/`organizationId` ficavam null pra sempre e todo
-  // o app (Pipeline, chats etc) renderizava vazio. Sintetiza uma identidade demo
-  // só quando o NextAuth já resolveu que não há sessão de verdade — nunca
-  // sobrepõe uma sessão real. Reverter junto com AuthGuard/middleware.
-  const isDemoIdentity = status === 'unauthenticated'
-
-  useEffect(() => {
-    if (isDemoIdentity) installDemoFetchInterceptor()
-    setDemoMode(isDemoIdentity)
-  }, [isDemoIdentity])
 
   const user = session?.user
     ? {
@@ -72,12 +59,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         name: session.user.name,
         image: session.user.image,
       }
-    : isDemoIdentity
-      ? { id: DEMO_USER_ID, email: 'demo@titacrm.local', name: 'Você (demo)', image: null }
-      : null
+    : null
 
   const isMaster = (session?.user as any)?.isSuperadmin || false
-  const profileName = session?.user?.name || (isDemoIdentity ? 'Você (demo)' : null)
+  const profileName = session?.user?.name || null
 
   useEffect(() => {
     if (!user) {
@@ -87,16 +72,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setPermissions(null)
       setOnboardingCompleted(null)
       setOnboardingStatusLoaded(false)
-      return
-    }
-
-    if (isDemoIdentity) {
-      setCurrentOrganization(demoCurrentOrganization)
-      setOrganizationId(DEMO_ORG_ID)
-      setRoleName('owner')
-      setPermissions({ '*': true })
-      setOnboardingCompleted(true)
-      setOnboardingStatusLoaded(true)
       return
     }
 

@@ -4,7 +4,6 @@ import React, { createContext, useContext, useState, useEffect, useCallback, Rea
 import { LeadWithOwner } from '@/lib/types'
 import { useAuth } from '@/hooks'
 import { usePusherChannel } from '@/hooks/usePusher'
-import { DEMO_ORG_ID, demoLeads } from '@/lib/demoData'
 
 interface StageStats {
   count: number
@@ -33,21 +32,6 @@ export function LeadsProvider({ children }: { children: ReactNode }) {
 
   async function fetchLeads(showLoading = true) {
     if (!organizationId) { setLoading(false); return }
-    // TEMPORÁRIO: org demo do bypass de login não existe no banco — usa os leads
-    // fake direto em vez de bater na API. Reverter junto com AuthGuard/middleware.
-    if (organizationId === DEMO_ORG_ID) {
-      setLeads(demoLeads)
-      const stats: Record<string, StageStats> = {}
-      for (const lead of demoLeads) {
-        if (!lead.stage_id || lead.is_group) continue
-        if (!stats[lead.stage_id]) stats[lead.stage_id] = { count: 0, totalValue: 0 }
-        stats[lead.stage_id].count++
-        stats[lead.stage_id].totalValue += lead.value || 0
-      }
-      setStageStats(stats)
-      setLoading(false)
-      return
-    }
     try {
       if (showLoading) setLoading(true)
       setError(null)
@@ -98,7 +82,6 @@ export function LeadsProvider({ children }: { children: ReactNode }) {
   const moveLeadToStage = useCallback(
     async (leadId: string, newStageId: string, oldStageId?: string) => {
       setLeads(prev => prev.map(l => l.id === leadId ? { ...l, stage_id: newStageId } : l))
-      if (organizationId === DEMO_ORG_ID) return
       try {
         const res = await fetch(`/api/leads/${leadId}`, {
           method: 'PATCH',

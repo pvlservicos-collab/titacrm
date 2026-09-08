@@ -32,15 +32,16 @@ export function middleware(req: NextRequest) {
     req.cookies.get('next-auth.session-token') ??
     req.cookies.get('__Secure-next-auth.session-token')
 
-  // TEMPORÁRIO: redirect pro /login desativado a pedido (revisão visual do
-  // redesign sem precisar logar). Rotas de API continuam retornando 401 nos
-  // handlers (authenticateRequest), já que não existe sessão real por trás.
-  // Reativar: descomentar o bloco abaixo.
-  // if (!sessionToken) {
-  //   const loginUrl = new URL('/login', req.url)
-  //   loginUrl.searchParams.set('callbackUrl', pathname)
-  //   return NextResponse.redirect(loginUrl)
-  // }
+  // Sem sessão vai pro login. Ficou desativado durante a revisão visual do
+  // redesign, com uma identidade "demo" sintetizada no cliente pra as telas não
+  // renderizarem vazias. Isso saiu junto: em produção, o app servia dados falsos
+  // (leads e conversas de exemplo) pra quem abrisse sem logar — indistinguíveis
+  // dos reais na tela, o que é pior que uma tela vazia.
+  if (!sessionToken) {
+    const loginUrl = new URL('/login', req.url)
+    loginUrl.searchParams.set('callbackUrl', pathname)
+    return NextResponse.redirect(loginUrl)
+  }
 
   return NextResponse.next()
 }

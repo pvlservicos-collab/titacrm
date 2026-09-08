@@ -2,9 +2,8 @@
  * Configuração padrão do atendimento: as colunas do Kanban e os dois funis de
  * mensagem que rodam quando um lead entra por uma das fontes.
  *
- * Este arquivo é a ÚNICA descrição desse fluxo. Ele alimenta:
- *   - POST /api/setup/atendimento, que cria tudo isso no banco
- *   - os dados demo (src/lib/demoData.ts), enquanto o login está desativado
+ * Este arquivo é a ÚNICA descrição desse fluxo: POST /api/setup/atendimento
+ * cria no banco exatamente o que está aqui.
  *
  * Ficar em um lugar só é o que evita o cenário chato: mudar a mensagem de
  * follow-up na tela e ela continuar velha no seed, ou vice-versa.
