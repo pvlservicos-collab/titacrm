@@ -17,9 +17,9 @@
  * do outro lado descobre o erro de digitação na primeira requisição, em vez de
  * criar uma aba fantasma que ninguém olha.
  */
-import { resumoAgenda, type AgendaBlock } from '@/lib/agenda'
+import { quizNaoRespondido, resumoAgenda, type AgendaBlock } from '@/lib/agenda'
 
-export type LeadSourceKey = 'agenda_ascensao' | 'site_evento' | 'agenda_antigos'
+export type LeadSourceKey = 'agenda_ascensao' | 'site_evento' | 'agenda_antigos' | 'indicacao'
 
 /** Como a célula é renderizada na planilha. */
 export type ColumnFormat =
@@ -274,7 +274,17 @@ function camposDaAgenda(body: Record<string, any>) {
     phase: trimmed(agenda.phase),
     // Só entra no payload o que existe: um `a1: null` sobrescrevendo o `a1` que
     // já estava gravado apagaria a agenda de quem foi reenviado incompleto.
-    quiz: a1 ? { a1, ...resumoAgenda(a1) } : {},
+    //
+    // Quando o `a1` é o padrão do site inteiro, o resumo NÃO é derivado: ele
+    // viraria "Sono 23:00–07:00, Treino Seg/Qua/Sex…" nas colunas da planilha,
+    // indistinguível de quem respondeu isso de verdade. Guarda o `a1` cru (é o
+    // que o site mandou, e some daqui seria pior) marcado com `quiz_padrao`,
+    // que é o que as telas usam pra dizer "não respondeu" em vez de inventar.
+    quiz: a1
+      ? quizNaoRespondido(a1, trimmed(agenda.phase))
+        ? { a1, quiz_padrao: true }
+        : { a1, ...resumoAgenda(a1) }
+      : {},
     blocos: blocks.length > 0 ? { real: blocks, blocos: blocks.length } : {},
   }
 }
@@ -402,16 +412,53 @@ const agendaAntigos: LeadSourceDef = {
   },
 }
 
+const indicacao: LeadSourceDef = {
+  key: 'indicacao',
+  label: 'Indicação',
+  description: 'Lead que alguém indicou, cadastrado à mão por quem atende.',
+  // Único ponto de entrada preenchido por gente, não por sistema. Nome e
+  // WhatsApp são exigidos porque quem digita está com a pessoa em mãos: um
+  // lead de indicação sem telefone não dá pra trabalhar, e aceitar pela metade
+  // só empurraria o problema pra frente.
+  required: ['nome', 'whatsapp'],
+  columns: [
+    { key: 'name', label: 'Nome', width: 200 },
+    { key: 'phone', label: 'WhatsApp', format: 'phone', width: 150 },
+    { key: 'instagram', label: 'Instagram', format: 'instagram', width: 150 },
+    { key: 'email', label: 'E-mail', format: 'email', width: 200 },
+    { key: 'indicado_por', label: 'Indicado por', width: 190 },
+    { key: 'observacao', label: 'Observação', width: 280 },
+    { key: 'cadastrado_por', label: 'Cadastrado por', width: 160 },
+    { key: 'received_at', label: 'Cadastrado em', format: 'datetime', width: 170 },
+  ],
+  normalize: (body) => ({
+    // Sem id próprio: quem identifica é o telefone (ver dedupeKeyFor), então
+    // cadastrar a mesma pessoa duas vezes atualiza a linha em vez de duplicar —
+    // o que acontece de verdade quando dois agentes recebem a mesma indicação.
+    externalId: null,
+    name: trimmed(body.nome) || 'Sem nome',
+    email: trimmed(body.email),
+    phone: normalizePhone(body.whatsapp),
+    instagram: normalizeInstagram(body.instagram),
+    fields: {
+      indicado_por: trimmed(body.indicado_por),
+      observacao: trimmed(body.observacao),
+      cadastrado_por: trimmed(body.cadastrado_por),
+    },
+  }),
+}
+
 /* ── Registro ─────────────────────────────────────────────────────────────── */
 
 export const LEAD_SOURCES: Record<LeadSourceKey, LeadSourceDef> = {
   agenda_ascensao: agendaAscensao,
   site_evento: siteEvento,
+  indicacao,
   agenda_antigos: agendaAntigos,
 }
 
 /** Ordem das abas na tela. */
-export const LEAD_SOURCE_ORDER: LeadSourceKey[] = ['agenda_ascensao', 'site_evento', 'agenda_antigos']
+export const LEAD_SOURCE_ORDER: LeadSourceKey[] = ['agenda_ascensao', 'site_evento', 'indicacao', 'agenda_antigos']
 
 /**
  * Só os canais de aquisição ao vivo. É o que o dashboard e a coluna "Fonte:" do
@@ -444,5 +491,8 @@ export function dedupeKeyFor(source: LeadSourceKey, normalized: NormalizedLead):
   if (source === 'agenda_ascensao') return normalized.externalId
   if (source === 'agenda_antigos') return normalized.externalId
   if (source === 'site_evento') return normalized.phone
+  // Indicação: mesmo raciocínio do site — quem chega duas vezes com o mesmo
+  // telefone é a mesma pessoa, não dois leads.
+  if (source === 'indicacao') return normalized.phone
   return null
 }

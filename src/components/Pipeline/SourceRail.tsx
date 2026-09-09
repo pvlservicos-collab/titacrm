@@ -19,10 +19,12 @@
  */
 
 import { useMemo, useState } from 'react'
-import { MagnifyingGlass, X, CaretDown } from '@phosphor-icons/react'
+import { MagnifyingGlass, X, CaretDown, Plus } from '@phosphor-icons/react'
 import { LeadWithOwner } from '@/lib/types'
 import { formatPhone } from '@/lib/utils'
 import { LEAD_SOURCES, ACQUISITION_SOURCE_ORDER, type LeadSourceKey } from '@/lib/leadSources'
+import { useLeadsContext } from '@/contexts/LeadsContext'
+import NovaIndicacaoModal from './NovaIndicacaoModal'
 
 /**
  * Cor de identificação de cada fonte — só na coluna Fonte, pra distinguir os
@@ -33,6 +35,7 @@ import { LEAD_SOURCES, ACQUISITION_SOURCE_ORDER, type LeadSourceKey } from '@/li
 const SOURCE_COLORS: Record<LeadSourceKey, string> = {
   agenda_ascensao: '#c98500',
   site_evento: '#3987e5',
+  indicacao: '#3aa76d',
   agenda_antigos: '#7b7b76',
 }
 
@@ -115,6 +118,7 @@ function SourceCard({
   stageColorById,
   highlightedLeadId,
   onHighlightLead,
+  onAdd,
 }: {
   sourceKey: LeadSourceKey
   leads: LeadWithOwner[]
@@ -122,6 +126,8 @@ function SourceCard({
   stageColorById: Record<string, string>
   highlightedLeadId: string | null
   onHighlightLead: (leadId: string) => void
+  /** Só a fonte manual recebe: abre o formulário de cadastro. */
+  onAdd?: () => void
 }) {
   const def = LEAD_SOURCES[sourceKey]
   const color = SOURCE_COLORS[sourceKey]
@@ -150,6 +156,16 @@ function SourceCard({
             {leads.length} {leads.length === 1 ? 'lead' : 'leads'}
           </p>
         </div>
+        {onAdd && (
+          <button
+            type="button"
+            onClick={onAdd}
+            className="btn-icon w-7 h-7 flex-shrink-0 !text-accent-2"
+            title="Cadastrar lead indicado"
+          >
+            <Plus size={13} weight="bold" />
+          </button>
+        )}
         <button
           type="button"
           onClick={() => { setSearchOpen((v) => !v); if (searchOpen) setSearch('') }}
@@ -187,9 +203,17 @@ function SourceCard({
               de leads — a lista rola por dentro. */}
           <div className="max-h-[260px] overflow-y-auto scrollbar-hide px-2 py-2 space-y-1.5">
             {visible.length === 0 ? (
-              <p className="text-[11px] text-muted text-center py-4">
-                {search ? 'Nada encontrado.' : 'Nenhum lead ainda.'}
-              </p>
+              <div className="py-4 text-center">
+                <p className="text-[11px] text-muted">
+                  {search ? 'Nada encontrado.' : 'Nenhum lead ainda.'}
+                </p>
+                {!search && onAdd && (
+                  <button type="button" onClick={onAdd} className="btn btn-outline btn-sm mt-2">
+                    <Plus size={12} weight="bold" />
+                    Cadastrar indicação
+                  </button>
+                )}
+              </div>
             ) : (
               visible.map((lead) => (
                 <MiniCard
@@ -209,6 +233,9 @@ function SourceCard({
   )
 }
 
+/** A única fonte preenchida à mão — é ela que ganha o botão de cadastro. */
+const FONTE_MANUAL: LeadSourceKey = 'indicacao'
+
 export default function SourceRail({
   leads,
   stageNameById,
@@ -216,6 +243,8 @@ export default function SourceRail({
   highlightedLeadId,
   onHighlightLead,
 }: SourceRailProps) {
+  const { refetch } = useLeadsContext()
+  const [cadastrando, setCadastrando] = useState(false)
   // Agrupa por fonte, mais recente em cima dentro de cada uma.
   const bySource = useMemo(() => {
     const groups: Record<string, LeadWithOwner[]> = {}
@@ -259,9 +288,14 @@ export default function SourceRail({
             stageColorById={stageColorById}
             highlightedLeadId={highlightedLeadId}
             onHighlightLead={onHighlightLead}
+            onAdd={key === FONTE_MANUAL ? () => setCadastrando(true) : undefined}
           />
         ))}
       </div>
+
+      {cadastrando && (
+        <NovaIndicacaoModal onClose={() => setCadastrando(false)} onCreated={refetch} />
+      )}
     </div>
   )
 }

@@ -15,6 +15,7 @@ import {
   AGENDA_BLOCK_CATEGORIES,
   AGENDA_QUIZ_LABELS,
   formatQuizValue,
+  quizNaoRespondido,
   type AgendaBlock,
 } from '@/lib/agenda'
 import AgendaGrid from '@/components/Shared/AgendaGrid'
@@ -36,6 +37,8 @@ export default function SubmissionDetail({
   // As duas fontes da Agenda trazem perfil e quiz; muda so por onde o lead entrou.
   const isAgenda = sourceKey === 'agenda_ascensao' || sourceKey === 'agenda_antigos'
   const phase = (payload.phase ?? payload.fase ?? null) as string | null
+  // Quiz inteiro no valor de fábrica do site = a pessoa não respondeu nada.
+  const semResposta = payload.quiz_padrao === true || quizNaoRespondido(quiz, phase)
 
 
   return (
@@ -103,8 +106,20 @@ export default function SubmissionDetail({
             </section>
           )}
 
+          {semResposta && (
+            <section>
+              <div className="panel rounded-xl px-3.5 py-2.5">
+                <p className="text-xs text-muted">
+                  Deixou nome e WhatsApp e saiu antes de responder. O questionário
+                  veio inteiro no valor padrão com que o site abre — por isso as
+                  respostas não são mostradas: elas não são desta pessoa.
+                </p>
+              </div>
+            </section>
+          )}
+
           {/* Respostas do quiz */}
-          {quiz && (
+          {quiz && !semResposta && (
             <section>
               <h3 className="text-[11px] font-bold uppercase tracking-wider text-muted mb-2.5">
                 Respostas do quiz

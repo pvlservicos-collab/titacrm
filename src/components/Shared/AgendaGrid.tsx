@@ -18,8 +18,16 @@
 
 import { AGENDA_BLOCK_CATEGORIES, AGENDA_WEEKDAYS, formatDuration, minutesToClock, type AgendaBlock } from '@/lib/agenda'
 
-/** Altura de uma hora, em px. 1px por minuto — conta fácil de acompanhar. */
-const PX_POR_MIN = 1
+/**
+ * Altura de uma hora, em px.
+ *
+ * Começou em 60 (1px por minuto) e o dia inteiro não cabia na tela — a grade
+ * existe pra mostrar a semana de relance, e rolar 1400px pra ver da manhã à
+ * noite desfaz justamente isso. A 21px a semana inteira cabe de uma vez, e o
+ * bloco de uma hora ainda tem altura pro título.
+ */
+const ALTURA_HORA = 21
+const PX_POR_MIN = ALTURA_HORA / 60
 /**
  * Largura mínima de uma coluna de dia.
  *
@@ -206,7 +214,7 @@ export default function AgendaGrid({
                       className="absolute overflow-hidden rounded-[3px] px-1 leading-tight"
                       style={{
                         top: (bloco.inicio - inicio) * PX_POR_MIN,
-                        height: Math.max(alturaBloco - 1, 3),
+                        height: Math.max(alturaBloco - 1, 2),
                         left: `calc(${bloco.faixa * largura}% + 1px)`,
                         width: `calc(${largura}% - 2px)`,
                         // Fundo translúcido + barra na cor cheia à esquerda: a cor
@@ -216,15 +224,16 @@ export default function AgendaGrid({
                         borderLeft: `2px solid ${cor}`,
                       }}
                     >
-                      {/* Bloco de 15 minutos tem 15px: só o título cabe, e abaixo
-                          disso nem isso — aí a cor e o tooltip é que informam. */}
-                      {alturaBloco >= 30 && (
-                        <span className="block text-[8.5px] tabular-nums text-[var(--chat-text-tertiary)] truncate">
+                      {/* Nesta escala uma hora tem 21px: dá pro título, não pro
+                          horário junto. Bloco de 15 minutos tem 5px — aí só a cor
+                          e o tooltip informam, texto ali seria borrão. */}
+                      {alturaBloco >= 26 && (
+                        <span className="block text-[8px] tabular-nums text-[var(--chat-text-tertiary)] truncate leading-[1.15]">
                           {horario}
                         </span>
                       )}
-                      {alturaBloco >= 14 && (
-                        <span className="block text-[9.5px] font-medium text-[var(--chat-text-secondary)] truncate">
+                      {alturaBloco >= 10 && (
+                        <span className="block text-[9px] font-medium text-[var(--chat-text-secondary)] truncate leading-[1.15]">
                           {titulo}
                         </span>
                       )}

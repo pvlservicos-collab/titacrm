@@ -22,6 +22,11 @@ import type { LeadSourceKey } from '@/lib/leadSources'
 const TRIGGER_BY_SOURCE: Record<LeadSourceKey, string | null> = {
   site_evento: 'lead_site_evento',
   agenda_ascensao: 'lead_agenda_ascensao',
+  // null de propósito: quem cadastra uma indicação já está falando com a pessoa
+  // (foi por isso que soube dela). Uma mensagem automática de boas-vindas
+  // chegaria por cima dessa conversa, sem que o agente que digitou o lead
+  // tivesse pedido nada.
+  indicacao: null,
   // null de propósito: `agenda_antigos` é uma lista histórica importada por
   // planilha. Se ela disparasse o funil, importar o arquivo mandaria a mensagem
   // de boas-vindas pra centenas de pessoas cadastradas meses atrás — de uma vez.

@@ -17,6 +17,14 @@ interface LeadsContextType {
   error: string | null
   stageStats: Record<string, StageStats>
   moveLeadToStage: (leadId: string, newStageId: string, oldStageId?: string, memberId?: string) => Promise<void>
+  /**
+   * Recarrega a lista sem piscar a tela.
+   *
+   * Quem cadastra um lead à mão (a fonte "Indicação", no Pipeline) precisa ver
+   * o card aparecer na hora. A entrada por ingestão não passa pelo realtime que
+   * atualiza esta lista sozinha, então quem grava avisa daqui.
+   */
+  refetch: () => Promise<void>
 }
 
 const LeadsContext = createContext<LeadsContextType | undefined>(undefined)
@@ -101,7 +109,7 @@ export function LeadsProvider({ children }: { children: ReactNode }) {
   )
 
   return (
-    <LeadsContext.Provider value={{ leads, setLeads, loading, error, stageStats, moveLeadToStage }}>
+    <LeadsContext.Provider value={{ leads, setLeads, loading, error, stageStats, moveLeadToStage, refetch: () => fetchLeads(false) }}>
       {children}
     </LeadsContext.Provider>
   )

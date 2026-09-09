@@ -19,6 +19,7 @@ import {
   AGENDA_BLOCK_CATEGORIES,
   AGENDA_QUIZ_LABELS,
   formatQuizValue,
+  quizNaoRespondido,
   type AgendaBlock,
 } from '@/lib/agenda'
 import AgendaGrid from '@/components/Shared/AgendaGrid'
@@ -117,6 +118,10 @@ export default function LeadAgendaCard({ leadId }: { leadId: string }) {
         const quiz = (payload.a1 ?? null) as Record<string, unknown> | null
         const blocks = (Array.isArray(payload.real) ? payload.real : []) as AgendaBlock[]
         const fase = (payload.phase ?? payload.fase ?? null) as string | null
+        // `quiz_padrao` vem gravado desde a ingestão; o quizNaoRespondido()
+        // cobre as linhas que entraram antes dessa checagem existir, sem
+        // depender de alguém rodar a ressincronização pra parar de mentir.
+        const semResposta = payload.quiz_padrao === true || quizNaoRespondido(quiz, fase)
 
         const chaveQuiz = `${submission.id}:quiz`
         const chaveSemana = `${submission.id}:semana`
@@ -143,7 +148,7 @@ export default function LeadAgendaCard({ leadId }: { leadId: string }) {
                 cada, que é o que dá pra ler de relance antes de falar com a
                 pessoa. O detalhe fica nas seções que abrem abaixo. */}
             <dl className="space-y-1.5">
-              {[...PERFIL, ...RESUMO].map(({ key, label }) =>
+              {[...PERFIL, ...(semResposta ? [] : RESUMO)].map(({ key, label }) =>
                 payload[key] ? (
                   <div key={key} className="flex items-baseline justify-between gap-3">
                     <dt className="text-[11px] text-[var(--chat-text-tertiary)] flex-shrink-0">{label}</dt>
@@ -168,7 +173,9 @@ export default function LeadAgendaCard({ leadId }: { leadId: string }) {
 
                 {abertos.has(chaveSemana) && (
                   <div className="mt-2 space-y-2">
-                    <AgendaGrid blocks={blocks} alturaMax={380} />
+                    {/* 460 porque a 21px/hora um dia inteiro dá ~500px: quase toda semana
+                        cabe sem rolar, que era o ponto de encolher a escala. */}
+                    <AgendaGrid blocks={blocks} alturaMax={460} />
                     <div className="flex flex-wrap gap-x-3 gap-y-1">
                       {Object.entries(AGENDA_BLOCK_CATEGORIES).map(([chave, meta]) => (
                         <span
@@ -189,7 +196,14 @@ export default function LeadAgendaCard({ leadId }: { leadId: string }) {
               </div>
             )}
 
-            {quiz && (
+            {semResposta && (
+              <p className="text-[11px] text-[var(--chat-text-tertiary)]">
+                Deixou nome e WhatsApp e saiu antes de responder — o questionário
+                está todo no valor padrão do site.
+              </p>
+            )}
+
+            {quiz && !semResposta && (
               <div>
                 <button
                   onClick={() => alternar(chaveQuiz)}
@@ -216,7 +230,7 @@ export default function LeadAgendaCard({ leadId }: { leadId: string }) {
 
             {/* Quando o lead veio pela Agenda mas o quiz parou no meio, dizer
                 isso vale mais que deixar o cartão pela metade sem explicação. */}
-            {blocks.length === 0 && (
+            {blocks.length === 0 && !semResposta && (
               <p className="text-[11px] text-[var(--chat-text-tertiary)]">
                 Sem semana montada — a pessoa não terminou o quiz no site.
               </p>

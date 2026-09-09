@@ -93,6 +93,48 @@ export interface AgendaPayload {
   investimento?: string | null
 }
 
+/**
+ * O `a1` com que o site abre o questionário, antes de a pessoa tocar em nada.
+ *
+ * Copiado de `let S = {...}` no index.html da Agenda em Ascensão. Existe aqui
+ * por um motivo só: o site salva o lead assim que ele digita nome e WhatsApp —
+ * ou seja, antes de responder qualquer pergunta — e manda esse `a1` pré-
+ * preenchido junto. Sem comparar contra ele, o CRM mostrava "dorme 23:00,
+ * treina Seg/Qua/Sex 18:30, procrastina 1h30 de manhã" para quem não respondeu
+ * absolutamente nada. Eram 58 leads exibindo o mesmo perfil inventado, e quem
+ * fosse atender ligaria confiando nele.
+ *
+ * Se o site mudar esses padrões, esta cópia precisa mudar junto — o pior caso é
+ * ela ficar velha e alguns leads voltarem a exibir valor de fábrica como
+ * resposta; por isso o valor fica exposto, e não escondido numa função.
+ */
+export const AGENDA_A1_PADRAO: Record<string, unknown> = {
+  bed: '23:00', wake: '07:00', ws: '09:00', we: '18:00', wdays: [0, 1, 2, 3, 4],
+  commute: 15, meetAM: 60, meetPM: 60, meetEve: 0,
+  lunchT: '12:00', lunchD: 60, bfT: '07:00', bfD: 30, dinT: '21:00', dinD: 60,
+  train: true, trainDays: [0, 2, 4], trainT: '18:30', trainD: 60, trainCom: 15,
+  ppl: true, pplWkDays: [0, 1, 2, 3, 4], pplWkT: '20:00', pplWkD: 180,
+  pplWeDays: [5, 6], pplWeT: '11:00', pplWeD: 420,
+  vazAM: 90, vazAMp: 'começo', vazPM: 90, vazPMp: 'começo',
+}
+
+/**
+ * As respostas são só o padrão do site — a pessoa não respondeu ao questionário.
+ *
+ * Exige que os 31 campos estejam intactos: quem mexeu em um já estava
+ * respondendo, e aí o resto (que ficou no padrão) é escolha dele, não invenção
+ * nossa. Quem concluiu (`phase === 'done'`) também fica de fora, mesmo com tudo
+ * no padrão: clicar "próximo" por todas as etapas e montar a agenda é aceitar
+ * aqueles valores, e nesse caso existe uma semana montada de verdade pra provar.
+ */
+export function quizNaoRespondido(a1: Record<string, any> | null | undefined, phase?: string | null): boolean {
+  if (!a1 || typeof a1 !== 'object') return false
+  if (phase === 'done') return false
+  return Object.entries(AGENDA_A1_PADRAO).every(
+    ([chave, valor]) => JSON.stringify(a1[chave]) === JSON.stringify(valor)
+  )
+}
+
 /* ── Formatação ───────────────────────────────────────────────────────────── */
 
 /** Minutos desde 00:00 → "08:30". */

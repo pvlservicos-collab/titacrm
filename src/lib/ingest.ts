@@ -26,6 +26,7 @@
 import { NextRequest } from 'next/server'
 import { and, asc, eq, isNull, sql } from 'drizzle-orm'
 import { authenticateRequest, apiError } from '@/lib/api-auth'
+import { getOrgRole } from '@/lib/admin-auth'
 import { db } from '@/lib/db'
 import { leadSourceSubmissions, leads, pipelineStages, webhookLogs } from '@/lib/schema'
 import { isUniqueViolation } from '@/lib/db-helpers'
@@ -275,11 +276,44 @@ async function authenticate(req: NextRequest) {
   return authenticateRequest(new NextRequest(req.nextUrl, { headers }) as NextRequest)
 }
 
+/**
+ * Quem está do outro lado pode cadastrar lead?
+ *
+ * Sistema externo (token de API) sempre pode — é para isso que a chave existe, e
+ * ela não tem papel nem permissão. A pergunta só faz sentido para PESSOA logada,
+ * que é o caso do formulário de indicação no Pipeline: ali existe um papel, e a
+ * tela de permissões promete um botão "Criar e editar leads". Sem esta checagem
+ * a promessa seria falsa — bastaria abrir o formulário para furar a regra.
+ */
+async function podeCadastrarLead(auth: {
+  memberId: string | null
+  roleId: string | null
+  isSuperAdmin?: boolean
+}): Promise<boolean> {
+  if (!auth.memberId) return true
+  if (auth.isSuperAdmin) return true
+  const role = await getOrgRole(auth.roleId)
+  const permissoes = (role?.permissions ?? {}) as Record<string, any>
+  // `{'*': true}` é como o papel de administrador guarda "pode tudo".
+  if (permissoes['*'] === true) return true
+  return permissoes?.leads?.create_edit === true
+}
+
 /** Cria o lead no CRM ou devolve o que já existe pro mesmo telefone. */
 async function upsertCrmLead(
   organizationId: string,
   source: LeadSourceKey,
-  normalized: NormalizedLead
+  normalized: NormalizedLead,
+  /**
+   * Membro que fica como dono do lead novo.
+   *
+   * Preenchido só quando quem chamou é uma PESSOA logada (o formulário de
+   * indicação no Pipeline) — sistema externo entra por token de API e não tem
+   * membro. Importa porque um papel pode estar com "ver apenas seus próprios
+   * leads": sem dono, o agente cadastraria a indicação e ela sumiria da tela
+   * dele no mesmo instante.
+   */
+  ownerMemberId?: string | null
 ): Promise<{ id: string; created: boolean } | null> {
   if (normalized.phone) {
     const [existing] = await db
@@ -313,6 +347,7 @@ async function upsertCrmLead(
         phone: normalized.phone,
         email: normalized.email,
         stageId: firstStage?.id ?? null,
+        ownerMemberId: ownerMemberId ?? null,
         customAttributes: { lead_source: source, ...normalized.fields },
         lastActivityAt: new Date(),
       })
@@ -454,6 +489,15 @@ export async function handleIngest(req: NextRequest, sourceFromPath?: string) {
       )
     }
 
+    if (!(await podeCadastrarLead(auth))) {
+      await logAttempt(req, {
+        resultado: 'sem_permissao',
+        source: sourceDef.key,
+        organizationId: auth.organizationId,
+      })
+      return apiError(403, 'Seu perfil não tem permissão para cadastrar leads.')
+    }
+
     // Reenvio de base existente (ver o uso mais abaixo). Aceita tanto no corpo
     // quanto na URL porque quem dispara é um script — e script erra menos
     // quando os dois jeitos funcionam.
@@ -515,7 +559,7 @@ export async function handleIngest(req: NextRequest, sourceFromPath?: string) {
     let leadCreated = false
     if (!leadId) {
       try {
-        const lead = await upsertCrmLead(auth.organizationId, sourceDef.key, normalized)
+        const lead = await upsertCrmLead(auth.organizationId, sourceDef.key, normalized, auth.memberId)
         leadId = lead?.id ?? null
         leadCreated = lead?.created ?? false
         if (leadId && submission) {

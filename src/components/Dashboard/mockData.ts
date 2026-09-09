@@ -18,6 +18,7 @@ export type AcquisitionChannel = LeadSourceKey
 const CHANNEL_COLORS: Record<LeadSourceKey, string> = {
   agenda_ascensao: '#f2c744',
   site_evento: '#5fd39b',
+  indicacao: '#7aa2f7',
   agenda_antigos: '#7b7b76',
 }
 
