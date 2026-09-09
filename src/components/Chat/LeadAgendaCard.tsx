@@ -72,7 +72,14 @@ export default function LeadAgendaCard({ leadId }: { leadId: string }) {
     fetch(`/api/leads/${leadId}/submissions`)
       .then((res) => (res.ok ? res.json() : { data: [] }))
       .then(({ data }) => {
-        if (!cancelado) setSubmissions((data || []).filter((s: LeadSubmission) => temAgenda(s.payload)))
+        if (cancelado) return
+        const comAgenda = (data || []).filter((s: LeadSubmission) => temAgenda(s.payload))
+        setSubmissions(comAgenda)
+        // A semana já abre desenhada: quem clica no lead quer ver a agenda dele,
+        // e a grade atrás de mais um clique fazia o painel parecer só texto.
+        // O quiz continua fechado — são 31 respostas, é consulta, não é o
+        // primeiro olhar.
+        setAbertos(new Set(comAgenda.map((s: LeadSubmission) => `${s.id}:semana`)))
       })
       .catch(() => {
         if (!cancelado) setSubmissions([])
