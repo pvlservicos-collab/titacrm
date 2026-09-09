@@ -14,49 +14,14 @@ import Link from 'next/link'
 import {
   AGENDA_BLOCK_CATEGORIES,
   AGENDA_QUIZ_LABELS,
-  AGENDA_WEEKDAYS,
-} from '@/lib/leadSources'
+  formatDuration,
+  formatQuizValue,
+  groupBlocksByDay,
+  minutesToClock,
+  type AgendaBlock,
+} from '@/lib/agenda'
 import type { Submission } from './types'
 import { instagramUrl } from './SubmissionsTable'
-
-/** Minutos desde 00:00 → "08:30". */
-function minutesToClock(minutes: number): string {
-  const normalized = ((minutes % 1440) + 1440) % 1440
-  const h = Math.floor(normalized / 60)
-  const m = normalized % 60
-  return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`
-}
-
-function formatDuration(minutes: number): string {
-  if (minutes < 60) return `${minutes}min`
-  const h = Math.floor(minutes / 60)
-  const m = minutes % 60
-  return m === 0 ? `${h}h` : `${h}h${String(m).padStart(2, '0')}`
-}
-
-/** Os valores do quiz vêm em tipos variados (número, bool, lista de dias). */
-function formatQuizValue(key: string, value: unknown): string {
-  if (value === null || value === undefined || value === '') return '—'
-  if (typeof value === 'boolean') return value ? 'Sim' : 'Não'
-  // Listas de dias vêm como índices 0=seg … 6=dom.
-  if (Array.isArray(value)) {
-    if (value.length === 0) return '—'
-    if (/days$/i.test(key)) {
-      return value.map((d) => AGENDA_WEEKDAYS[Number(d)] ?? d).join(', ')
-    }
-    return value.join(', ')
-  }
-  return String(value)
-}
-
-interface AgendaBlock {
-  id?: number
-  t?: string
-  s?: number
-  d?: number
-  c?: string
-  day?: number
-}
 
 export default function SubmissionDetail({
   submission,
@@ -70,16 +35,11 @@ export default function SubmissionDetail({
   const payload = submission.payload || {}
   const quiz = (payload.a1 ?? null) as Record<string, unknown> | null
   const blocks = (Array.isArray(payload.real) ? payload.real : []) as AgendaBlock[]
-  const isAgenda = sourceKey === 'agenda_ascensao'
+  // As duas fontes da Agenda trazem perfil e quiz; muda so por onde o lead entrou.
+  const isAgenda = sourceKey === 'agenda_ascensao' || sourceKey === 'agenda_antigos'
+  const phase = (payload.phase ?? payload.fase ?? null) as string | null
 
-  // Blocos agrupados por dia, cada dia em ordem cronológica.
-  const blocksByDay = AGENDA_WEEKDAYS.map((label, day) => ({
-    label,
-    day,
-    items: blocks
-      .filter((b) => Number(b.day) === day)
-      .sort((a, b) => (a.s ?? 0) - (b.s ?? 0)),
-  })).filter((d) => d.items.length > 0)
+  const blocksByDay = groupBlocksByDay(blocks)
 
   return (
     <div className="fixed inset-0 z-[80] flex justify-end" role="dialog" aria-modal="true">
@@ -135,11 +95,11 @@ export default function SubmissionDetail({
                 <Row
                   label="Quiz"
                   value={
-                    payload.phase === 'done'
+                    phase === 'done'
                       ? 'Completo, com agenda montada'
-                      : payload.phase === 'w1'
+                      : phase === 'w1'
                         ? 'Incompleto (parou no meio)'
-                        : (payload.phase as string)
+                        : phase
                   }
                 />
               </dl>

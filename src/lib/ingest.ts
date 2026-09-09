@@ -454,6 +454,14 @@ export async function handleIngest(req: NextRequest, sourceFromPath?: string) {
       )
     }
 
+    // Reenvio de base existente (ver o uso mais abaixo). Aceita tanto no corpo
+    // quanto na URL porque quem dispara é um script — e script erra menos
+    // quando os dois jeitos funcionam.
+    const ehResync =
+      body.resync === true ||
+      String(body.resync ?? '').toLowerCase() === 'true' ||
+      req.nextUrl.searchParams.get('resync') === '1'
+
     const normalized = sourceDef.normalize(body)
     const dedupeKey = dedupeKeyFor(sourceDef.key, normalized)
 
@@ -522,7 +530,13 @@ export async function handleIngest(req: NextRequest, sourceFromPath?: string) {
 
     // Funil de atendimento — só para lead novo. Sem isso, reenviar o mesmo lead
     // (o quiz que virou "done") dispararia a mensagem de boas-vindas de novo.
-    if (leadId && leadCreated) {
+    //
+    // `resync` desliga o funil mesmo para lead novo: é a ressincronização em
+    // massa da Agenda, que reenvia a base inteira pra trazer a agenda montada de
+    // quem já estava cadastrado. Sem essa saída, rodar a ressincronização
+    // mandaria a mensagem de boas-vindas pra todo lead antigo que ainda não
+    // tivesse linha no CRM — de uma vez só, meses depois de ele ter se cadastrado.
+    if (leadId && leadCreated && !ehResync) {
       try {
         await startFunnelForSource(auth.organizationId, sourceDef.key, leadId)
       } catch (err) {
@@ -539,6 +553,7 @@ export async function handleIngest(req: NextRequest, sourceFromPath?: string) {
     await logAttempt(req, {
       resultado: 'ok',
       source: sourceDef.key,
+      detalhe: ehResync ? 'resync' : null,
       camposRecebidos: Object.keys(rawBody),
       organizationId: auth.organizationId,
       submissionId: submission?.id ?? null,

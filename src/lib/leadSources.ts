@@ -17,6 +17,7 @@
  * do outro lado descobre o erro de digitação na primeira requisição, em vez de
  * criar uma aba fantasma que ninguém olha.
  */
+import { resumoAgenda, type AgendaBlock } from '@/lib/agenda'
 
 export type LeadSourceKey = 'agenda_ascensao' | 'site_evento' | 'agenda_antigos'
 
@@ -110,6 +111,38 @@ function trimmed(value: unknown): string | null {
   return s || null
 }
 
+/**
+ * Data de cadastro no formato da planilha ("07/09/2026, 21:18").
+ *
+ * A coluna "Cadastro" da lista antiga é texto — foi o que a exportação do site
+ * mandou. O reenvio automático manda a mesma data em ISO, então converter aqui
+ * mantém a coluna com um formato só.
+ *
+ * Só converte o que é ISO de verdade. Qualquer outro texto passa intacto — em
+ * especial o "07/09/2026" da própria planilha, que o `new Date()` do JS leria
+ * como 9 de julho (mês primeiro, à americana) e gravaria a data trocada.
+ */
+const ISO_RE = /^\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}/
+
+function dataCadastro(value: unknown): string | null {
+  const s = trimmed(value)
+  if (!s) return null
+  if (!ISO_RE.test(s)) return s
+  const data = new Date(s)
+  if (Number.isNaN(data.getTime())) return s
+  return data.toLocaleString('pt-BR', {
+    // Fuso fixo, não o do servidor: a Vercel roda em UTC, e sem isto o mesmo
+    // cadastro apareceria 3 horas antes do que a planilha (exportada de um
+    // navegador no Brasil) mostrou pra mesma pessoa.
+    timeZone: 'America/Sao_Paulo',
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  })
+}
+
 /** Instagram sempre com um @ na frente, sem URL. */
 function normalizeInstagram(value: unknown): string | null {
   const s = trimmed(value)
@@ -146,7 +179,7 @@ const siteEvento: LeadSourceDef = {
     // visível no detalhe do lead, em vez de sumir.
     const extras: Record<string, unknown> = {}
     for (const [chave, valor] of Object.entries(body)) {
-      if (['source', 'nome', 'email', 'whatsapp', 'instagram', 'key', 'token'].includes(chave)) continue
+      if (['source', 'nome', 'email', 'whatsapp', 'instagram', 'key', 'token', 'resync'].includes(chave)) continue
       extras[chave] = valor
     }
 
@@ -163,52 +196,17 @@ const siteEvento: LeadSourceDef = {
   },
 }
 
-/** Rótulos legíveis das respostas do quiz (`agenda.a1`), na ordem de exibição. */
-export const AGENDA_QUIZ_LABELS: { key: string; label: string; hint?: string }[] = [
-  { key: 'bed', label: 'Vai dormir' },
-  { key: 'wake', label: 'Acorda' },
-  { key: 'ws', label: 'Início do expediente' },
-  { key: 'we', label: 'Fim do expediente' },
-  { key: 'wdays', label: 'Dias que trabalha', hint: '0=seg … 6=dom' },
-  { key: 'commute', label: 'Deslocamento até o trabalho', hint: 'min por trecho (0 = trabalha em casa)' },
-  { key: 'meetAM', label: 'Reunião de manhã', hint: 'minutos' },
-  { key: 'meetPM', label: 'Reunião à tarde', hint: 'minutos' },
-  { key: 'meetEve', label: 'Reunião à noite', hint: 'minutos' },
-  { key: 'bfT', label: 'Café da manhã — horário' },
-  { key: 'bfD', label: 'Café da manhã — duração' },
-  { key: 'lunchT', label: 'Almoço — horário' },
-  { key: 'lunchD', label: 'Almoço — duração' },
-  { key: 'dinT', label: 'Jantar — horário' },
-  { key: 'dinD', label: 'Jantar — duração' },
-  { key: 'train', label: 'Treina atualmente' },
-  { key: 'trainDays', label: 'Dias de treino' },
-  { key: 'trainT', label: 'Treino — horário' },
-  { key: 'trainD', label: 'Treino — duração' },
-  { key: 'trainCom', label: 'Deslocamento até o treino', hint: 'min por trecho' },
-  { key: 'ppl', label: 'Tem momentos fixos com pessoas importantes' },
-  { key: 'pplWkDays', label: 'Pessoas (semana) — dias' },
-  { key: 'pplWkT', label: 'Pessoas (semana) — horário' },
-  { key: 'pplWkD', label: 'Pessoas (semana) — duração' },
-  { key: 'pplWeDays', label: 'Pessoas (fim de semana) — dias' },
-  { key: 'pplWeT', label: 'Pessoas (fim de semana) — horário' },
-  { key: 'pplWeD', label: 'Pessoas (fim de semana) — duração' },
-  { key: 'vazAM', label: 'Procrastinação de manhã', hint: 'minutos' },
-  { key: 'vazAMp', label: 'Procrastinação de manhã — posição', hint: 'começo / fim' },
-  { key: 'vazPM', label: 'Procrastinação à tarde', hint: 'minutos' },
-  { key: 'vazPMp', label: 'Procrastinação à tarde — posição', hint: 'começo / fim' },
-]
-
-/** Categorias de bloco da agenda montada (`agenda.real[].c`). */
-export const AGENDA_BLOCK_CATEGORIES: Record<string, { label: string; color: string }> = {
-  f1: { label: 'Farol 1 — trabalho / progresso financeiro', color: '#f2c744' },
-  f2: { label: 'Farol 2 — compromissos com pessoas', color: '#7aa2f7' },
-  f3: { label: 'Farol 3 — rotina saudável', color: '#5fd39b' },
-  sono: { label: 'Sono', color: '#8b7ff5' },
-  desvio: { label: 'Necessário, fora dos Faróis', color: '#9a9a94' },
-  vaz: { label: 'Procrastinação', color: '#e0705a' },
-}
-
-export const AGENDA_WEEKDAYS = ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom']
+/**
+ * Os rótulos do quiz, as categorias de bloco e os dias da semana moram em
+ * `@/lib/agenda` — é lá que fica tudo que entende o formato da agenda montada.
+ * Continuam reexportados aqui porque a tela da planilha já os importava deste
+ * módulo, e porque uma fonte e o formato do dado dela andam juntos.
+ */
+export {
+  AGENDA_QUIZ_LABELS,
+  AGENDA_BLOCK_CATEGORIES,
+  AGENDA_WEEKDAYS,
+} from '@/lib/agenda'
 
 /** Valores fixos — a API não recusa fora da lista (o formulário pode mudar antes
  *  do CRM), mas a tela usa isto pra exibir e pra montar filtros. */
@@ -231,6 +229,56 @@ export const AGENDA_INVESTIMENTO = [
   'Não fiz esse tipo de investimento',
 ]
 
+/**
+ * Colunas de resumo do quiz — as mesmas nas duas fontes da Agenda.
+ *
+ * São derivadas de `a1` por `resumoAgenda()`, então valem tanto pro lead que
+ * chegou pelo webhook quanto pro que veio da lista antiga. Ficam numa constante
+ * porque as duas abas precisam mostrar o mesmo dado no mesmo lugar — a
+ * diferença entre as fontes é de onde o lead veio, não do que ele respondeu.
+ */
+const COLUNAS_RESUMO_AGENDA: LeadSourceColumn[] = [
+  { key: 'sono', label: 'Sono', width: 130 },
+  { key: 'trabalho', label: 'Trabalho', width: 240 },
+  { key: 'deslocamento', label: 'Deslocamento', width: 130 },
+  { key: 'reunioes', label: 'Reuniões', width: 150 },
+  { key: 'cafe', label: 'Café da manhã', width: 140 },
+  { key: 'almoco', label: 'Almoço', width: 140 },
+  { key: 'jantar', label: 'Jantar', width: 140 },
+  { key: 'treino', label: 'Treino', width: 220 },
+  { key: 'pessoas', label: 'Pessoas importantes', width: 240 },
+  { key: 'procrastinacao', label: 'Procrastinação', width: 170 },
+]
+
+/**
+ * Extrai os campos da agenda do corpo que o site manda.
+ *
+ * Os campos de perfil (instagram, área, aumento, investimento) chegam no topo do
+ * corpo, mas o site também os guarda dentro de `agenda` — ler os dois evita que
+ * uma mudança de um lado só esvazie a coluna no CRM.
+ */
+function camposDaAgenda(body: Record<string, any>) {
+  const agenda = (body.agenda ?? {}) as Record<string, any>
+  const a1 = (agenda.a1 ?? null) as Record<string, any> | null
+  const blocks = (Array.isArray(agenda.real) ? agenda.real : []) as AgendaBlock[]
+
+  return {
+    agenda,
+    perfil: {
+      area: trimmed(body.area) ?? trimmed(agenda.area),
+      aumento: trimmed(body.aumento) ?? trimmed(agenda.aumento),
+      investimento: trimmed(body.investimento) ?? trimmed(agenda.investimento),
+    },
+    instagram: normalizeInstagram(body.instagram ?? agenda.instagram),
+    // "done" = quiz completo com agenda pronta; "w1" = parou no meio.
+    phase: trimmed(agenda.phase),
+    // Só entra no payload o que existe: um `a1: null` sobrescrevendo o `a1` que
+    // já estava gravado apagaria a agenda de quem foi reenviado incompleto.
+    quiz: a1 ? { a1, ...resumoAgenda(a1) } : {},
+    blocos: blocks.length > 0 ? { real: blocks, blocos: blocks.length } : {},
+  }
+}
+
 const agendaAscensao: LeadSourceDef = {
   key: 'agenda_ascensao',
   label: 'Agenda Ascensão',
@@ -247,12 +295,12 @@ const agendaAscensao: LeadSourceDef = {
     { key: 'investimento', label: 'Já investiu', width: 190 },
     { key: 'phase', label: 'Quiz', format: 'badge', width: 110 },
     { key: 'blocos', label: 'Blocos', format: 'number', width: 80 },
+    ...COLUNAS_RESUMO_AGENDA,
     { key: 'criado_em', label: 'Criado em', format: 'datetime', width: 170 },
     { key: 'received_at', label: 'Recebido em', format: 'datetime', width: 170 },
   ],
   normalize: (body) => {
-    const agenda = (body.agenda ?? {}) as Record<string, any>
-    const blocks = Array.isArray(agenda.real) ? agenda.real : []
+    const { perfil, instagram, phase, quiz, blocos, agenda } = camposDaAgenda(body)
 
     return {
       externalId: trimmed(body.id),
@@ -262,19 +310,16 @@ const agendaAscensao: LeadSourceDef = {
       // de guardar "".
       email: trimmed(body.email),
       phone: normalizePhone(body.whatsapp),
-      instagram: normalizeInstagram(body.instagram),
+      instagram,
       fields: {
-        area: trimmed(body.area),
-        aumento: trimmed(body.aumento),
-        investimento: trimmed(body.investimento),
+        ...perfil,
         criado_em: trimmed(body.criado_em),
-        // "done" = quiz completo com agenda pronta; "w1" = parou no meio.
-        phase: trimmed(agenda.phase),
+        phase,
         uid: agenda.uid ?? null,
-        blocos: blocks.length,
-        // Guardados inteiros pro painel de detalhe da linha.
-        a1: agenda.a1 ?? null,
-        real: blocks,
+        // Quiz e blocos inteiros pro painel de detalhe, junto do resumo em
+        // texto que alimenta as colunas da planilha.
+        ...quiz,
+        ...blocos,
       },
     }
   },
@@ -283,13 +328,13 @@ const agendaAscensao: LeadSourceDef = {
 const agendaAntigos: LeadSourceDef = {
   key: 'agenda_antigos',
   label: 'Agenda — lista antiga',
-  description: 'Leads exportados da Agenda antes da integração automática.',
-  // Importação manual de planilha, não aquisição: fica fora do dashboard e da
-  // coluna "Fonte:" do Kanban.
+  description: 'Leads da Agenda anteriores à integração automática.',
+  // Lista histórica, não aquisição: fica fora do dashboard e da coluna "Fonte:"
+  // do Kanban mesmo depois de o site reenviar esses leads com a agenda completa.
   isAcquisitionChannel: false,
-  // Importada por planilha (scripts/importar-csv-leads.mjs), não por webhook.
-  // Sem obrigatório porque a exportação já veio pronta: recusar linha aqui só
-  // faria perder lead de uma lista que já é histórica.
+  // Sem obrigatório: entrou por planilha (scripts/importar-csv-leads.mjs) e hoje
+  // é reenviada pelo próprio site. Recusar linha aqui só faria perder lead de uma
+  // lista que já é histórica.
   required: [],
   columns: [
     { key: 'external_id', label: 'ID', format: 'number', width: 80 },
@@ -302,41 +347,57 @@ const agendaAntigos: LeadSourceDef = {
     { key: 'area', label: 'Área', width: 150 },
     { key: 'aumento', label: 'Aumento esperado', width: 170 },
     { key: 'investimento', label: 'Já investiu', width: 170 },
-    { key: 'sono', label: 'Sono', width: 130 },
-    { key: 'trabalho', label: 'Trabalho', width: 240 },
-    { key: 'deslocamento', label: 'Deslocamento', width: 130 },
-    { key: 'reunioes', label: 'Reuniões', width: 150 },
-    { key: 'cafe', label: 'Café da manhã', width: 140 },
-    { key: 'almoco', label: 'Almoço', width: 140 },
-    { key: 'jantar', label: 'Jantar', width: 140 },
-    { key: 'treino', label: 'Treino', width: 220 },
-    { key: 'pessoas', label: 'Pessoas importantes', width: 240 },
-    { key: 'procrastinacao', label: 'Procrastinação', width: 170 },
+    { key: 'blocos', label: 'Blocos', format: 'number', width: 80 },
+    ...COLUNAS_RESUMO_AGENDA,
   ],
-  // A planilha já vem com tudo em texto legível ("22:00–05:00", "noite 1h"), ao
-  // contrário da fonte ao vivo, que traz o quiz cru em `a1`/`real`. Por isso são
-  // duas fontes e não uma: o formato do dado é outro, e misturá-los deixaria
-  // metade das colunas vazia em qualquer uma das telas.
+  /**
+   * Aceita os dois formatos em que essa lista chega.
+   *
+   * A planilha exportada do site traz tudo em texto já legível ("22:00–05:00",
+   * "noite 1h") e nenhuma agenda montada — foi assim que os 644 leads
+   * históricos entraram. A ressincronização manda o mesmo lead no formato cru
+   * (`agenda.a1` + `agenda.real`), que é o único jeito de o CRM montar a semana
+   * dele bloco a bloco.
+   *
+   * Com o formato cru, o resumo em texto é derivado de `a1` — dá as mesmas
+   * frases da planilha, então as colunas continuam preenchidas — e os campos
+   * soltos do corpo seguem sendo lidos, pro reenvio nunca apagar o que a
+   * planilha havia trazido.
+   */
   normalize: (body) => {
-    const guardar = [
-      'criado_em', 'fase', 'area', 'aumento', 'investimento', 'sono', 'trabalho',
-      'deslocamento', 'reunioes', 'cafe', 'almoco', 'jantar', 'treino',
-      'pessoas', 'procrastinacao',
+    const { perfil, instagram, phase, quiz, blocos } = camposDaAgenda(body)
+
+    const daPlanilha = [
+      'fase', 'sono', 'trabalho', 'deslocamento', 'reunioes',
+      'cafe', 'almoco', 'jantar', 'treino', 'pessoas', 'procrastinacao',
     ]
     const fields: Record<string, unknown> = {}
-    for (const chave of guardar) {
+    for (const chave of daPlanilha) {
       const valor = trimmed(body[chave])
       // "—" é como a exportação marca campo vazio; vira ausência de verdade.
       if (valor && valor !== '\u2014') fields[chave] = valor
     }
+    for (const [chave, valor] of Object.entries(perfil)) {
+      if (valor) fields[chave] = valor
+    }
+    // A planilha mandava "07/09/2026, 21:18"; o reenvio manda ISO. A coluna é
+    // texto, então normaliza pro formato da planilha em vez de deixar a lista
+    // com dois padrões de data misturados.
+    const cadastro = trimmed(body.criado_em)
+    if (cadastro) fields.criado_em = dataCadastro(cadastro)
 
     return {
       externalId: trimmed(body.id),
       name: trimmed(body.nome) || 'Sem nome',
       email: trimmed(body.email) === '\u2014' ? null : trimmed(body.email),
       phone: normalizePhone(body.whatsapp),
-      instagram: normalizeInstagram(body.instagram),
-      fields,
+      instagram,
+      fields: {
+        ...fields,
+        ...(phase ? { fase: phase } : {}),
+        ...quiz,
+        ...blocos,
+      },
     }
   },
 }

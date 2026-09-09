@@ -41,6 +41,7 @@ import CustomFieldSelect from '@/components/Shared/CustomFieldSelect'
 import CustomFieldMultiSelect from '@/components/Shared/CustomFieldMultiSelect'
 import OrderModal from './OrderModal'
 import LeadOrderCard from './LeadOrderCard'
+import LeadAgendaCard from './LeadAgendaCard'
 
 interface LeadDetailsSidebarProps {
   lead: LeadWithOwner
@@ -760,6 +761,10 @@ export default function LeadDetailsSidebar({
           </p>
 
           <div className="space-y-4">
+            {/* Bloco: a agenda que a pessoa montou no site. Some sozinho quando
+                o lead não veio da Agenda em Ascensão. */}
+            <LeadAgendaCard leadId={lead.id} />
+
             {/* Bloco: Agenda de compromissos */}
             <div className="glass-soft rounded-xl p-3 space-y-2.5">
               <div className="flex items-center gap-1.5">
