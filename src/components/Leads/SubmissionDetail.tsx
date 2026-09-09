@@ -14,12 +14,10 @@ import Link from 'next/link'
 import {
   AGENDA_BLOCK_CATEGORIES,
   AGENDA_QUIZ_LABELS,
-  formatDuration,
   formatQuizValue,
-  groupBlocksByDay,
-  minutesToClock,
   type AgendaBlock,
 } from '@/lib/agenda'
+import AgendaGrid from '@/components/Shared/AgendaGrid'
 import type { Submission } from './types'
 import { instagramUrl } from './SubmissionsTable'
 
@@ -39,7 +37,6 @@ export default function SubmissionDetail({
   const isAgenda = sourceKey === 'agenda_ascensao' || sourceKey === 'agenda_antigos'
   const phase = (payload.phase ?? payload.fase ?? null) as string | null
 
-  const blocksByDay = groupBlocksByDay(blocks)
 
   return (
     <div className="fixed inset-0 z-[80] flex justify-end" role="dialog" aria-modal="true">
@@ -125,8 +122,8 @@ export default function SubmissionDetail({
             </section>
           )}
 
-          {/* Agenda montada */}
-          {blocksByDay.length > 0 && (
+          {/* Agenda montada — a semana como ela aparece pro lead no site */}
+          {blocks.length > 0 && (
             <section>
               <h3 className="text-[11px] font-bold uppercase tracking-wider text-muted mb-2.5">
                 Agenda montada
@@ -134,40 +131,12 @@ export default function SubmissionDetail({
                   {blocks.length} blocos
                 </span>
               </h3>
-              <div className="space-y-3">
-                {blocksByDay.map((day) => (
-                  <div key={day.day} className="panel rounded-xl p-3">
-                    <p className="text-xs font-bold text-ink mb-2">{day.label}</p>
-                    <div className="space-y-1.5">
-                      {day.items.map((block, i) => {
-                        const category = AGENDA_BLOCK_CATEGORIES[block.c ?? '']
-                        const start = block.s ?? 0
-                        const duration = block.d ?? 0
-                        return (
-                          <div key={block.id ?? i} className="flex items-center gap-2.5 text-xs">
-                            <span
-                              className="w-1.5 h-6 rounded-full flex-shrink-0"
-                              style={{ backgroundColor: category?.color ?? 'var(--muted)' }}
-                              title={category?.label ?? block.c}
-                            />
-                            <span className="text-muted tabular-nums flex-shrink-0 w-[86px]">
-                              {minutesToClock(start)}–{minutesToClock(start + duration)}
-                            </span>
-                            <span className="text-ink truncate flex-1 min-w-0">{block.t || '—'}</span>
-                            <span className="text-muted tabular-nums flex-shrink-0">
-                              {formatDuration(duration)}
-                            </span>
-                          </div>
-                        )
-                      })}
-                    </div>
-                  </div>
-                ))}
-              </div>
+
+              <AgendaGrid blocks={blocks} alturaMax={520} />
 
               <div className="flex flex-wrap gap-x-4 gap-y-1.5 mt-3">
                 {Object.entries(AGENDA_BLOCK_CATEGORIES).map(([key, meta]) => (
-                  <span key={key} className="flex items-center gap-1.5 text-[11px] text-muted">
+                  <span key={key} title={meta.desc} className="flex items-center gap-1.5 text-[11px] text-muted">
                     <span
                       className="w-2 h-2 rounded-full flex-shrink-0"
                       style={{ backgroundColor: meta.color }}

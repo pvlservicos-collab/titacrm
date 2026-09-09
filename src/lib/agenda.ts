@@ -50,14 +50,20 @@ export const AGENDA_QUIZ_LABELS: { key: string; label: string; hint?: string }[]
   { key: 'vazPMp', label: 'Procrastinação à tarde — posição', hint: 'começo / fim' },
 ]
 
-/** Categorias de bloco da agenda montada (`agenda.real[].c`). */
-export const AGENDA_BLOCK_CATEGORIES: Record<string, { label: string; color: string }> = {
-  f1: { label: 'Farol 1 — trabalho / progresso financeiro', color: '#f2c744' },
-  f2: { label: 'Farol 2 — compromissos com pessoas', color: '#7aa2f7' },
-  f3: { label: 'Farol 3 — rotina saudável', color: '#5fd39b' },
-  sono: { label: 'Sono', color: '#8b7ff5' },
-  desvio: { label: 'Necessário, fora dos Faróis', color: '#9a9a94' },
-  vaz: { label: 'Procrastinação', color: '#e0705a' },
+/**
+ * Categorias de bloco da agenda montada (`agenda.real[].c`).
+ *
+ * `label` é o nome que a Agenda em Ascensão usa com o lead — é o vocabulário
+ * dele, então é o que aparece na tela. `desc` explica o que cai ali, pra quem
+ * está no CRM e não conhece os Faróis; vai no title do item e da legenda.
+ */
+export const AGENDA_BLOCK_CATEGORIES: Record<string, { label: string; desc: string; color: string }> = {
+  f1: { label: 'Farol 1 · rumo às metas', desc: 'Trabalho e progresso financeiro direto', color: '#f2c744' },
+  f2: { label: 'Farol 2 · ser a sua palavra', desc: 'Compromissos com outras pessoas — reuniões, calls', color: '#7aa2f7' },
+  f3: { label: 'Farol 3 · autossustentável', desc: 'Rotina que mantém a pessoa funcionando', color: '#5fd39b' },
+  sono: { label: 'Sono', desc: 'Sono', color: '#8b7ff5' },
+  desvio: { label: 'Desvio de rota', desc: 'Necessário, mas fora dos Faróis — deslocamento, burocracia', color: '#9a9a94' },
+  vaz: { label: 'Procrastinação', desc: 'Tempo perdido', color: '#e0705a' },
 }
 
 /** Um bloco da semana montada. `s`/`d` em minutos, `day` 0=seg … 6=dom. */

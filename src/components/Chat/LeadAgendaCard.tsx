@@ -18,12 +18,10 @@ import { CalendarBlank, CaretDown, CaretRight } from '@phosphor-icons/react'
 import {
   AGENDA_BLOCK_CATEGORIES,
   AGENDA_QUIZ_LABELS,
-  formatDuration,
   formatQuizValue,
-  groupBlocksByDay,
-  minutesToClock,
   type AgendaBlock,
 } from '@/lib/agenda'
+import AgendaGrid from '@/components/Shared/AgendaGrid'
 
 interface LeadSubmission {
   id: string
@@ -111,7 +109,6 @@ export default function LeadAgendaCard({ leadId }: { leadId: string }) {
         const payload = submission.payload || {}
         const quiz = (payload.a1 ?? null) as Record<string, unknown> | null
         const blocks = (Array.isArray(payload.real) ? payload.real : []) as AgendaBlock[]
-        const blocksByDay = groupBlocksByDay(blocks)
         const fase = (payload.phase ?? payload.fase ?? null) as string | null
 
         const chaveQuiz = `${submission.id}:quiz`
@@ -151,7 +148,7 @@ export default function LeadAgendaCard({ leadId }: { leadId: string }) {
               )}
             </dl>
 
-            {blocksByDay.length > 0 && (
+            {blocks.length > 0 && (
               <div>
                 <button
                   onClick={() => alternar(chaveSemana)}
@@ -164,38 +161,22 @@ export default function LeadAgendaCard({ leadId }: { leadId: string }) {
 
                 {abertos.has(chaveSemana) && (
                   <div className="mt-2 space-y-2">
-                    {blocksByDay.map((dia) => (
-                      <div key={dia.day}>
-                        <p className="text-[10px] font-bold uppercase tracking-wider text-[var(--chat-text-tertiary)] mb-1">
-                          {dia.label}
-                        </p>
-                        <div className="space-y-1">
-                          {dia.items.map((bloco, i) => {
-                            const categoria = AGENDA_BLOCK_CATEGORIES[bloco.c ?? '']
-                            const inicio = bloco.s ?? 0
-                            const duracao = bloco.d ?? 0
-                            return (
-                              <div key={bloco.id ?? i} className="flex items-center gap-2 text-[11px]">
-                                <span
-                                  className="w-1 h-4 rounded-full flex-shrink-0"
-                                  style={{ backgroundColor: categoria?.color ?? 'var(--chat-border)' }}
-                                  title={categoria?.label ?? bloco.c}
-                                />
-                                <span className="text-[var(--chat-text-tertiary)] tabular-nums flex-shrink-0 w-[80px]">
-                                  {minutesToClock(inicio)}–{minutesToClock(inicio + duracao)}
-                                </span>
-                                <span className="text-[var(--chat-text-secondary)] truncate flex-1 min-w-0">
-                                  {bloco.t || '—'}
-                                </span>
-                                <span className="text-[var(--chat-text-tertiary)] tabular-nums flex-shrink-0">
-                                  {formatDuration(duracao)}
-                                </span>
-                              </div>
-                            )
-                          })}
-                        </div>
-                      </div>
-                    ))}
+                    <AgendaGrid blocks={blocks} alturaMax={380} />
+                    <div className="flex flex-wrap gap-x-3 gap-y-1">
+                      {Object.entries(AGENDA_BLOCK_CATEGORIES).map(([chave, meta]) => (
+                        <span
+                          key={chave}
+                          title={meta.desc}
+                          className="flex items-center gap-1 text-[9.5px] text-[var(--chat-text-tertiary)]"
+                        >
+                          <span
+                            className="w-2 h-2 rounded-full flex-shrink-0"
+                            style={{ backgroundColor: meta.color }}
+                          />
+                          {meta.label}
+                        </span>
+                      ))}
+                    </div>
                   </div>
                 )}
               </div>
@@ -228,7 +209,7 @@ export default function LeadAgendaCard({ leadId }: { leadId: string }) {
 
             {/* Quando o lead veio pela Agenda mas o quiz parou no meio, dizer
                 isso vale mais que deixar o cartão pela metade sem explicação. */}
-            {blocksByDay.length === 0 && (
+            {blocks.length === 0 && (
               <p className="text-[11px] text-[var(--chat-text-tertiary)]">
                 Sem semana montada — a pessoa não terminou o quiz no site.
               </p>
