@@ -157,18 +157,6 @@ export async function processEvolutionMessage(
     .limit(1)
 
   if (!lead) {
-    const [firstStage] = await db
-      .select({ id: pipelineStages.id })
-      .from(pipelineStages)
-      .where(
-        and(
-          eq(pipelineStages.organizationId, orgId),
-          isNull(pipelineStages.deletedAt)
-        )
-      )
-      .orderBy(asc(pipelineStages.rank))
-      .limit(1)
-
     try {
       const [newLead] = await db
         .insert(leads)
@@ -179,7 +167,11 @@ export async function processEvolutionMessage(
           phone,
           isGroup,
           integrationId: integration?.id || null,
-          stageId: firstStage?.id || null,
+          // Conversa do WhatsApp não entra no funil — mesma regra da Z-API (ver
+          // zapiInbound). O Kanban é dos leads de aquisição; quem atende promove
+          // a conversa escolhendo a etapa, se for o caso.
+          stageId: null,
+          customAttributes: { origem: 'conversa_whatsapp' },
           lastActivityAt: new Date(),
         })
         .returning({ id: leads.id, title: leads.title, phone: leads.phone })

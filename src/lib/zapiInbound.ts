@@ -206,15 +206,6 @@ export async function processZapiMessage(orgId: string, body: any): Promise<Zapi
   }
 
   if (!lead) {
-    const [firstStage] = ehGrupo
-      ? [undefined]
-      : await db
-          .select({ id: pipelineStages.id })
-          .from(pipelineStages)
-          .where(and(eq(pipelineStages.organizationId, orgId), isNull(pipelineStages.deletedAt)))
-          .orderBy(asc(pipelineStages.rank))
-          .limit(1)
-
     try {
       const [novo] = await db
         .insert(leads)
@@ -225,10 +216,26 @@ export async function processZapiMessage(orgId: string, body: any): Promise<Zapi
           title: ehGrupo
             ? (body?.chatName || phone)
             : (isFromMe ? phone : (senderName || phone)),
+          // Mesma marca da importação: é conversa, não aquisição. Sem ela, o
+          // relatório diário contaria cada contato do WhatsApp como "lead novo".
+          customAttributes: { origem: 'conversa_whatsapp' },
           phone,
           isGroup: ehGrupo,
           integrationId: integration?.id || null,
-          stageId: firstStage?.id || null,
+          /*
+           * Conversa que chega pelo WhatsApp NÃO entra no funil. Nunca.
+           *
+           * O Kanban é dos leads de aquisição — Agenda, site, indicação —, e
+           * eles são o trabalho do time. Quem manda mensagem pro número pode ser
+           * qualquer um: fornecedor, aluno antigo, o pessoal do escritório, e já
+           * aconteceu de uma COMUNIDADE de figurinhas virar card em "Em aguardo"
+           * no meio dos leads de verdade.
+           *
+           * Vira conversa no Chat, e ponto. Se quem atende reconhecer um negócio
+           * ali, escolhe a etapa no painel do lead — aí entra no funil por
+           * decisão de gente, que é como um lead deve nascer.
+           */
+          stageId: null,
           lastActivityAt: new Date(),
         })
         .returning({ id: leads.id, title: leads.title, phone: leads.phone, stageId: leads.stageId })
