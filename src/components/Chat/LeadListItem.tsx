@@ -31,7 +31,13 @@ const PAYMENT_STATUS_TAGS: Record<string, { label: string; style: React.CSSPrope
 )
 
 const LeadListItem = ({ lead, isSelected, onClick, onContextMenu, timeStr, hit, query, hideReplyHighlight }: LeadListItemProps) => {
-    const defaultMsg = lead.last_activity_type ? 'Ver conversa' : 'Sem mensagens'
+    // Conversa importada não tem prévia (a Z-API não traz mensagem antiga).
+    // "Ver conversa" prometia um histórico que não existe; dizer de onde ela veio
+    // prepara pra tela vazia em vez de surpreender.
+    const importada = (lead.custom_attributes as Record<string, unknown> | undefined)?.origem === 'conversa_whatsapp'
+    const defaultMsg = importada
+      ? 'Conversa do WhatsApp · sem histórico aqui'
+      : lead.last_activity_type ? 'Ver conversa' : 'Sem mensagens'
     const lastMsg = lead.last_message_content || defaultMsg
 
     const orderPaymentMethod = lead.custom_attributes?.last_order_payment_method as string | undefined

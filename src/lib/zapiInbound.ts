@@ -164,6 +164,29 @@ export async function processZapiMessage(orgId: string, body: any): Promise<Zapi
     return { status: 'skipped', reason: `callback ${body.type}` }
   }
 
+  /*
+   * Notificação de sistema não é mensagem de ninguém: alguém apagou uma
+   * mensagem (REVOKE), trocou a descrição do grupo (GROUP_CHANGE_DESCRIPTION),
+   * entrou ou saiu do grupo, a chamada caiu. Chegam como ReceivedCallback,
+   * iguais a uma mensagem, mas sem conteúdo — e caíam no diagnóstico como
+   * "conteúdo não extraído", enchendo o log de falso alarme. É o tipo de ruído
+   * que faz alguém achar que a integração está com erro quando não está.
+   */
+  if (body?.notification) {
+    return { status: 'skipped', reason: `notificação ${body.notification}` }
+  }
+
+  // Grupo que ninguém importou: descarta ANTES de tentar ler o conteúdo, pelo
+  // mesmo motivo acima — não tem por que diagnosticar mensagem que ia pro lixo.
+  if (ehGrupo) {
+    const [grupoExiste] = await db
+      .select({ id: leads.id })
+      .from(leads)
+      .where(and(eq(leads.organizationId, orgId), eq(leads.phone, phone), isNull(leads.deletedAt)))
+      .limit(1)
+    if (!grupoExiste) return { status: 'skipped', reason: 'grupo não importado' }
+  }
+
   const isFromMe = !!body?.fromMe
   const extraido = extrair(body)
   if (!extraido) {

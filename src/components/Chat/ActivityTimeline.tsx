@@ -845,11 +845,45 @@ export default function ActivityTimeline({
   }
 
   if (activities.length === 0) {
+    /*
+     * Conversa importada do WhatsApp é o caso comum de tela vazia: 79 das 82
+     * conversas do chat nasceram assim. Elas EXISTEM no aparelho, com
+     * histórico, mas a Z-API não entrega mensagem antiga — só as que chegam
+     * depois de ligado o webhook.
+     *
+     * Sem dizer isso, a tela em branco parece defeito: foi exatamente o que
+     * aconteceu, e a primeira reação foi "parou de carregar as mensagens",
+     * quando o servidor tinha respondido 200 com a conversa vazia.
+     */
+    const importada = (lead.custom_attributes as Record<string, unknown> | undefined)?.origem === 'conversa_whatsapp'
+    const ultimaNoWhatsapp = lead.last_activity_at
+      ? new Date(lead.last_activity_at).toLocaleString('pt-BR', {
+          day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit',
+        })
+      : null
+
     return (
-      <div className="flex-1 flex items-center justify-center bg-transparent z-10 relative">
-        <div className="bg-[var(--chat-bg-panel)] border border-white/5 rounded-full px-6 py-2.5 text-[13px] text-[var(--chat-text-muted)] shadow-sm">
-          Nenhuma mensagem ainda. Inicie a conversa!
-        </div>
+      <div className="flex-1 flex items-center justify-center bg-transparent z-10 relative px-6">
+        {importada ? (
+          <div className="bg-[var(--chat-bg-panel)] border border-white/5 rounded-2xl px-5 py-4 max-w-sm text-center shadow-sm">
+            <p className="text-[13px] font-semibold text-[var(--chat-text-secondary)]">
+              O histórico desta conversa está no celular
+            </p>
+            <p className="text-[12px] text-[var(--chat-text-muted)] mt-1.5 leading-relaxed">
+              Ela já existia no WhatsApp antes do CRM, e a Z-API não traz mensagens
+              antigas. A partir da próxima mensagem — sua ou dele — tudo aparece aqui.
+            </p>
+            {ultimaNoWhatsapp && (
+              <p className="text-[11px] text-[var(--chat-text-tertiary)] mt-2">
+                Última mensagem no WhatsApp: {ultimaNoWhatsapp}
+              </p>
+            )}
+          </div>
+        ) : (
+          <div className="bg-[var(--chat-bg-panel)] border border-white/5 rounded-full px-6 py-2.5 text-[13px] text-[var(--chat-text-muted)] shadow-sm">
+            Nenhuma mensagem ainda. Inicie a conversa!
+          </div>
+        )}
       </div>
     )
   }
