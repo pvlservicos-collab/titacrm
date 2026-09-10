@@ -1,9 +1,10 @@
 'use client'
 
-import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react'
+import React, { createContext, useContext, useState, useEffect, useCallback, useRef, ReactNode } from 'react'
 import { LeadWithOwner } from '@/lib/types'
 import { useAuth } from '@/hooks'
 import { usePusherChannel } from '@/hooks/usePusher'
+import { useAtualizacaoPeriodica } from '@/hooks/useAtualizacaoPeriodica'
 
 interface StageStats {
   count: number
@@ -45,6 +46,9 @@ export function LeadsProvider({ children, escopo = 'tudo' }: { children: ReactNo
   const [stageStats, setStageStats] = useState<Record<string, StageStats>>({})
 
   const organizationId = currentOrganization?.organization_id
+  // Última lista recebida, pra não redesenhar a tela quando nada mudou — a
+  // lista é buscada a cada poucos segundos e quase sempre vem igual.
+  const ultimaAssinatura = useRef('')
 
   async function fetchLeads(showLoading = true) {
     if (!organizationId) { setLoading(false); return }
@@ -61,6 +65,9 @@ export function LeadsProvider({ children, escopo = 'tudo' }: { children: ReactNo
       const res = await fetch(`/api/leads?${params}`)
       if (!res.ok) throw new Error('Failed to fetch leads')
       const { data } = await res.json()
+      const assinatura = JSON.stringify(data || [])
+      if (assinatura === ultimaAssinatura.current) return
+      ultimaAssinatura.current = assinatura
       setLeads(data || [])
 
       // Compute stage stats — grupo não conta pra estatística do Pipeline
@@ -84,6 +91,15 @@ export function LeadsProvider({ children, escopo = 'tudo' }: { children: ReactNo
   }, [organizationId, currentOrganization?.id])
 
   // Real-time via Pusher
+  /*
+   * Atualização automática: busca a lista de novo a cada 6 segundos com a aba
+   * aberta. É o que faz a conversa que acabou de receber mensagem subir pro topo
+   * sozinha (a lista é ordenada pela última atividade) e conversa nova aparecer
+   * sem recarregar. Ver useAtualizacaoPeriodica — o Pusher abaixo continua
+   * ligado, mas o app dele não existe mais, então hoje é isto que atualiza.
+   */
+  useAtualizacaoPeriodica(() => fetchLeads(false), 6000, { ativo: !!organizationId })
+
   usePusherChannel(
     organizationId ? `org-${organizationId}` : '',
     {

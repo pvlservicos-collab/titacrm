@@ -8,6 +8,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { useSession } from 'next-auth/react'
 import { LeadActivityWithActor } from '@/lib/types'
 import { usePusherChannel } from './usePusher'
+import { useAtualizacaoPeriodica } from './useAtualizacaoPeriodica'
 import { useNotification } from '@/contexts/NotificationContext'
 
 const CHANNEL_LABELS: Record<string, string> = {
@@ -36,7 +37,16 @@ export function useLeadActivities(organizationId: string, leadId: string) {
         if (a.type === 'system' && a.metadata?.source === 'custom_field') return false
         return true
       })
-      setActivities(filtered)
+      // Mensagem otimista (a que acabou de ser digitada e ainda está a caminho do
+      // servidor) fica na tela até o envio terminar — a busca periódica pode
+      // chegar no meio e, sem isto, a mensagem piscaria: some e volta.
+      setActivities((prev) => {
+        const pendentes = prev.filter((a) => a.metadata?.is_optimistic)
+        const proxima = pendentes.length ? [...filtered, ...pendentes] : filtered
+        // Nada mudou: devolve o mesmo array e o React não redesenha a conversa.
+        if (JSON.stringify(proxima) === JSON.stringify(prev)) return prev
+        return proxima
+      })
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Erro desconhecido')
     } finally {
@@ -47,6 +57,10 @@ export function useLeadActivities(organizationId: string, leadId: string) {
   useEffect(() => {
     fetchActivities(true)
   }, [fetchActivities])
+
+  // Mensagem que o lead manda aparece sozinha na conversa aberta, sem recarregar
+  // (ver useAtualizacaoPeriodica — é o que substitui o Pusher, que está fora).
+  useAtualizacaoPeriodica(() => fetchActivities(false), 4000, { ativo: !!leadId })
 
   // Realtime via Pusher
   usePusherChannel(`lead-${leadId}`, {
@@ -121,7 +135,11 @@ export function useLeadActivities(organizationId: string, leadId: string) {
         })
       }
 
-      // Remove optimistic, realtime vai trazer o real
+      // Busca a mensagem real ANTES de tirar a otimista. Antes a otimista era
+      // removida esperando o tempo real trazer a verdadeira — e com o tempo real
+      // fora do ar, a mensagem que a pessoa acabou de mandar SUMIA da tela até
+      // recarregar a página.
+      await fetchActivities(false)
       setActivities((prev) => prev.filter((a) => a.id !== tempId))
     } catch (err) {
       // Revert optimistic on error
@@ -206,6 +224,8 @@ export function useLeadActivities(organizationId: string, leadId: string) {
         })
       }
 
+      // Mesmo motivo do envio de texto: a real primeiro, a otimista depois.
+      await fetchActivities(false)
       setActivities((prev) => prev.filter((a) => a.id !== tempId))
     } catch (err) {
       setActivities((prev) => prev.filter((a) => a.id !== tempId))

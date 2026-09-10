@@ -21,9 +21,8 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { SpeakerHigh, SpeakerSlash } from '@phosphor-icons/react'
-import { usePusherChannel } from '@/hooks/usePusher'
 import { useAuth } from '@/hooks'
-import { channels, events } from '@/lib/realtime'
+import { useAtualizacaoPeriodica } from '@/hooks/useAtualizacaoPeriodica'
 
 const CHAVE_PREFERENCIA = 'crm:som-novo-lead'
 
@@ -138,10 +137,56 @@ export default function SomNovoLead() {
     }
   }, [ligado])
 
-  usePusherChannel(organizationId ? channels.orgLeads(organizationId) : '', {
-    [events.LEAD_CREATED]: () => avisar(PLIN_LEAD_NOVO),
-    [events.LEAD_REPLIED_AUTOMATION]: () => avisar(TOQUE_RESPOSTA),
-  })
+  /*
+   * De onde vêm os avisos.
+   *
+   * Antes era evento do Pusher — e o app do Pusher configurado não existe mais,
+   * então nenhum som tocou em produção, nunca. Agora o navegador pergunta ao
+   * servidor a cada 10 segundos o que aconteceu desde a última vez
+   * (/api/avisos).
+   *
+   * Continua perguntando com a aba escondida (`mesmoEscondido`): som existe
+   * justamente pra avisar quem não está olhando. O navegador desacelera timer de
+   * aba em segundo plano pra ~1 por minuto depois de um tempo — o aviso chega
+   * no máximo um minuto atrasado, o que pra "tem lead novo" está ótimo.
+   */
+  const cursor = useRef<string | null>(null)
+  const jaAvisados = useRef<Set<string>>(new Set())
+
+  const checar = useCallback(async () => {
+    try {
+      const url = cursor.current ? `/api/avisos?desde=${encodeURIComponent(cursor.current)}` : '/api/avisos'
+      const res = await fetch(url)
+      if (!res.ok) return
+      const { agora, novos_leads, respostas_automacao } = await res.json()
+
+      // O servidor devolve com uma folga de 1 minuto (ver a rota), então o mesmo
+      // item pode vir de novo — aqui ele só toca uma vez.
+      const novidade = (itens: { id: string }[], prefixo: string) =>
+        (itens || []).filter((i) => {
+          const chave = prefixo + i.id
+          if (jaAvisados.current.has(chave)) return false
+          jaAvisados.current.add(chave)
+          return true
+        })
+
+      const primeiraVez = cursor.current === null
+      const respostas = novidade(respostas_automacao, 'r:')
+      const novos = novidade(novos_leads, 'l:')
+      cursor.current = agora
+
+      if (primeiraVez) return // só marcou o ponto de partida
+      // Resposta à automação primeiro: é a mais urgente, e tocar os dois juntos
+      // embolaria o som grande no pequeno.
+      if (respostas.length > 0) avisar(TOQUE_RESPOSTA)
+      else if (novos.length > 0) avisar(PLIN_LEAD_NOVO)
+    } catch {
+      /* rede caiu — a próxima checagem tenta de novo */
+    }
+  }, [avisar])
+
+  useEffect(() => { if (organizationId) checar() }, [organizationId, checar])
+  useAtualizacaoPeriodica(checar, 10000, { ativo: !!organizationId, mesmoEscondido: true })
 
   function alternar() {
     const novo = !ligado
