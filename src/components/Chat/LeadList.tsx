@@ -65,6 +65,41 @@ interface ContextMenuState {
   lead: LeadWithOwner | null
 }
 
+/**
+ * Dias sem nenhuma mensagem depois dos quais uma conversa IMPORTADA sai da lista.
+ *
+ * Vale só pra conversa que veio da importação do WhatsApp e nunca teve mensagem
+ * aqui dentro. O número tem 1.701 conversas no aparelho — 81 com mensagem no
+ * último mês, 870 tão antigas que o WhatsApp nem guarda mais a data. Mostrar
+ * todas transforma a lista de conversas num catálogo de contatos.
+ *
+ * É recorte de TELA: nada é apagado, a busca continua achando todas, e assim
+ * que chegar (ou sair) uma mensagem a conversa volta pra lista pra sempre.
+ */
+const DIAS_CONVERSA_IMPORTADA = 30
+
+/**
+ * Esta conversa aparece na lista?
+ *
+ * Três casos, nesta ordem:
+ *   1. Sem `last_activity_type` — contato que nunca foi conversa (a planilha de
+ *      644 importada por CSV). Nunca aparece; a busca acha.
+ *   2. Com mensagem registrada aqui — sempre aparece, por mais antiga que seja.
+ *      É conversa de verdade e não some nunca.
+ *   3. Importada do WhatsApp e ainda sem mensagem aqui — aparece enquanto for
+ *      recente. É o catálogo antigo do aparelho, que não pode enterrar o resto.
+ */
+function ehConversaVisivel(lead: LeadWithOwner): boolean {
+  if (!lead.last_activity_type) return false
+
+  const temMensagemAqui = !!lead.last_message_content || !!lead.last_message_sender_type
+  if (temMensagemAqui) return true
+
+  if (!lead.last_activity_at) return false
+  const limite = Date.now() - DIAS_CONVERSA_IMPORTADA * 24 * 60 * 60 * 1000
+  return new Date(lead.last_activity_at).getTime() >= limite
+}
+
 export default function LeadList({
   leads,
   selectedLeadId,
@@ -284,7 +319,7 @@ export default function LeadList({
   // tem conversa impediria justamente isso.
   const nonArchivedHits = search.trim()
     ? semArquivados
-    : semArquivados.filter((hit) => !!hit.lead.last_activity_type)
+    : semArquivados.filter((hit) => ehConversaVisivel(hit.lead))
 
   const tabCounts: Record<ChatTab, number> = { all: nonArchivedHits.length, human: 0, urgent: 0 }
   for (const hit of nonArchivedHits) {
