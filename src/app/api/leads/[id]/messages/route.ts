@@ -254,10 +254,16 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
         // (celular brasileiro com e sem o nono dígito). Grava a que deu certo:
         // sem isso, toda mensagem seguinte pra essa pessoa gastaria de novo uma
         // tentativa perdida, e o telefone do lead continuaria errado na tela.
+        // Nunca em grupo, e só se o valor novo for telefone de verdade (só
+        // dígitos): a correção existe pro nono dígito de celular. Um id de grupo
+        // "corrigido" perde o "-group" e o grupo para de receber mensagem — já
+        // aconteceu uma vez.
         if (
           result.recipienteCorrigido &&
           actualLeadId &&
           integrationTyp !== 'instagram_direct' &&
+          !lead?.isGroup &&
+          /^\d{10,15}$/.test(result.recipienteCorrigido) &&
           result.recipienteCorrigido !== phone
         ) {
           metadata.telefone_corrigido = result.recipienteCorrigido

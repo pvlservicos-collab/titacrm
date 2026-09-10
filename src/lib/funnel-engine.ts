@@ -113,7 +113,12 @@ async function sendMessageBlock(execution: { id: string; funnelId: string; organ
       // Mesma correção do envio manual: se o canal só conseguiu entregar na
       // outra forma do número (com/sem nono dígito), o lead passa a guardar a
       // que funciona.
-      if (result.recipienteCorrigido && result.recipienteCorrigido !== lead.phone) {
+      // Só telefone de verdade (ver a mesma trava no envio manual).
+      if (
+        result.recipienteCorrigido &&
+        /^\d{10,15}$/.test(result.recipienteCorrigido) &&
+        result.recipienteCorrigido !== lead.phone
+      ) {
         metadata.telefone_corrigido = result.recipienteCorrigido
         try {
           await db.update(leads).set({ phone: result.recipienteCorrigido }).where(eq(leads.id, lead.id))

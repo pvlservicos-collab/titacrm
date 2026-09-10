@@ -135,8 +135,22 @@ async function chamar(
   return data
 }
 
-/** Telefone como a Z-API espera: só dígitos, com DDI. Grupo usa o id do grupo. */
+/**
+ * Id de grupo ("120363428258502833-group"), e não telefone.
+ *
+ * A distinção importa porque tudo que mexe em telefone aqui — tirar máscara,
+ * acrescentar o nono dígito, "corrigir" — destrói um id de grupo. Foi o que
+ * aconteceu: o corretor de número tirou o "-group" do "Lead Magnet e CRM", o
+ * registro ficou como "120363428258502833", e a partir daí toda mensagem que
+ * chegava do grupo (com o sufixo) não casava com nada e era descartada.
+ */
+export function ehIdDeGrupo(valor: string): boolean {
+  return /-group$/i.test(valor.trim()) || /[a-z]/i.test(valor)
+}
+
+/** Destinatário como a Z-API espera: telefone só com dígitos; grupo intacto. */
 function destinatario(phone: string): string {
+  if (ehIdDeGrupo(phone)) return phone.trim()
   return phone.replace(/\D/g, '')
 }
 
@@ -165,6 +179,14 @@ async function comCorrecaoDeNumero(
   phone: string,
   enviar: (numero: string) => Promise<any>
 ): Promise<EnvioZapi> {
+  // Grupo: uma tentativa só, com o id exatamente como está. Não existe "outra
+  // forma" de um id de grupo, e devolver algo diferente em `telefone` faria
+  // quem chamou gravar esse algo diferente no lugar do id verdadeiro.
+  if (ehIdDeGrupo(phone)) {
+    const id = phone.trim()
+    return { data: await enviar(id), telefone: id }
+  }
+
   const formas = telefoneVariantes(phone)
   const tentativas = formas.length > 0 ? formas : [destinatario(phone)]
 
