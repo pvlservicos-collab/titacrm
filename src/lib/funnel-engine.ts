@@ -5,7 +5,7 @@ import {
 } from '@/lib/schema'
 import { eq, and, lte } from 'drizzle-orm'
 import { publishEvent, channels, events } from '@/lib/realtime'
-import { sendWhatsAppMessage } from '@/lib/whatsapp'
+import { getAutomationAdapter } from '@/lib/channels/registry'
 import { randomBytes } from 'crypto'
 
 const MAX_STEPS_PER_RUN = 25
@@ -98,13 +98,23 @@ async function sendMessageBlock(execution: { id: string; funnelId: string; organ
     metadata.send_status = 'failed'
     metadata.send_error = 'Lead sem telefone cadastrado.'
   } else {
+    // Disparo de funil sai SEMPRE pelo canal de automação (Z-API), nunca pelo
+    // canal por onde o lead falou. Antes isto chamava a Cloud API direto: além de
+    // amarrar a automação a um provedor, era o motivo de o primeiro contato não
+    // sair — a API oficial exige template aprovado pra iniciar conversa, e o funil
+    // existe justamente pra iniciar conversa.
+    const adapter = getAutomationAdapter()
     try {
-      const result = await sendWhatsAppMessage(execution.organizationId, lead.phone, content)
-      metadata.whatsapp_message_id = result?.messages?.[0]?.id
+      const result = await adapter.sendText(execution.organizationId, null, lead.phone, content)
+      if (result.externalId) metadata[adapter.metadataIdKey] = result.externalId
+      metadata.channel = 'automacao'
       metadata.send_status = 'sent'
     } catch (err: any) {
       metadata.send_status = 'failed'
       metadata.send_error = err.message || 'Erro ao enviar mensagem.'
+      // Falha de disparo automático não tem agente olhando a tela na hora — sem
+      // este log ela só existiria dentro de lead_activities.metadata.
+      console.error(`[funnel] falha ao disparar mensagem para o lead ${lead.id}:`, err)
     }
   }
 

@@ -138,6 +138,7 @@ export async function processEvolutionMessage(
     .limit(1)
 
   // Find or create lead by phone
+  let leadCriadoAgora = false
   let [lead] = await db
     .select({ id: leads.id, title: leads.title, phone: leads.phone })
     .from(leads)
@@ -179,6 +180,7 @@ export async function processEvolutionMessage(
         .returning({ id: leads.id, title: leads.title, phone: leads.phone })
 
       lead = newLead
+      leadCriadoAgora = true
 
       // Só busca a foto num lead recém-criado (primeira mensagem do contato) — não
       // faz sentido rebuscar a cada mensagem. fetchEvolutionProfilePicture já engole
@@ -311,6 +313,11 @@ export async function processEvolutionMessage(
   await db.update(leads).set(leadUpdates).where(eq(leads.id, lead.id))
 
   await publishEvent(channels.leadActivities(lead.id), events.ACTIVITY_CREATED, { id: activity.id })
+  // Contato desconhecido que mandou mensagem é lead novo — e as telas abertas
+  // (e o aviso sonoro) precisam saber disso, não só que "algo mudou".
+  if (leadCriadoAgora) {
+    await publishEvent(channels.orgLeads(orgId), events.LEAD_CREATED, { id: lead.id })
+  }
   await publishEvent(channels.orgLeads(orgId), events.LEAD_UPDATED, { id: lead.id })
 
   if (!isFromMe) {

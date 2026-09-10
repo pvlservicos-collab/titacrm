@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { useAuth } from '@/hooks'
 import { EMPTY_METRICS, type DashboardMetrics, type TopFollowUpMessage } from '@/components/Dashboard/mockData'
 import LoadingSpinner from '@/components/Shared/LoadingSpinner'
+import RelatorioDiario from '@/components/Dashboard/RelatorioDiario'
 import BusinessFlowDiagram from '@/components/Dashboard/BusinessFlowDiagram'
 import ChannelStatsSection from '@/components/Dashboard/ChannelStatsSection'
 import LeadsByDayChart from '@/components/Dashboard/LeadsByDayChart'
@@ -65,6 +66,9 @@ export default function InicioPage() {
                         {metricsLoading ? ' — carregando…' : ` — últimos ${metrics.periodo_dias} dias`}.
                     </p>
                 </div>
+
+                {/* Primeiro de tudo: é o que o time lê de manhã e cola no grupo. */}
+                <RelatorioDiario />
 
                 <BusinessFlowDiagram />
                 <ChannelStatsSection totals={metrics.fontes} />

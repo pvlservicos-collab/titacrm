@@ -1,0 +1,364 @@
+/**
+ * Cliente da Z-API — o canal por onde SAI todo disparo e toda automação.
+ *
+ * Z-API é WhatsApp não oficial: uma sessão de WhatsApp Web conectada por QR code,
+ * igual à Evolution que já existe aqui. As duas convivem de propósito — a Evolution
+ * fica com um número (conversa manual) e a Z-API com o outro, e é a Z-API que o
+ * funil e os disparos usam sempre (ver getAutomationAdapter em channels/registry).
+ *
+ * Diferenças que moldaram este arquivo:
+ *
+ *   - Autenticação em até TRÊS pedaços: instanceId e instanceToken vão na própria
+ *     URL, e o Client-Token (segurança da CONTA, não da instância) vai no cabeçalho
+ *     — obrigatório só se a conta tiver a trava de segurança ligada no painel.
+ *   - Mídia recebida vem em URL pública, mas a Z-API só guarda o arquivo por
+ *     30 DIAS. Por isso `rehospedarMidia`: sem re-hospedar, toda foto do chat
+ *     vira link quebrado um mês depois — e ninguém repara até precisar dela.
+ *   - Não existe endpoint de histórico. `buscarConversas` (/chats) traz a LISTA
+ *     de conversas, sem mensagem nenhuma; é o máximo que dá pra importar.
+ */
+import { db } from './db'
+import { integrations, integrationSecrets } from './schema'
+import { eq, and, isNull } from 'drizzle-orm'
+
+export const ZAPI_INTEGRATION_TYPE = 'whatsapp_zapi'
+export const ZAPI_INTEGRATION_NAME = 'WhatsApp Z-API'
+
+const BASE = 'https://api.z-api.io/instances'
+
+export interface ZapiCredentials {
+  integrationId: string
+  instanceId: string
+  instanceToken: string
+  /**
+   * Token de segurança da CONTA (Admin → Segurança no painel da Z-API).
+   *
+   * Opcional de propósito: a Z-API só exige esse cabeçalho quando a conta tem a
+   * trava de segurança ligada. Exigir sempre — como a documentação dá a entender
+   * — impediria de configurar uma conta que ainda não ativou a trava, que é o
+   * estado padrão de quem acabou de criar a instância.
+   */
+  clientToken: string | null
+}
+
+export async function getZapiCredentials(organizationId: string): Promise<ZapiCredentials> {
+  const [integration] = await db
+    .select({ id: integrations.id, config: integrations.config })
+    .from(integrations)
+    .where(and(
+      eq(integrations.organizationId, organizationId),
+      eq(integrations.type, ZAPI_INTEGRATION_TYPE),
+      isNull(integrations.deletedAt)
+    ))
+    .limit(1)
+
+  if (!integration) throw new Error('Integração Z-API não configurada.')
+
+  const [secretRow] = await db
+    .select({ secret: integrationSecrets.secret })
+    .from(integrationSecrets)
+    .where(eq(integrationSecrets.integrationId, integration.id))
+    .limit(1)
+
+  const config = (integration.config ?? {}) as { instance_id?: string }
+  const secret = (secretRow?.secret ?? {}) as { instance_token?: string; client_token?: string }
+
+  if (!config.instance_id || !secret.instance_token) {
+    throw new Error('Credenciais da Z-API incompletas: falta o ID ou o token da instância.')
+  }
+
+  return {
+    integrationId: integration.id,
+    instanceId: config.instance_id,
+    instanceToken: secret.instance_token,
+    clientToken: secret.client_token || null,
+  }
+}
+
+/** Existe integração Z-API configurada nesta organização? Não lança. */
+export async function temZapiConfigurado(organizationId: string): Promise<boolean> {
+  try {
+    await getZapiCredentials(organizationId)
+    return true
+  } catch {
+    return false
+  }
+}
+
+function url(creds: ZapiCredentials, caminho: string): string {
+  return `${BASE}/${creds.instanceId}/token/${creds.instanceToken}/${caminho}`
+}
+
+/**
+ * Erro da Z-API em texto legível.
+ *
+ * Ela responde o motivo em `error` ou `message` conforme o endpoint, e às vezes
+ * só devolve HTML de proxy. Sem isto, uma instância desconectada virava
+ * "Falha ao enviar" genérico no `lead_activities.metadata` — o mesmo buraco que
+ * a Evolution já teve (ver extractEvolutionError).
+ */
+function erroZapi(data: any, texto: string, status: number, fallback: string): string {
+  if (typeof data?.error === 'string' && data.error) return data.error
+  if (typeof data?.message === 'string' && data.message) return data.message
+  if (texto && texto.length < 200 && !texto.trim().startsWith('<')) return texto
+  return `${fallback} (HTTP ${status})`
+}
+
+async function chamar(
+  creds: ZapiCredentials,
+  caminho: string,
+  init: { method?: string; body?: any } = {},
+  fallbackErro = 'Falha na chamada à Z-API'
+): Promise<any> {
+  const res = await fetch(url(creds, caminho), {
+    method: init.method || 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      // Só vai quando existe: com a trava de segurança ligada na conta, a
+      // ausência dele dá 403 em tudo; com a trava desligada, mandar um valor
+      // vazio também é recusado. Então ou manda certo, ou não manda.
+      ...(creds.clientToken ? { 'Client-Token': creds.clientToken } : {}),
+    },
+    ...(init.body !== undefined ? { body: JSON.stringify(init.body) } : {}),
+  })
+
+  const texto = await res.text()
+  let data: any = null
+  try {
+    data = texto ? JSON.parse(texto) : null
+  } catch {
+    data = null
+  }
+
+  if (!res.ok) throw new Error(erroZapi(data, texto, res.status, fallbackErro))
+  return data
+}
+
+/** Telefone como a Z-API espera: só dígitos, com DDI. Grupo usa o id do grupo. */
+function destinatario(phone: string): string {
+  return phone.replace(/\D/g, '')
+}
+
+/* ── Envio ────────────────────────────────────────────────────────────────── */
+
+export async function sendZapiMessage(organizationId: string, phone: string, text: string) {
+  const creds = await getZapiCredentials(organizationId)
+  return chamar(
+    creds,
+    'send-text',
+    { body: { phone: destinatario(phone), message: text } },
+    'Falha ao enviar mensagem pela Z-API'
+  )
+}
+
+/**
+ * Mídia por link público — a Z-API baixa da URL que a gente manda.
+ *
+ * O CRM já hospeda o que o agente anexa no Blob da Vercel, então o link existe e
+ * é estável. Documento é o único que leva a extensão no caminho da rota
+ * (`send-document/pdf`): é dela que a Z-API tira o tipo do arquivo, então uma
+ * extensão errada chega como arquivo corrompido do outro lado.
+ */
+export async function sendZapiMedia(
+  organizationId: string,
+  phone: string,
+  mediaType: string,
+  mediaUrl: string,
+  caption?: string,
+  fileName?: string
+) {
+  const creds = await getZapiCredentials(organizationId)
+  const to = destinatario(phone)
+
+  if (mediaType === 'image' || mediaType === 'sticker') {
+    return chamar(creds, 'send-image', {
+      body: { phone: to, image: mediaUrl, ...(caption ? { caption } : {}) },
+    }, 'Falha ao enviar imagem pela Z-API')
+  }
+
+  if (mediaType === 'video') {
+    return chamar(creds, 'send-video', {
+      body: { phone: to, video: mediaUrl, ...(caption ? { caption } : {}) },
+    }, 'Falha ao enviar vídeo pela Z-API')
+  }
+
+  if (mediaType === 'audio') {
+    return chamar(creds, 'send-audio', {
+      body: { phone: to, audio: mediaUrl },
+    }, 'Falha ao enviar áudio pela Z-API')
+  }
+
+  const extensao = extensaoDe(fileName, mediaUrl)
+  return chamar(creds, `send-document/${extensao}`, {
+    body: { phone: to, document: mediaUrl, fileName: fileName || `arquivo.${extensao}` },
+  }, 'Falha ao enviar documento pela Z-API')
+}
+
+/** Extensão do arquivo, do nome ou da URL. "bin" quando não dá pra saber. */
+function extensaoDe(fileName?: string, mediaUrl?: string): string {
+  const doNome = fileName?.split('.').pop()
+  if (doNome && /^[a-z0-9]{1,5}$/i.test(doNome)) return doNome.toLowerCase()
+  const semQuery = (mediaUrl || '').split('?')[0]
+  const daUrl = semQuery.split('.').pop()
+  if (daUrl && /^[a-z0-9]{1,5}$/i.test(daUrl)) return daUrl.toLowerCase()
+  return 'bin'
+}
+
+/** Apaga "para todos" — `owner` diz se a mensagem era nossa. */
+export async function deleteZapiMessage(
+  organizationId: string,
+  phone: string,
+  messageId: string,
+  owner = true
+) {
+  const creds = await getZapiCredentials(organizationId)
+  const params = new URLSearchParams({
+    messageId,
+    phone: destinatario(phone),
+    owner: String(owner),
+  })
+  return chamar(creds, `messages?${params}`, { method: 'DELETE' }, 'Falha ao apagar mensagem pela Z-API')
+}
+
+/* ── Instância ────────────────────────────────────────────────────────────── */
+
+export interface ZapiStatus {
+  connected: boolean
+  session?: string
+  smartphoneConnected?: boolean
+  error?: string | null
+}
+
+export async function fetchZapiStatus(organizationId: string): Promise<ZapiStatus> {
+  const creds = await getZapiCredentials(organizationId)
+  const data = await chamar(creds, 'status', { method: 'GET' }, 'Falha ao consultar o status da Z-API')
+  return {
+    connected: !!data?.connected,
+    session: data?.session,
+    smartphoneConnected: data?.smartphoneConnected,
+    error: data?.error ?? null,
+  }
+}
+
+/** QR code em imagem (data URI base64) pra parear o número. */
+export async function fetchZapiQrCode(organizationId: string): Promise<string | null> {
+  const creds = await getZapiCredentials(organizationId)
+  const data = await chamar(creds, 'qr-code/image', { method: 'GET' }, 'Falha ao gerar o QR code da Z-API')
+  return data?.value ?? null
+}
+
+export async function disconnectZapi(organizationId: string) {
+  const creds = await getZapiCredentials(organizationId)
+  return chamar(creds, 'disconnect', { method: 'GET' }, 'Falha ao desconectar a Z-API')
+}
+
+/**
+ * Aponta TODOS os webhooks da instância pra uma URL só.
+ *
+ * A Z-API tem um webhook por evento (recebida, status, conectado, desconectado) e
+ * configurá-los na mão, um a um no painel dela, é onde alguém esquece justamente o
+ * de mensagem recebida. Este endpoint grava os quatro de uma vez, e o nosso
+ * handler separa os eventos pelo corpo.
+ */
+export async function updateZapiWebhooks(organizationId: string, webhookUrl: string) {
+  const creds = await getZapiCredentials(organizationId)
+  return chamar(creds, 'update-every-webhooks', {
+    method: 'PUT',
+    body: { value: webhookUrl },
+  }, 'Falha ao configurar os webhooks da Z-API')
+}
+
+/* ── Conversas ────────────────────────────────────────────────────────────── */
+
+export interface ZapiChat {
+  phone: string
+  name?: string | null
+  unread?: string | number
+  lastMessageTime?: string | number
+  isGroup?: boolean
+  archived?: string | boolean
+}
+
+/**
+ * Lista de conversas da instância — SEM mensagens.
+ *
+ * A Z-API não tem endpoint de histórico e diz explicitamente que não guarda
+ * mensagens ("são deletadas após envio"). Então isto aqui é o teto do que dá pra
+ * importar de uma conta já em uso: quem é cada conversa, não o que foi dito nela.
+ * O histórico do CRM começa no momento em que o webhook é ligado.
+ */
+export async function fetchZapiChats(
+  organizationId: string,
+  page = 1,
+  pageSize = 50
+): Promise<ZapiChat[]> {
+  const creds = await getZapiCredentials(organizationId)
+  const data = await chamar(
+    creds,
+    `chats?page=${page}&pageSize=${pageSize}`,
+    { method: 'GET' },
+    'Falha ao listar as conversas da Z-API'
+  )
+  return Array.isArray(data) ? data : (data?.chats ?? [])
+}
+
+/* ── Mídia ────────────────────────────────────────────────────────────────── */
+
+/**
+ * Baixa a mídia da Z-API e re-hospeda num link estável.
+ *
+ * A URL que chega no webhook é pública (ao contrário da Evolution, que manda um
+ * *.enc criptografado), mas some depois de 30 dias — a própria documentação diz
+ * isso. Guardar a URL original faria toda foto e todo áudio do chat morrerem em
+ * silêncio um mês depois, que é o pior tipo de perda: a conversa continua lá,
+ * só que furada.
+ */
+export async function rehospedarMidiaZapi(
+  organizationId: string,
+  mediaUrl: string,
+  messageId: string
+): Promise<{ url: string; mimetype?: string } | null> {
+  try {
+    const res = await fetch(mediaUrl)
+    if (!res.ok) return null
+
+    const mimetype = res.headers.get('content-type') || 'application/octet-stream'
+    const buffer = Buffer.from(await res.arrayBuffer())
+
+    const { put } = await import('@vercel/blob')
+    const ext = mimetype.split('/')[1]?.split(';')[0] || 'bin'
+    const blob = await put(`zapi-media/${organizationId}/${messageId}.${ext}`, buffer, {
+      access: 'public',
+      contentType: mimetype,
+    })
+
+    return { url: blob.url, mimetype }
+  } catch (err) {
+    console.error('[zapi] falha ao re-hospedar mídia', err)
+    return null
+  }
+}
+
+/** Foto de perfil do contato, re-hospedada — mesmo motivo de expiração acima. */
+export async function rehospedarFotoPerfil(
+  organizationId: string,
+  fotoUrl: string,
+  phone: string
+): Promise<string | null> {
+  try {
+    const res = await fetch(fotoUrl)
+    if (!res.ok) return null
+    const mimetype = res.headers.get('content-type') || 'image/jpeg'
+    const buffer = Buffer.from(await res.arrayBuffer())
+    const { put } = await import('@vercel/blob')
+    const ext = mimetype.split('/')[1]?.split(';')[0] || 'jpg'
+    const blob = await put(`zapi-avatars/${organizationId}/${phone}-${Date.now()}.${ext}`, buffer, {
+      access: 'public',
+      contentType: mimetype,
+    })
+    return blob.url
+  } catch (err) {
+    console.error('[zapi] falha ao re-hospedar foto de perfil', err)
+    return null
+  }
+}

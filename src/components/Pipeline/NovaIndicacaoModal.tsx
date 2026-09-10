@@ -17,9 +17,10 @@
  * (src/lib/api-auth.ts), então não há chave de API envolvida aqui.
  */
 
-import { useState } from 'react'
-import { X, UserPlus } from '@phosphor-icons/react'
+import { useMemo, useState } from 'react'
+import { X, UserPlus, Plus, Trash } from '@phosphor-icons/react'
 import { useAuth } from '@/hooks'
+import { camposAdicionaveis } from '@/lib/leadSources'
 
 interface Props {
   onClose: () => void
@@ -40,6 +41,24 @@ export default function NovaIndicacaoModal({ onClose, onCreated }: Props) {
   const [salvando, setSalvando] = useState(false)
   const [erro, setErro] = useState<string | null>(null)
 
+  /**
+   * Campos que a pessoa acrescentou à mão.
+   *
+   * O catálogo sai das outras fontes (camposAdicionaveis), então o que for
+   * digitado aqui cai na MESMA chave que a Agenda e o site usam — "Área de
+   * atuação" digitada vira `area`, igual à do quiz. Se fosse lista própria,
+   * daria dois campos com o mesmo nome e conteúdos que nunca se encontram.
+   */
+  const [extras, setExtras] = useState<
+    { key: string; label: string; valor: string; fontesTexto: string }[]
+  >([])
+  const [listaAberta, setListaAberta] = useState(false)
+
+  const disponiveis = useMemo(
+    () => camposAdicionaveis(extras.map((c) => c.key)),
+    [extras]
+  )
+
   const set = (campo: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) =>
     setForm((atual) => ({ ...atual, [campo]: e.target.value }))
 
@@ -54,10 +73,13 @@ export default function NovaIndicacaoModal({ onClose, onCreated }: Props) {
     setSalvando(true)
     setErro(null)
     try {
+      const camposExtras = Object.fromEntries(
+        extras.filter((c) => c.valor.trim()).map((c) => [c.key, c.valor.trim()])
+      )
       const res = await fetch('/api/ingest/leads/indicacao', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...form, cadastrado_por: profileName || null }),
+        body: JSON.stringify({ ...form, ...camposExtras, cadastrado_por: profileName || null }),
       })
       const corpo = await res.json().catch(() => ({}))
       if (!res.ok) throw new Error(corpo?.error || `Erro ${res.status}`)
@@ -136,6 +158,70 @@ export default function NovaIndicacaoModal({ onClose, onCreated }: Props) {
               className="field resize-none"
             />
           </Campo>
+
+          {extras.map((campo, i) => (
+            <Campo key={campo.key} label={campo.label} dica={`Mesmo campo de: ${campo.fontesTexto}`}>
+              <div className="flex items-center gap-1.5">
+                <input
+                  autoFocus
+                  value={campo.valor}
+                  onChange={(e) =>
+                    setExtras((atual) =>
+                      atual.map((c, j) => (j === i ? { ...c, valor: e.target.value } : c))
+                    )
+                  }
+                  className="field flex-1"
+                />
+                <button
+                  type="button"
+                  onClick={() => setExtras((atual) => atual.filter((_, j) => j !== i))}
+                  className="btn-icon w-8 h-8 flex-shrink-0"
+                  aria-label={`Remover ${campo.label}`}
+                >
+                  <Trash size={14} />
+                </button>
+              </div>
+            </Campo>
+          ))}
+
+          <div className="relative">
+            <button
+              type="button"
+              onClick={() => setListaAberta((v) => !v)}
+              className="btn btn-outline btn-sm w-full"
+              disabled={disponiveis.length === 0}
+            >
+              <Plus size={13} weight="bold" />
+              {disponiveis.length === 0 ? 'Todos os campos já adicionados' : 'Adicionar campo'}
+            </button>
+
+            {listaAberta && disponiveis.length > 0 && (
+              <>
+                {/* Clicar fora fecha — sem isso a lista fica presa por cima do
+                    formulário e atrapalha quem só queria continuar digitando. */}
+                <div className="fixed inset-0 z-10" onClick={() => setListaAberta(false)} />
+                <div className="absolute z-20 left-0 right-0 bottom-full mb-1 panel rounded-xl max-h-[240px] overflow-y-auto scrollbar-hide py-1">
+                  {disponiveis.map((campo) => (
+                    <button
+                      key={campo.key}
+                      type="button"
+                      onClick={() => {
+                        setExtras((atual) => [
+                          ...atual,
+                          { key: campo.key, label: campo.label, valor: '', fontesTexto: campo.fontes.join(', ') },
+                        ])
+                        setListaAberta(false)
+                      }}
+                      className="w-full text-left px-3 py-1.5 hover:bg-white/5 transition-colors"
+                    >
+                      <span className="block text-xs text-ink">{campo.label}</span>
+                      <span className="block text-[10px] text-muted">{campo.fontes.join(', ')}</span>
+                    </button>
+                  ))}
+                </div>
+              </>
+            )}
+          </div>
 
           {erro && (
             <p className="text-xs text-red-400 bg-red-500/10 border border-red-500/25 rounded-lg px-3 py-2">

@@ -444,8 +444,30 @@ const indicacao: LeadSourceDef = {
       indicado_por: trimmed(body.indicado_por),
       observacao: trimmed(body.observacao),
       cadastrado_por: trimmed(body.cadastrado_por),
+      // O formulário deixa acrescentar qualquer campo que exista em outra fonte
+      // (ver CAMPOS_ADICIONAVEIS). Guardar o que veio, em vez de uma lista fixa,
+      // é o que faz esse botão valer alguma coisa: um campo novo lá não precisa
+      // de mudança aqui pra sobreviver à gravação.
+      ...camposExtras(body),
     },
   }),
+}
+
+/** Campos que já viram coluna ou já são tratados por nome — não vão pro resto. */
+const CAMPOS_PROPRIOS_INDICACAO = new Set([
+  'source', 'key', 'token', 'resync', 'id',
+  'nome', 'whatsapp', 'email', 'instagram',
+  'indicado_por', 'observacao', 'cadastrado_por',
+])
+
+function camposExtras(body: Record<string, any>): Record<string, unknown> {
+  const extras: Record<string, unknown> = {}
+  for (const [chave, valor] of Object.entries(body)) {
+    if (CAMPOS_PROPRIOS_INDICACAO.has(chave)) continue
+    const texto = trimmed(valor)
+    if (texto) extras[chave] = texto
+  }
+  return extras
 }
 
 /* ── Registro ─────────────────────────────────────────────────────────────── */
@@ -468,6 +490,63 @@ export const LEAD_SOURCE_ORDER: LeadSourceKey[] = ['agenda_ascensao', 'site_even
 export const ACQUISITION_SOURCE_ORDER: LeadSourceKey[] = LEAD_SOURCE_ORDER.filter(
   (key) => LEAD_SOURCES[key].isAcquisitionChannel !== false
 )
+
+/**
+ * Colunas que toda fonte guarda por conta própria — não são "campo" que alguém
+ * acrescenta à mão, são estrutura da tabela.
+ */
+const CHAVES_FIXAS = new Set([
+  'name', 'email', 'phone', 'instagram', 'external_id', 'received_at', 'updated_at',
+])
+
+/**
+ * Campos que EXISTEM nas fontes mas não fazem sentido digitados à mão.
+ *
+ * `blocos` é a contagem de blocos da agenda montada e `phase`/`fase` dizem se o
+ * quiz do site foi concluído — os três são consequência do que o sistema
+ * recebeu, não resposta de ninguém. `criado_em` é a data de cadastro na Agenda,
+ * que um lead de indicação simplesmente não tem. Oferecer os quatro no botão
+ * "Adicionar campo" só convidaria a preencher com palpite.
+ */
+const CHAVES_DERIVADAS = new Set(['phase', 'fase', 'blocos', 'criado_em'])
+
+/**
+ * Todo campo que existe em alguma fonte, sem repetir.
+ *
+ * É o catálogo do botão "Adicionar campo" no cadastro manual: em vez de inventar
+ * uma lista nova (que nasceria divergente da planilha no primeiro mês), o
+ * formulário oferece exatamente os campos que as outras fontes já usam. Assim
+ * "Área de atuação" digitada à mão cai na mesma chave `area` que a Agenda manda,
+ * e as duas coisas continuam sendo a mesma coisa.
+ *
+ * `fontes` existe pra tela dizer de onde o campo veio — "Área" sozinho não conta
+ * a quem está preenchendo que aquilo é o mesmo campo do quiz da Agenda.
+ */
+export interface CampoAdicionavel {
+  key: string
+  label: string
+  fontes: string[]
+}
+
+export function camposAdicionaveis(excluir: Iterable<string> = []): CampoAdicionavel[] {
+  const fora = new Set(excluir)
+  const porChave = new Map<string, CampoAdicionavel>()
+
+  for (const chave of LEAD_SOURCE_ORDER) {
+    const def = LEAD_SOURCES[chave]
+    for (const coluna of def.columns) {
+      if (CHAVES_FIXAS.has(coluna.key) || CHAVES_DERIVADAS.has(coluna.key) || fora.has(coluna.key)) continue
+      const atual = porChave.get(coluna.key)
+      if (atual) {
+        if (!atual.fontes.includes(def.label)) atual.fontes.push(def.label)
+        continue
+      }
+      porChave.set(coluna.key, { key: coluna.key, label: coluna.label, fontes: [def.label] })
+    }
+  }
+
+  return [...porChave.values()].sort((a, b) => a.label.localeCompare(b.label, 'pt-BR'))
+}
 
 export function isLeadSourceKey(value: unknown): value is LeadSourceKey {
   return typeof value === 'string' && value in LEAD_SOURCES

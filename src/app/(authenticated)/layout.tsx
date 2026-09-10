@@ -4,6 +4,7 @@ import Navbar from '@/components/Shared/Navbar'
 import { FilterProvider } from '@/contexts/FilterContext'
 import AuthGuard from '@/components/Auth/AuthGuard'
 import InstallAppBanner from '@/components/Shared/InstallAppBanner'
+import SomNovoLead from '@/components/Shared/SomNovoLead'
 
 /**
  * Layout for all authenticated pages (pipeline, chat, settings, etc.)
@@ -38,6 +39,9 @@ export default function AuthenticatedLayout({
                     </main>
                 </div>
                 <InstallAppBanner />
+                {/* Aviso sonoro de lead novo — fica no layout, e não numa página,
+                    porque quem atende passa o dia no Chat ou no Pipeline. */}
+                <SomNovoLead />
             </FilterProvider>
         </AuthGuard>
     )

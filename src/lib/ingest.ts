@@ -38,6 +38,7 @@ import {
   type NormalizedLead,
 } from '@/lib/leadSources'
 import { startFunnelForSource } from '@/lib/funnel-triggers'
+import { publishEvent, channels, events } from '@/lib/realtime'
 
 /**
  * Apelidos aceitos para os campos de contato, na ordem de preferência.
@@ -570,6 +571,15 @@ export async function handleIngest(req: NextRequest, sourceFromPath?: string) {
       } catch (err) {
         console.error('[ingest] log gravado, mas falhou ao criar o lead no CRM:', err)
       }
+    }
+
+    // Avisa as telas abertas que nasceu um lead: a lista do Chat/Pipeline se
+    // atualiza sozinha e o aviso sonoro toca (SomNovoLead). Sem isto, lead
+    // vindo da Agenda ou do site só aparecia pra quem recarregasse a página —
+    // e o "plin" nunca tocaria pro caso que mais importa, que é o lead novo
+    // chegando enquanto o time está com o CRM aberto.
+    if (leadId && leadCreated) {
+      await publishEvent(channels.orgLeads(auth.organizationId), events.LEAD_CREATED, { id: leadId })
     }
 
     // Funil de atendimento — só para lead novo. Sem isso, reenviar o mesmo lead

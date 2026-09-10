@@ -76,6 +76,29 @@ export default function IntegrationsSettingsPage() {
                         </div>
                     </div>
                 </Link>
+                {/* Z-API — canal de disparo e automação */}
+                <Link href="/settings/integrations/zapi" className="block group">
+                    <div className="bg-panel border hover:border-teal-500 border-line rounded-xl p-6 shadow-sm transition-all h-full flex flex-col cursor-pointer min-h-[340px]">
+                        <div className="relative mb-6">
+                            <div className="w-12 h-12 rounded-lg bg-teal-50 flex items-center justify-center">
+                                <WhatsappLogo size={28} weight="fill" className="text-teal-500" />
+                            </div>
+                            <div className="absolute -top-3 -left-2 bg-teal-600 text-white text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider shadow-sm">
+                                Disparos
+                            </div>
+                        </div>
+                        <h2 className="text-lg font-semibold text-ink mb-2 flex items-center gap-2">
+                            <WhatsappLogo size={20} className="text-muted" />
+                            WhatsApp Z-API
+                        </h2>
+                        <p className="text-muted text-sm mb-auto">
+                            Número por QR Code que envia TODO disparo e toda automação do funil — inclusive o primeiro contato, que a API Oficial não permite sem template.
+                        </p>
+                        <div className="flex items-center text-teal-600 font-medium text-sm mt-6 group-hover:text-teal-700">
+                            Configurar <ArrowRight size={16} className="ml-1 transition-transform group-hover:translate-x-1" />
+                        </div>
+                    </div>
+                </Link>
                 {/* WhatsApp Evolution Card */}
                 <Link href="/settings/integrations/whatsapp-evolution" className="block group">
                     <div className="bg-panel border hover:border-purple-500 border-line rounded-xl p-6 shadow-sm transition-all h-full flex flex-col cursor-pointer min-h-[340px]">

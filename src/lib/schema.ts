@@ -227,6 +227,8 @@ export const leadActivities = pgTable('lead_activities', {
     .where(sql`metadata->>'whatsapp_message_id' IS NOT NULL`),
   instagramMsgIdUnique: uniqueIndex('lead_activities_instagram_msgid_unique').on(sql`(metadata->>'instagram_message_id')`)
     .where(sql`metadata->>'instagram_message_id' IS NOT NULL`),
+  zapiMsgIdUnique: uniqueIndex('lead_activities_zapi_msgid_unique').on(sql`(metadata->>'zapi_message_id')`)
+    .where(sql`metadata->>'zapi_message_id' IS NOT NULL`),
 }))
 
 // ── Mensagens Fixadas ─────────────────────────────────────────────────────────

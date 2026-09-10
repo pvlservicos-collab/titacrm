@@ -12,6 +12,7 @@ import { useNotification } from '@/contexts/NotificationContext'
 
 const CHANNEL_LABELS: Record<string, string> = {
   whatsapp_evolution: 'Nº 2 (Evolution)',
+  whatsapp_zapi: 'Z-API',
   whatsapp_cloud_official: 'API Oficial',
 }
 

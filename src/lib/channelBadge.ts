@@ -35,6 +35,8 @@ export function getLeadBadges(lead: LeadWithOwner): LeadBadge[] {
     badges.push({ key: 'instagram', label: 'Instagram', Icon: InstagramLogo, bg: 'rgba(232,62,140,0.18)', fg: '#e83e8c' })
   } else if (type === 'whatsapp_evolution') {
     badges.push({ key: 'evolution', label: 'Nº 2', Icon: Phone, bg: 'rgba(167,139,250,0.2)', fg: '#a78bfa' })
+  } else if (type === 'whatsapp_zapi') {
+    badges.push({ key: 'zapi', label: 'Z-API', Icon: Phone, bg: 'rgba(45,212,191,0.18)', fg: '#2dd4bf' })
   }
 
   return badges

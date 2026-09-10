@@ -1,0 +1,130 @@
+/**
+ * POST /api/integrations/zapi/chats — importa as conversas da instância.
+ *
+ * A Z-API não tem endpoint de histórico e não guarda mensagens, então o máximo
+ * que existe pra trazer de um número já em uso é QUEM são as conversas: nome e
+ * telefone. É isso que este endpoint faz — cria/atualiza um lead por conversa,
+ * sem mensagem nenhuma. O histórico do CRM começa quando o webhook é ligado.
+ *
+ * Não sobrescreve lead que já existe (o nome no CRM costuma ser melhor que o
+ * nome da agenda do celular) e nunca importa grupo, pela mesma razão da entrada
+ * de mensagens: grupo mistura várias pessoas num contato só.
+ */
+import { NextRequest } from 'next/server'
+import { authenticateRequest, apiError } from '@/lib/api-auth'
+import { db } from '@/lib/db'
+import { integrations, leads, pipelineStages } from '@/lib/schema'
+import { and, asc, eq, isNull } from 'drizzle-orm'
+import { isUniqueViolation } from '@/lib/db-helpers'
+import { normalizePhone } from '@/lib/leadSources'
+import { ZAPI_INTEGRATION_TYPE, fetchZapiChats } from '@/lib/zapi'
+
+const PAGINA_TAMANHO = 50
+/** Teto por chamada — a Vercel corta a função em 60s e o resto vem na próxima. */
+const MAX_PAGINAS_POR_CHAMADA = 6
+
+export async function POST(req: NextRequest) {
+  try {
+    const auth = await authenticateRequest(req)
+    const body = await req.json().catch(() => ({}))
+    const paginaInicial = Math.max(1, Number(body?.pagina) || 1)
+
+    const [integration] = await db
+      .select({ id: integrations.id })
+      .from(integrations)
+      .where(and(
+        eq(integrations.organizationId, auth.organizationId),
+        eq(integrations.type, ZAPI_INTEGRATION_TYPE),
+        isNull(integrations.deletedAt)
+      ))
+      .limit(1)
+    if (!integration) return apiError(400, 'Integração Z-API não configurada.')
+
+    const [primeiraEtapa] = await db
+      .select({ id: pipelineStages.id })
+      .from(pipelineStages)
+      .where(and(eq(pipelineStages.organizationId, auth.organizationId), isNull(pipelineStages.deletedAt)))
+      .orderBy(asc(pipelineStages.rank))
+      .limit(1)
+
+    let criados = 0
+    let existentes = 0
+    let grupos = 0
+    let pagina = paginaInicial
+    let acabou = false
+
+    for (let i = 0; i < MAX_PAGINAS_POR_CHAMADA; i++) {
+      const conversas = await fetchZapiChats(auth.organizationId, pagina, PAGINA_TAMANHO)
+      if (conversas.length === 0) {
+        acabou = true
+        break
+      }
+
+      for (const conversa of conversas) {
+        if (conversa.isGroup) {
+          grupos++
+          continue
+        }
+        const phone = normalizePhone(conversa.phone)
+        if (!phone) continue
+
+        const [existente] = await db
+          .select({ id: leads.id })
+          .from(leads)
+          .where(and(
+            eq(leads.organizationId, auth.organizationId),
+            eq(leads.phone, phone),
+            isNull(leads.deletedAt)
+          ))
+          .limit(1)
+
+        if (existente) {
+          existentes++
+          continue
+        }
+
+        try {
+          await db.insert(leads).values({
+            organizationId: auth.organizationId,
+            title: (conversa.name || '').trim() || phone,
+            phone,
+            integrationId: integration.id,
+            stageId: primeiraEtapa?.id ?? null,
+            // A conversa é antiga: usar "agora" faria todas elas irem pro topo da
+            // lista de conversas como se tivessem acabado de chegar.
+            lastActivityAt: horaDaConversa(conversa.lastMessageTime),
+            customAttributes: { lead_source: 'zapi_import' },
+          })
+          criados++
+        } catch (err) {
+          if (!isUniqueViolation(err)) throw err
+          existentes++
+        }
+      }
+
+      if (conversas.length < PAGINA_TAMANHO) {
+        acabou = true
+        break
+      }
+      pagina++
+    }
+
+    return Response.json({
+      criados,
+      existentes,
+      grupos_ignorados: grupos,
+      proxima_pagina: acabou ? null : pagina + 1,
+      fim: acabou,
+    })
+  } catch (err: any) {
+    return apiError(err.status || 500, err.message || 'Erro interno.')
+  }
+}
+
+/** `lastMessageTime` vem em milissegundos (às vezes como string). */
+function horaDaConversa(valor: unknown): Date | null {
+  const n = Number(valor)
+  if (!Number.isFinite(n) || n <= 0) return null
+  const data = new Date(n)
+  return Number.isNaN(data.getTime()) ? null : data
+}
