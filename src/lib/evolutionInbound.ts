@@ -7,6 +7,7 @@ import { dispatchOutboundWebhook } from '@/lib/outbound-webhook'
 import { downloadEvolutionMedia, fetchEvolutionProfilePicture } from '@/lib/evolution'
 import { isUniqueViolation } from '@/lib/db-helpers'
 import { notifyInboundMessage } from '@/lib/push'
+import { avisarGrupoRespostaAutomacao } from '@/lib/avisoGrupo'
 import { telefoneVariantes, telefoneCanonico } from '@/lib/leadSources'
 
 // Processamento de uma mensagem Evolution/Baileys já reconhecida como conteúdo real
@@ -336,6 +337,11 @@ export async function processEvolutionMessage(
       id: lead.id,
       title: lead.title,
     })
+    // Depois de responder o webhook: o aviso é uma chamada a mais pra Z-API e
+    // não pode atrasar (nem derrubar) o registro da mensagem.
+    const idDoLead = lead.id
+    const textoResposta = extracted.text
+    after(() => avisarGrupoRespostaAutomacao(orgId, idDoLead, textoResposta))
   }
   await publishEvent(channels.orgLeads(orgId), events.LEAD_UPDATED, { id: lead.id })
 

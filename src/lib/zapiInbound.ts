@@ -6,6 +6,7 @@ import { publishEvent, channels, events } from '@/lib/realtime'
 import { dispatchOutboundWebhook } from '@/lib/outbound-webhook'
 import { isUniqueViolation } from '@/lib/db-helpers'
 import { notifyInboundMessage } from '@/lib/push'
+import { avisarGrupoRespostaAutomacao } from '@/lib/avisoGrupo'
 import { ZAPI_INTEGRATION_TYPE, rehospedarMidiaZapi, rehospedarFotoPerfil } from '@/lib/zapi'
 import { telefoneVariantes, telefoneCanonico } from '@/lib/leadSources'
 
@@ -432,6 +433,11 @@ export async function processZapiMessage(orgId: string, body: any): Promise<Zapi
       id: lead.id,
       title: lead.title,
     })
+    // Depois de responder o webhook: o aviso é uma chamada a mais pra Z-API e
+    // não pode atrasar (nem derrubar) o registro da mensagem.
+    const idDoLead = lead.id
+    const textoResposta = extraido.text
+    after(() => avisarGrupoRespostaAutomacao(orgId, idDoLead, textoResposta))
   }
   await publishEvent(channels.orgLeads(orgId), events.LEAD_UPDATED, { id: lead.id })
 

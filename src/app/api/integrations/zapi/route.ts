@@ -15,7 +15,7 @@
 import { NextRequest } from 'next/server'
 import { authenticateRequest, apiError, validateRequired } from '@/lib/api-auth'
 import { db } from '@/lib/db'
-import { integrations, integrationSecrets, organizationRoles } from '@/lib/schema'
+import { integrations, integrationSecrets, organizationRoles, leads } from '@/lib/schema'
 import { eq, and, isNull } from 'drizzle-orm'
 import {
   ZAPI_INTEGRATION_TYPE,
@@ -75,10 +75,19 @@ export async function GET(req: NextRequest) {
       }
     }
 
+    // Grupos que existem no CRM (só os importados de propósito) — são as opções
+    // de destino do aviso de resposta.
+    const grupos = await db
+      .select({ id: leads.phone, nome: leads.title })
+      .from(leads)
+      .where(and(eq(leads.organizationId, auth.organizationId), eq(leads.isGroup, true), isNull(leads.deletedAt)))
+
     return Response.json({
       id: integration.id,
       status: integration.status,
       instance_id: (integration.config as any)?.instance_id ?? null,
+      aviso_resposta_grupo: (integration.config as any)?.aviso_resposta_grupo ?? null,
+      grupos,
       // Só diz se existe; o valor nunca volta pro navegador.
       tem_instance_token: !!secret.instance_token,
       tem_client_token: !!secret.client_token,
@@ -108,8 +117,15 @@ export async function POST(req: NextRequest) {
     let integrationId: string
     if (existente) {
       integrationId = existente.id
+      // Mescla, não substitui: a configuração guarda mais que o instance_id
+      // (o grupo do aviso de resposta, por exemplo), e salvar as credenciais de
+      // novo apagava tudo o que não fosse o id.
       await db.update(integrations)
-        .set({ config: { instance_id: instanceId }, status: 'active', updatedAt: new Date() })
+        .set({
+          config: { ...((existente.config as object) || {}), instance_id: instanceId },
+          status: 'active',
+          updatedAt: new Date(),
+        })
         .where(and(eq(integrations.id, integrationId), eq(integrations.organizationId, auth.organizationId)))
     } else {
       const [criada] = await db.insert(integrations).values({
@@ -178,6 +194,20 @@ export async function PUT(req: NextRequest) {
       }
       const resultado = await updateZapiWebhooks(auth.organizationId, url)
       return Response.json({ ok: true, resultado })
+    }
+
+    if (acao === 'aviso') {
+      // `grupo` = id do grupo que recebe o aviso, ou null pra desligar.
+      const integ = await buscarIntegracao(auth.organizationId)
+      if (!integ) return apiError(400, 'Integração Z-API não configurada.')
+      const grupo = typeof body?.grupo === 'string' && body.grupo.trim() ? body.grupo.trim() : null
+      const config = { ...((integ.config as object) || {}) } as Record<string, unknown>
+      if (grupo) config.aviso_resposta_grupo = grupo
+      else delete config.aviso_resposta_grupo
+      await db.update(integrations)
+        .set({ config, updatedAt: new Date() })
+        .where(and(eq(integrations.id, integ.id), eq(integrations.organizationId, auth.organizationId)))
+      return Response.json({ ok: true, aviso_resposta_grupo: grupo })
     }
 
     if (acao === 'desconectar') {

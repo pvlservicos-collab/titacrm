@@ -26,6 +26,8 @@ interface EstadoIntegracao {
   tem_client_token: boolean
   instancia: { connected: boolean; smartphoneConnected?: boolean; error?: string | null } | null
   instancia_erro: string | null
+  aviso_resposta_grupo: string | null
+  grupos: { id: string; nome: string | null }[]
 }
 
 export default function ZapiPage() {
@@ -82,6 +84,22 @@ export default function ZapiPage() {
       avisar('erro', err.message)
     } finally {
       setSalvando(false)
+    }
+  }
+
+  async function definirAviso(grupo: string | null) {
+    try {
+      const res = await fetch('/api/integrations/zapi', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ acao: 'aviso', grupo }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data?.error || 'Falha ao salvar o aviso.')
+      avisar('ok', grupo ? 'Aviso ligado.' : 'Aviso desligado.')
+      await carregar()
+    } catch (err: any) {
+      avisar('erro', err.message)
     }
   }
 
@@ -294,6 +312,31 @@ export default function ZapiPage() {
             </button>
           )}
         </div>
+      </div>
+
+      {/* Aviso no grupo quando o lead responde a automação */}
+      <div className="bg-panel border rounded-xl p-6 mb-6">
+        <h2 className="font-bold text-ink mb-1">Avisar no grupo quando o lead responder a mensagem automática</h2>
+        <p className="text-sm text-muted mb-4">
+          Toda vez que um lead responder a mensagem do funil, sai um recado no grupo escolhido
+          com o nome, o telefone, a fonte, o que ele escreveu e o link da conversa no CRM.
+        </p>
+        <select
+          value={estado?.aviso_resposta_grupo || ''}
+          onChange={(e) => definirAviso(e.target.value || null)}
+          disabled={!temCredenciais}
+          className="field max-w-sm disabled:opacity-40"
+        >
+          <option value="">Desligado</option>
+          {(estado?.grupos || []).map((g) => (
+            <option key={g.id} value={g.id}>{g.nome || g.id}</option>
+          ))}
+        </select>
+        {estado && estado.grupos?.length === 0 && (
+          <p className="text-xs text-muted mt-2">
+            Nenhum grupo importado ainda — o aviso só pode ir para um grupo que exista no CRM.
+          </p>
+        )}
       </div>
 
       {/* Importar conversas */}

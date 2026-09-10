@@ -3,10 +3,11 @@ import {
   leads, leadActivities, messageFunnels, funnelBlocks, funnelConnections,
   funnelExecutions, funnelClickEvents, funnelResponseEvents, leadStageHistory,
 } from '@/lib/schema'
-import { eq, and, lte } from 'drizzle-orm'
+import { eq, and, lte, sql } from 'drizzle-orm'
 import { publishEvent, channels, events } from '@/lib/realtime'
 import { getAutomationAdapter } from '@/lib/channels/registry'
 import { randomBytes } from 'crypto'
+import { isUniqueViolation } from '@/lib/db-helpers'
 
 const MAX_STEPS_PER_RUN = 25
 
@@ -21,7 +22,7 @@ const MAX_STEPS_PER_RUN = 25
  * 'whatsappfm.vercel.app', do projeto de onde este codigo foi copiado, o que
  * mandaria o cliente pra um link de outra aplicacao se as env faltassem.
  */
-function getBaseUrl() {
+export function getBaseUrl() {
   if (process.env.VERCEL_PROJECT_PRODUCTION_URL) return `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`
   if (process.env.VERCEL_URL) return `https://${process.env.VERCEL_URL}`
   if (process.env.NEXT_PUBLIC_APP_URL) return process.env.NEXT_PUBLIC_APP_URL.replace(/\/+$/, '')
@@ -158,13 +159,42 @@ async function sendMessageBlock(execution: { id: string; funnelId: string; organ
     }
   }
 
-  const [activity] = await db.insert(leadActivities).values({
-    organizationId: execution.organizationId,
-    leadId: lead.id,
-    type: 'whatsapp',
-    content,
-    metadata,
-  }).returning({ id: leadActivities.id })
+  /*
+   * A Z-API devolve um "eco" de toda mensagem que enviamos (notifySentByMe),
+   * e o webhook desse eco corre em paralelo com este código. Se ele chegar
+   * primeiro, grava a mensagem com o mesmo zapi_message_id — e este INSERT bate
+   * no índice único e estoura.
+   *
+   * O estouro não era só barulho: a execução do funil travava no meio, e a
+   * mensagem ficava registrada como se um HUMANO tivesse mandado (é assim que o
+   * eco se grava). Aí, quando o lead respondesse, ninguém saberia que era
+   * resposta à automação — nem o som grande, nem o aviso no grupo.
+   *
+   * Então: se o eco já gravou, a linha dele é adotada e recebe os dados do
+   * funil. O resultado fica idêntico, venha quem vier primeiro.
+   */
+  let activity: { id: string }
+  try {
+    ;[activity] = await db.insert(leadActivities).values({
+      organizationId: execution.organizationId,
+      leadId: lead.id,
+      type: 'whatsapp',
+      content,
+      metadata,
+    }).returning({ id: leadActivities.id })
+  } catch (err) {
+    const idExterno = metadata.zapi_message_id
+    if (!isUniqueViolation(err) || !idExterno) throw err
+    const [eco] = await db.select({ id: leadActivities.id, metadata: leadActivities.metadata })
+      .from(leadActivities)
+      .where(sql`${leadActivities.metadata}->>'zapi_message_id' = ${idExterno}`)
+      .limit(1)
+    if (!eco) throw err
+    await db.update(leadActivities)
+      .set({ metadata: { ...(eco.metadata as object), ...metadata } })
+      .where(eq(leadActivities.id, eco.id))
+    activity = { id: eco.id }
+  }
 
   await db.update(leads).set({
     lastMessageContent: content,
@@ -334,12 +364,28 @@ export async function processTick() {
 
   for (const execution of dueWaits) {
     if (!execution.currentBlockId) continue
+
+    /*
+     * Reivindica a execução antes de mexer nela: só segue quem conseguir virar o
+     * status de 'waiting' pra 'running'.
+     *
+     * O tick roda a cada minuto. Se um tick demorar mais que isso, o seguinte
+     * encontra a MESMA espera ainda como 'waiting' — ler e depois atualizar
+     * deixava os dois avançarem, e o lead recebia a mensagem duas vezes. O
+     * UPDATE condicional é atômico no Postgres: só um dos dois ganha.
+     */
+    const [reivindicada] = await db.update(funnelExecutions)
+      .set({ status: 'running', updatedAt: new Date() })
+      .where(and(eq(funnelExecutions.id, execution.id), eq(funnelExecutions.status, 'waiting')))
+      .returning({ id: funnelExecutions.id })
+    if (!reivindicada) continue
+
     const next = await getNextBlock(execution.funnelId, execution.currentBlockId, 'default')
     if (!next) {
       await db.update(funnelExecutions).set({ status: 'completed', updatedAt: new Date() }).where(eq(funnelExecutions.id, execution.id))
       continue
     }
-    await db.update(funnelExecutions).set({ currentBlockId: next.id, status: 'running', updatedAt: new Date() }).where(eq(funnelExecutions.id, execution.id))
+    await db.update(funnelExecutions).set({ currentBlockId: next.id, updatedAt: new Date() }).where(eq(funnelExecutions.id, execution.id))
     await advanceExecution(execution.id)
     processed++
   }
