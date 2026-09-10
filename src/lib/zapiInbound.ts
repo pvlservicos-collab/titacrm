@@ -251,13 +251,9 @@ export async function processZapiMessage(orgId: string, body: any): Promise<Zapi
       lead = novo
       leadCriadoAgora = true
 
-      // Foto de perfil só na criação: rebuscar a cada mensagem gastaria uma
-      // requisição por mensagem pra um dado que quase nunca muda.
-      const foto = body?.senderPhoto || body?.photo
-      if (foto && typeof foto === 'string') {
-        const hospedada = await rehospedarFotoPerfil(orgId, foto, phone)
-        if (hospedada) await db.update(leads).set({ avatarUrl: hospedada }).where(eq(leads.id, lead.id))
-      }
+      // A foto é tratada logo abaixo, num lugar só — e com as travas de grupo e
+      // de fromMe, que é o que faltava aqui e trocou a foto de um grupo pela de
+      // um participante.
     } catch (err) {
       // Duas mensagens quase simultâneas do mesmo número correm o SELECT acima
       // antes de qualquer INSERT commitar. A constraint leads_org_phone_unique
@@ -277,17 +273,26 @@ export async function processZapiMessage(orgId: string, body: any): Promise<Zapi
   }
 
   /*
-   * Foto do contato.
+   * Foto do contato — só da mensagem que ELE mandou, e só em conversa de uma
+   * pessoa só.
    *
-   * Antes só era buscada na criação do lead — então conversa que veio da
-   * importação (que não traz foto) ficava para sempre com a bolinha de inicial,
-   * mesmo depois de a pessoa mandar mensagem com a foto no payload. Agora
-   * qualquer mensagem preenche o que estiver faltando, e só isso: quem já tem
-   * foto não gasta requisição nenhuma.
+   * `senderPhoto` é a foto de QUEM ESCREVEU aquela mensagem, e é aí que mora a
+   * pegadinha que já estragou dois registros aqui:
+   *
+   *   - num GRUPO, quem escreveu é um participante. A foto dele virou a foto do
+   *     grupo "Lead Magnet e CRM" — a conversa passou a ostentar o rosto de uma
+   *     pessoa que é só um dos membros.
+   *   - numa mensagem NOSSA (fromMe, o eco de quem responde pelo celular), quem
+   *     escreveu é a empresa. A foto do negócio viraria a foto do cliente.
+   *
+   * Então: só mensagem que entra (`!isFromMe`), só conversa individual
+   * (`!ehGrupo`), e só quando ainda não há foto — quem já tem não gasta
+   * requisição. É também o único momento em que essa foto existe pra gente: a
+   * listagem de conversas da Z-API não devolve foto nenhuma.
    */
-  const fotoDoPayload = body?.senderPhoto || body?.photo
-  if (!lead.avatarUrl && typeof fotoDoPayload === 'string' && fotoDoPayload) {
-    const hospedada = await rehospedarFotoPerfil(orgId, fotoDoPayload, phone)
+  const fotoDoContato = !isFromMe && !ehGrupo ? (body?.senderPhoto || body?.photo) : null
+  if (!lead.avatarUrl && typeof fotoDoContato === 'string' && fotoDoContato) {
+    const hospedada = await rehospedarFotoPerfil(orgId, fotoDoContato, phone)
     if (hospedada) await db.update(leads).set({ avatarUrl: hospedada }).where(eq(leads.id, lead.id))
   }
 

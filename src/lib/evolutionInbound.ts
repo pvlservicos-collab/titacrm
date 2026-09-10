@@ -191,7 +191,9 @@ export async function processEvolutionMessage(
       // faz sentido rebuscar a cada mensagem. fetchEvolutionProfilePicture já engole
       // qualquer erro e retorna null, então isso nunca derruba o processamento da
       // mensagem em si.
-      const avatarUrl = await fetchEvolutionProfilePicture(orgId, phone)
+      // Grupo não: a foto viria pelo telefone de um participante (mesma
+      // pegadinha que trocou a foto do grupo na Z-API).
+      const avatarUrl = isGroup ? null : await fetchEvolutionProfilePicture(orgId, phone)
       if (avatarUrl) {
         await db.update(leads).set({ avatarUrl }).where(eq(leads.id, lead.id))
       }
