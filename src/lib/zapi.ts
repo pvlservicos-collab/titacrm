@@ -259,12 +259,18 @@ export async function disconnectZapi(organizationId: string) {
  * configurá-los na mão, um a um no painel dela, é onde alguém esquece justamente o
  * de mensagem recebida. Este endpoint grava os quatro de uma vez, e o nosso
  * handler separa os eventos pelo corpo.
+ *
+ * `notifySentByMe: true` é o que faz a mensagem que alguém do time manda DIRETO
+ * do celular também chegar aqui. Sem essa flag, a conversa no CRM fica pela
+ * metade — só o que o cliente escreve — e quem for atender depois não vê o que
+ * já foi respondido, e responde de novo. A entrada já sabe tratar `fromMe`
+ * (grava como mensagem de saída), então é só ligar.
  */
 export async function updateZapiWebhooks(organizationId: string, webhookUrl: string) {
   const creds = await getZapiCredentials(organizationId)
   return chamar(creds, 'update-every-webhooks', {
     method: 'PUT',
-    body: { value: webhookUrl },
+    body: { value: webhookUrl, notifySentByMe: true },
   }, 'Falha ao configurar os webhooks da Z-API')
 }
 
