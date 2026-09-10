@@ -120,17 +120,27 @@ function extrair(body: any): Extraido | null {
 export async function processZapiMessage(orgId: string, body: any): Promise<ZapiProcessResult> {
   const messageId: string | undefined = body?.messageId
   const phoneBruto: string = String(body?.phone || '')
-  // Grava sempre com o nono dígito e procura pelas duas formas: o JID do
-  // WhatsApp pode vir sem o 9 (ver telefoneVariantes) e, sem isso, a mesma
-  // pessoa vira um lead e uma conversa separados.
-  const variantes = telefoneVariantes(phoneBruto)
-  const phone = telefoneCanonico(phoneBruto) || phoneBruto.replace(/\D/g, '')
-  if (!phone) return { status: 'skipped', reason: 'sem telefone' }
+  const ehGrupo = !!body?.isGroup
 
-  // Mesma política da Evolution: grupo não vira conversa no CRM. Uma mensagem de
-  // grupo mistura várias pessoas num "contato" só, com risco real de dado de um
-  // cliente aparecer na conversa de outro.
-  if (body?.isGroup) return { status: 'skipped', reason: 'grupo' }
+  /*
+   * Grupo é conversa, nunca lead.
+   *
+   * O identificador do grupo ("1203...-group") entra no lugar do telefone: é o
+   * que a Z-API manda em `phone` e é o mesmo valor que ela aceita pra responder.
+   * Não passa por telefoneVariantes — não é celular e inventar variante dele
+   * daria um destinatário que não existe.
+   *
+   * A conversa de grupo nasce e continua FORA do funil (sem etapa, ver mais
+   * abaixo): num grupo escrevem várias pessoas, e tratar isso como "um lead"
+   * misturaria gente diferente num card só. O autor de cada mensagem fica em
+   * `sender_name`/`participant_phone`, que é o que permite ler a conversa
+   * sabendo quem falou.
+   */
+  const variantes = ehGrupo ? [phoneBruto] : telefoneVariantes(phoneBruto)
+  const phone = ehGrupo
+    ? phoneBruto
+    : (telefoneCanonico(phoneBruto) || phoneBruto.replace(/\D/g, ''))
+  if (!phone) return { status: 'skipped', reason: 'sem telefone' }
 
   // Status de mensagem ("entregue", "lida") não é conteúdo — vem por outro
   // callback e nunca deve virar linha na timeline.
@@ -167,22 +177,27 @@ export async function processZapiMessage(orgId: string, body: any): Promise<Zapi
     .limit(1)
 
   if (!lead) {
-    const [firstStage] = await db
-      .select({ id: pipelineStages.id })
-      .from(pipelineStages)
-      .where(and(eq(pipelineStages.organizationId, orgId), isNull(pipelineStages.deletedAt)))
-      .orderBy(asc(pipelineStages.rank))
-      .limit(1)
+    const [firstStage] = ehGrupo
+      ? [undefined]
+      : await db
+          .select({ id: pipelineStages.id })
+          .from(pipelineStages)
+          .where(and(eq(pipelineStages.organizationId, orgId), isNull(pipelineStages.deletedAt)))
+          .orderBy(asc(pipelineStages.rank))
+          .limit(1)
 
     try {
       const [novo] = await db
         .insert(leads)
         .values({
           organizationId: orgId,
-          // Em fromMe o senderName é o dono do WhatsApp, não o contato — aí o
-          // telefone é o único nome honesto que temos.
-          title: isFromMe ? phone : (senderName || phone),
+          // Grupo se chama pelo nome do grupo. Em fromMe o senderName é o dono do
+          // WhatsApp, não o contato — aí o telefone é o único nome honesto.
+          title: ehGrupo
+            ? (body?.chatName || phone)
+            : (isFromMe ? phone : (senderName || phone)),
           phone,
+          isGroup: ehGrupo,
           integrationId: integration?.id || null,
           stageId: firstStage?.id || null,
           lastActivityAt: new Date(),
@@ -244,6 +259,12 @@ export async function processZapiMessage(orgId: string, body: any): Promise<Zapi
     direction: isFromMe ? 'outbound' : 'inbound',
     zapi_message_id: messageId,
   }
+  if (ehGrupo) {
+    metadata.is_group = true
+    // Sem isto a conversa de grupo vira um monte de mensagem sem dono e não dá
+    // pra saber quem disse o quê.
+    if (body?.participantPhone) metadata.participant_phone = String(body.participantPhone)
+  }
   if (!isFromMe) metadata.sender_name = senderName
   if (midiaUrl) metadata.media_url = midiaUrl
   if (extraido.mediaType) metadata.media_type = extraido.mediaType
@@ -286,7 +307,7 @@ export async function processZapiMessage(orgId: string, body: any): Promise<Zapi
   }
   if (!isFromMe) {
     leadUpdates.title = lead.title === lead.phone ? senderName : lead.title
-  } else if (lead.stageId) {
+  } else if (lead.stageId && !ehGrupo) {
     // Respondeu pelo celular: o lead está sendo atendido por gente, e a etapa
     // acompanha — mesma regra que já vale pra Evolution.
     //
@@ -322,7 +343,7 @@ export async function processZapiMessage(orgId: string, body: any): Promise<Zapi
     leadId: lead.id,
     phone,
     fromMe: isFromMe,
-    isGroup: false,
+    isGroup: ehGrupo,
     chatLid: null,
     senderName: isFromMe ? null : senderName,
     chatName: lead.title,

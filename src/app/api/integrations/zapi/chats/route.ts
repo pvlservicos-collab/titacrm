@@ -13,9 +13,13 @@
  * nenhum mais. Quem atender e decidir que aquilo virou negócio escolhe a etapa
  * no painel do lead — aí sim entra no funil, por decisão de gente.
  *
- * Não sobrescreve lead que já existe (o nome no CRM costuma ser melhor que o
- * nome da agenda do celular) e nunca importa grupo, pela mesma razão da entrada
- * de mensagens: grupo mistura várias pessoas num contato só.
+ * Não sobrescreve lead que já existe: o nome no CRM costuma ser melhor que o
+ * nome da agenda do celular.
+ *
+ * Grupo entra também, pelo id dele ("1203...-group") no lugar do telefone e
+ * marcado com `is_group`. Como toda conversa importada, fica sem etapa — o que
+ * importa aqui é o grupo nunca virar card de funil, já que num grupo escrevem
+ * várias pessoas e o card seria de quem, afinal?
  */
 import { NextRequest } from 'next/server'
 import { authenticateRequest, apiError } from '@/lib/api-auth'
@@ -61,12 +65,13 @@ export async function POST(req: NextRequest) {
       }
 
       for (const conversa of conversas) {
-        if (conversa.isGroup) {
-          grupos++
-          continue
-        }
-        const phone = normalizePhone(conversa.phone)
+        // Grupo é endereçado pelo id, não por telefone — normalizePhone o
+        // destruiria (ele só entende dígitos).
+        const phone = conversa.isGroup
+          ? String(conversa.phone || '').trim()
+          : normalizePhone(conversa.phone)
         if (!phone) continue
+        if (conversa.isGroup) grupos++
 
         const [existente] = await db
           .select({ id: leads.id })
@@ -88,6 +93,7 @@ export async function POST(req: NextRequest) {
             organizationId: auth.organizationId,
             title: (conversa.name || '').trim() || phone,
             phone,
+            isGroup: !!conversa.isGroup,
             integrationId: integration.id,
             // Sem etapa de propósito — ver o cabeçalho do arquivo.
             stageId: null,
@@ -117,7 +123,7 @@ export async function POST(req: NextRequest) {
     return Response.json({
       criados,
       existentes,
-      grupos_ignorados: grupos,
+      grupos: grupos,
       proxima_pagina: acabou ? null : pagina + 1,
       fim: acabou,
     })

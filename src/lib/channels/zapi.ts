@@ -4,13 +4,14 @@ import type { ChannelAdapter } from './types'
 /**
  * Z-API como canal do CRM.
  *
- * `supportsGroups: false` de propósito: a entrada (zapiInbound) descarta mensagem
- * de grupo, então não existe conversa de grupo vinda daqui pra responder. Marcar
- * true faria o CRM aceitar um envio que não tem destinatário do outro lado.
+ * `supportsGroups: true`: a Z-API endereça grupo pelo mesmo campo `phone`,
+ * usando o id do grupo ("1203...-group") no lugar do número — que é exatamente
+ * o valor que a entrada guarda em `leads.phone` pra conversa de grupo. Então
+ * responder um grupo é o mesmo caminho de responder uma pessoa.
  */
 export const zapiAdapter: ChannelAdapter = {
   metadataIdKey: 'zapi_message_id',
-  supportsGroups: false,
+  supportsGroups: true,
 
   async sendText(organizationId, _integrationId, recipient, content) {
     const { data, telefone } = await sendZapiMessage(organizationId, recipient, content)
