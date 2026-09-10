@@ -31,7 +31,7 @@ import { db } from '@/lib/db'
 import { integrations, leads } from '@/lib/schema'
 import { and, eq, isNull } from 'drizzle-orm'
 import { isUniqueViolation } from '@/lib/db-helpers'
-import { normalizePhone } from '@/lib/leadSources'
+import { telefoneCanonico } from '@/lib/leadSources'
 import { ZAPI_INTEGRATION_TYPE, fetchZapiChats } from '@/lib/zapi'
 
 const PAGINA_TAMANHO = 50
@@ -82,12 +82,24 @@ export async function POST(req: NextRequest) {
       }
 
       for (const conversa of conversas) {
-        // Grupo é endereçado pelo id, não por telefone — normalizePhone o
+        // Grupo é endereçado pelo id, não por telefone — telefoneCanonico o
         // destruiria (ele só entende dígitos).
+        //
+        // telefoneCanonico e NÃO normalizePhone: o normalize deixa passar os 12
+        // dígitos (celular na forma antiga, sem o nono) exatamente como vieram,
+        // e aí a mesma pessoa vira duas linhas — a conversa importada com 12 e o
+        // lead da Agenda com 13. Aconteceu de verdade em 17 contatos na primeira
+        // importação.
         const phone = conversa.isGroup
           ? String(conversa.phone || '').trim()
-          : normalizePhone(conversa.phone)
+          : telefoneCanonico(conversa.phone)
         if (!phone) continue
+
+        // Comunidade e lista de transmissão chegam como um id numérico gigante
+        // no lugar do telefone. Não são conversa com ninguém: viravam uma linha
+        // no chat chamada "120363404701403742", que não dá pra abrir nem
+        // responder.
+        if (!conversa.isGroup && phone.replace(/\D/g, '').length > 14) continue
         if (conversa.isGroup) {
           if (!querEsteGrupo(String(conversa.name || ''), phone)) {
             grupos++
@@ -122,6 +134,16 @@ export async function POST(req: NextRequest) {
             // A conversa é antiga: usar "agora" faria todas elas irem pro topo da
             // lista de conversas como se tivessem acabado de chegar.
             lastActivityAt: horaDaConversa(conversa.lastMessageTime),
+            // A lista do Chat mostra CONVERSA, não contato: ela esconde quem
+            // tem `last_activity_type` nulo, e é isso que impede a planilha de
+            // 644 contatos de virar 644 entradas vazias (ver LeadList).
+            //
+            // Conversa importada do WhatsApp é o outro caso: ela EXISTE, com
+            // histórico no aparelho, só não tem as mensagens aqui — a Z-API não
+            // devolve histórico. Marcar o tipo é o que a faz aparecer no chat,
+            // que é o ponto de importar. O horário vem do WhatsApp, então a
+            // ordem da lista continua sendo a ordem real das conversas.
+            lastActivityType: 'whatsapp',
             // `origem` e não `lead_source`: `lead_source` é o que marca CANAL DE
             // AQUISIÇÃO e alimenta a coluna "Fonte:" do Kanban e o dashboard.
             // Conversa importada não é aquisição, e usar a mesma chave a faria

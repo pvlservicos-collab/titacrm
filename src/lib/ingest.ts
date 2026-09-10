@@ -24,7 +24,7 @@
  *      formulário escolheu ("your-name", "telefone", "field_3"), não o nosso.
  */
 import { NextRequest } from 'next/server'
-import { and, asc, eq, isNull, sql } from 'drizzle-orm'
+import { and, asc, eq, inArray, isNull, sql } from 'drizzle-orm'
 import { authenticateRequest, apiError } from '@/lib/api-auth'
 import { getOrgRole } from '@/lib/admin-auth'
 import { db } from '@/lib/db'
@@ -34,6 +34,7 @@ import {
   LEAD_SOURCE_ORDER,
   dedupeKeyFor,
   getLeadSource,
+  telefoneVariantes,
   type LeadSourceKey,
   type NormalizedLead,
 } from '@/lib/leadSources'
@@ -317,12 +318,16 @@ async function upsertCrmLead(
   ownerMemberId?: string | null
 ): Promise<{ id: string; created: boolean } | null> {
   if (normalized.phone) {
+    // Pelas DUAS formas do celular (com e sem o nono dígito). Uma conversa
+    // importada do WhatsApp pode estar gravada na forma antiga, e comparar só a
+    // forma exata criaria um lead novo pra quem já tem conversa aberta aqui —
+    // o atendimento acabaria falando com a pessoa em dois lugares.
     const [existing] = await db
       .select({ id: leads.id })
       .from(leads)
       .where(and(
         eq(leads.organizationId, organizationId),
-        eq(leads.phone, normalized.phone),
+        inArray(leads.phone, telefoneVariantes(normalized.phone)),
         isNull(leads.deletedAt)
       ))
       .limit(1)
@@ -363,7 +368,7 @@ async function upsertCrmLead(
       .from(leads)
       .where(and(
         eq(leads.organizationId, organizationId),
-        eq(leads.phone, normalized.phone),
+        inArray(leads.phone, telefoneVariantes(normalized.phone)),
         isNull(leads.deletedAt)
       ))
       .limit(1)
