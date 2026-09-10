@@ -40,3 +40,6 @@ tsconfig.tsbuildinfo
 
 .vercel
 .env*
+
+# arquivos temporarios de sessao (scripts de diagnostico, bundles)
+.tmp-claude/
