@@ -9,6 +9,7 @@ import { eq, and, isNull, desc, asc, ilike, or, sql, count } from 'drizzle-orm'
 import { mapLead } from '@/lib/mappers'
 import { isUniqueViolation } from '@/lib/db-helpers'
 import type { Integration } from '@/lib/types'
+import { DIAS_CONVERSA_IMPORTADA } from '@/lib/conversas'
 
 /**
  * GET /api/leads
@@ -28,6 +29,14 @@ export async function GET(req: NextRequest) {
     const stageId = searchParams.get('stage_id')
     const excludeGroups = searchParams.get('exclude_groups') === 'true'
     const owner = searchParams.get('owner')
+    /**
+     * Recorte por tela. Sem ele, Chat e Pipeline baixavam a base inteira —
+     * 2.366 linhas pra desenhar 82 conversas ou 22 cards.
+     *
+     *   conversas → o que a lista do Chat mostra
+     *   funil     → o que o Kanban desenha (card sem etapa não existe lá)
+     */
+    const scope = searchParams.get('scope')
 
     const conditions = [
       eq(leads.organizationId, auth.organizationId),
@@ -40,6 +49,21 @@ export async function GET(req: NextRequest) {
     if (owner) conditions.push(eq(leads.ownerMemberId, owner))
     if (stageId) conditions.push(eq(leads.stageId, stageId))
     if (excludeGroups) conditions.push(or(isNull(leads.isGroup), eq(leads.isGroup, false))!)
+
+    if (scope === 'funil') {
+      conditions.push(sql`${leads.stageId} IS NOT NULL`)
+    } else if (scope === 'conversas') {
+      // Conversa é quem já teve atividade. Dentro disso: mensagem registrada
+      // aqui aparece pra sempre; conversa importada sem mensagem só enquanto for
+      // recente; arquivada vem sempre, senão a aba "Arquivados" fica vazia.
+      conditions.push(sql`${leads.lastActivityType} IS NOT NULL`)
+      conditions.push(sql`(
+        ${leads.lastMessageContent} IS NOT NULL
+        OR ${leads.lastMessageSenderType} IS NOT NULL
+        OR ${leads.isArchived} IS TRUE
+        OR ${leads.lastActivityAt} > now() - (${DIAS_CONVERSA_IMPORTADA} || ' days')::interval
+      )`)
+    }
 
     const offset = (page - 1) * limit
 

@@ -7,6 +7,9 @@
  * costuma ficar no Chat ou no Pipeline: um aviso que só tocasse na tela Início
  * não avisaria ninguém.
  *
+ * São DOIS avisos: um pequeno pra lead novo e um grande pra quando o lead
+ * responde a automação — o segundo é o que exige alguém agora.
+ *
  * O som é sintetizado na hora (WebAudio), sem arquivo de áudio. Dois motivos:
  * não acrescenta um binário ao repositório nem uma requisição a cada carga da
  * página, e o volume/tom ficam sob controle — um mp3 de "notificação" qualquer
@@ -24,14 +27,41 @@ import { channels, events } from '@/lib/realtime'
 
 const CHAVE_PREFERENCIA = 'crm:som-novo-lead'
 
-/** Toca o "plin": duas notas curtas, a segunda mais aguda. */
-function tocarPlin(ctx: AudioContext) {
+interface Nota {
+  hz: number
+  /** Segundos depois do início do toque. */
+  em: number
+  duracao: number
+  volume: number
+}
+
+/**
+ * Dois avisos com peso diferente, de propósito.
+ *
+ * LEAD NOVO é informação: alguém entrou, será atendido em algum momento. Duas
+ * notinhas curtas e baixas, do tipo que não interrompe quem está no meio de uma
+ * conversa.
+ *
+ * RESPOSTA À AUTOMAÇÃO é urgência: a pessoa que a IA abordou respondeu, e a
+ * janela pra um humano entrar é agora. Toca mais alto, mais grave e mais longo —
+ * três notas subindo, que é o padrão que o ouvido lê como "vem cá".
+ *
+ * Os volumes (0.14 e 0.42) foram escolhidos pra diferença ser óbvia sem o
+ * segundo assustar: é um escritório, isso vai tocar o dia inteiro.
+ */
+const PLIN_LEAD_NOVO: Nota[] = [
+  { hz: 784, em: 0, duracao: 0.15, volume: 0.14 },   // Sol5
+  { hz: 1047, em: 0.08, duracao: 0.18, volume: 0.12 }, // Dó6
+]
+
+const TOQUE_RESPOSTA: Nota[] = [
+  { hz: 523, em: 0, duracao: 0.28, volume: 0.42 },    // Dó5
+  { hz: 659, em: 0.15, duracao: 0.28, volume: 0.42 }, // Mi5
+  { hz: 880, em: 0.30, duracao: 0.55, volume: 0.40 }, // Lá5, sustentado
+]
+
+function tocar(ctx: AudioContext, notas: Nota[]) {
   const agora = ctx.currentTime
-  // Sol5 e Dó6 — intervalo de quarta, que soa como "aviso" e não como alarme.
-  const notas = [
-    { hz: 784, em: 0, duracao: 0.18 },
-    { hz: 1047, em: 0.09, duracao: 0.22 },
-  ]
 
   for (const nota of notas) {
     const osc = ctx.createOscillator()
@@ -43,7 +73,7 @@ function tocarPlin(ctx: AudioContext) {
     // oscilador estala (o famoso "click" de WebAudio).
     const inicio = agora + nota.em
     ganho.gain.setValueAtTime(0.0001, inicio)
-    ganho.gain.exponentialRampToValueAtTime(0.18, inicio + 0.012)
+    ganho.gain.exponentialRampToValueAtTime(nota.volume, inicio + 0.012)
     ganho.gain.exponentialRampToValueAtTime(0.0001, inicio + nota.duracao)
 
     osc.connect(ganho)
@@ -96,20 +126,21 @@ export default function SomNovoLead() {
     }
   }, [])
 
-  const aoCriarLead = useCallback(() => {
+  const avisar = useCallback((notas: Nota[]) => {
     if (!ligado) return
     const ctx = ctxRef.current
     if (!ctx) return
     try {
       if (ctx.state === 'suspended') ctx.resume()
-      tocarPlin(ctx)
+      tocar(ctx, notas)
     } catch {
       /* falha ao tocar nunca pode derrubar a tela */
     }
   }, [ligado])
 
   usePusherChannel(organizationId ? channels.orgLeads(organizationId) : '', {
-    [events.LEAD_CREATED]: aoCriarLead,
+    [events.LEAD_CREATED]: () => avisar(PLIN_LEAD_NOVO),
+    [events.LEAD_REPLIED_AUTOMATION]: () => avisar(TOQUE_RESPOSTA),
   })
 
   function alternar() {
@@ -123,7 +154,7 @@ export default function SomNovoLead() {
     // Toca ao LIGAR pra pessoa ouvir o que acabou de habilitar — e, de quebra,
     // isso confirma que o áudio do navegador está liberado.
     if (novo && ctxRef.current) {
-      try { tocarPlin(ctxRef.current) } catch { /* ignora */ }
+      try { tocar(ctxRef.current, PLIN_LEAD_NOVO) } catch { /* ignora */ }
     }
   }
 

@@ -145,7 +145,12 @@ export async function processEvolutionMessage(
   // Find or create lead by phone
   let leadCriadoAgora = false
   let [lead] = await db
-    .select({ id: leads.id, title: leads.title, phone: leads.phone })
+    .select({
+      id: leads.id, title: leads.title, phone: leads.phone,
+      // Quem falou por último antes desta mensagem — diz se a pessoa está
+      // respondendo a automação (ver o publishEvent lá embaixo).
+      ultimoRemetente: leads.lastMessageSenderType,
+    })
     .from(leads)
     .where(
       and(
@@ -174,7 +179,10 @@ export async function processEvolutionMessage(
           customAttributes: { origem: 'conversa_whatsapp' },
           lastActivityAt: new Date(),
         })
-        .returning({ id: leads.id, title: leads.title, phone: leads.phone })
+        .returning({
+          id: leads.id, title: leads.title, phone: leads.phone,
+          ultimoRemetente: leads.lastMessageSenderType,
+        })
 
       lead = newLead
       leadCriadoAgora = true
@@ -194,7 +202,10 @@ export async function processEvolutionMessage(
       // garante que só uma vence; a outra recupera o lead que já foi criado.
       if (!isUniqueViolation(err)) throw err
       const [existingLead] = await db
-        .select({ id: leads.id, title: leads.title, phone: leads.phone })
+        .select({
+          id: leads.id, title: leads.title, phone: leads.phone,
+          ultimoRemetente: leads.lastMessageSenderType,
+        })
         .from(leads)
         .where(and(eq(leads.organizationId, orgId), inArray(leads.phone, variantes), isNull(leads.deletedAt)))
         .limit(1)
@@ -314,6 +325,15 @@ export async function processEvolutionMessage(
   // (e o aviso sonoro) precisam saber disso, não só que "algo mudou".
   if (leadCriadoAgora) {
     await publishEvent(channels.orgLeads(orgId), events.LEAD_CREATED, { id: lead.id })
+  }
+
+  // Respondeu a automação? O último a falar era o sistema e agora é a pessoa.
+  // Vale só pra mensagem que ENTRA — o eco da nossa própria mensagem não conta.
+  if (!isFromMe && (lead as any).ultimoRemetente === 'automated') {
+    await publishEvent(channels.orgLeads(orgId), events.LEAD_REPLIED_AUTOMATION, {
+      id: lead.id,
+      title: lead.title,
+    })
   }
   await publishEvent(channels.orgLeads(orgId), events.LEAD_UPDATED, { id: lead.id })
 

@@ -72,6 +72,15 @@ export const events = {
   ACTIVITY_CREATED: 'activity.created',
   ACTIVITY_UPDATED: 'activity.updated',
   LEAD_CREATED: 'lead.created',
+  /**
+   * O lead respondeu uma mensagem que o SISTEMA mandou (funil/IA).
+   *
+   * Separado de LEAD_UPDATED porque é o evento mais importante do dia pra quem
+   * atende: alguém que a automação abordou acabou de responder, e a janela pra
+   * entrar na conversa é agora. É por isso que ele toca um som diferente do
+   * lead novo (ver SomNovoLead).
+   */
+  LEAD_REPLIED_AUTOMATION: 'lead.replied_automation',
   LEAD_UPDATED: 'lead.updated',
   LEAD_DELETED: 'lead.deleted',
   MEMBER_UPDATED: 'member.updated',

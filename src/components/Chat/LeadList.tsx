@@ -6,6 +6,7 @@ import { MagnifyingGlass, PushPin, Archive, ArrowCounterClockwise, Tag as TagIco
 import LoadingSpinner from '@/components/Shared/LoadingSpinner'
 import { useSession } from 'next-auth/react'
 import { useLeadSearch } from '@/hooks/useLeadSearch'
+import { DIAS_CONVERSA_IMPORTADA } from '@/lib/conversas'
 import { useTags } from '@/hooks'
 import LeadListItem from './LeadListItem'
 import ChatFilterTabs, { type ChatTab } from './ChatFilterTabs'
@@ -64,19 +65,6 @@ interface ContextMenuState {
   y: number
   lead: LeadWithOwner | null
 }
-
-/**
- * Dias sem nenhuma mensagem depois dos quais uma conversa IMPORTADA sai da lista.
- *
- * Vale só pra conversa que veio da importação do WhatsApp e nunca teve mensagem
- * aqui dentro. O número tem 1.701 conversas no aparelho — 81 com mensagem no
- * último mês, 870 tão antigas que o WhatsApp nem guarda mais a data. Mostrar
- * todas transforma a lista de conversas num catálogo de contatos.
- *
- * É recorte de TELA: nada é apagado, a busca continua achando todas, e assim
- * que chegar (ou sair) uma mensagem a conversa volta pra lista pra sempre.
- */
-const DIAS_CONVERSA_IMPORTADA = 30
 
 /**
  * Esta conversa aparece na lista?

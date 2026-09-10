@@ -29,7 +29,15 @@ interface LeadsContextType {
 
 const LeadsContext = createContext<LeadsContextType | undefined>(undefined)
 
-export function LeadsProvider({ children }: { children: ReactNode }) {
+/**
+ * Que fatia da base esta tela precisa.
+ *
+ * `conversas` pro Chat, `funil` pro Pipeline, `tudo` pra quem precisar mesmo de
+ * tudo. Antes toda tela baixava tudo: 2.366 leads pra desenhar 82 conversas.
+ */
+export type EscopoLeads = 'conversas' | 'funil' | 'tudo'
+
+export function LeadsProvider({ children, escopo = 'tudo' }: { children: ReactNode; escopo?: EscopoLeads }) {
   const { currentOrganization, permissions } = useAuth()
   const [leads, setLeads] = useState<LeadWithOwner[]>([])
   const [loading, setLoading] = useState(true)
@@ -48,6 +56,7 @@ export function LeadsProvider({ children }: { children: ReactNode }) {
       // Grupos entram na lista (o Chat precisa deles); quem não quer ver grupo
       // (Pipeline) já filtra por conta própria em PipelineBoard.tsx.
       const params = new URLSearchParams({ returnAll: 'true' })
+      if (escopo !== 'tudo') params.set('scope', escopo)
       if (viewOwnOnly && memberId) params.set('owner', memberId)
       const res = await fetch(`/api/leads?${params}`)
       if (!res.ok) throw new Error('Failed to fetch leads')

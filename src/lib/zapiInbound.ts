@@ -187,7 +187,13 @@ export async function processZapiMessage(orgId: string, body: any): Promise<Zapi
 
   let leadCriadoAgora = false
   let [lead] = await db
-    .select({ id: leads.id, title: leads.title, phone: leads.phone, stageId: leads.stageId })
+    .select({
+      id: leads.id, title: leads.title, phone: leads.phone, stageId: leads.stageId,
+      // Quem falou por último ANTES desta mensagem: é o que diz se a pessoa
+      // está respondendo a automação.
+      ultimoRemetente: leads.lastMessageSenderType,
+      avatarUrl: leads.avatarUrl,
+    })
     .from(leads)
     .where(and(eq(leads.organizationId, orgId), inArray(leads.phone, variantes), isNull(leads.deletedAt)))
     .limit(1)
@@ -238,7 +244,10 @@ export async function processZapiMessage(orgId: string, body: any): Promise<Zapi
           stageId: null,
           lastActivityAt: new Date(),
         })
-        .returning({ id: leads.id, title: leads.title, phone: leads.phone, stageId: leads.stageId })
+        .returning({
+          id: leads.id, title: leads.title, phone: leads.phone, stageId: leads.stageId,
+          ultimoRemetente: leads.lastMessageSenderType, avatarUrl: leads.avatarUrl,
+        })
       lead = novo
       leadCriadoAgora = true
 
@@ -255,13 +264,31 @@ export async function processZapiMessage(orgId: string, body: any): Promise<Zapi
       // deixa só uma passar; a outra recupera o lead que venceu.
       if (!isUniqueViolation(err)) throw err
       const [existente] = await db
-        .select({ id: leads.id, title: leads.title, phone: leads.phone, stageId: leads.stageId })
+        .select({
+          id: leads.id, title: leads.title, phone: leads.phone, stageId: leads.stageId,
+          ultimoRemetente: leads.lastMessageSenderType, avatarUrl: leads.avatarUrl,
+        })
         .from(leads)
         .where(and(eq(leads.organizationId, orgId), inArray(leads.phone, variantes), isNull(leads.deletedAt)))
         .limit(1)
       if (!existente) throw err
       lead = existente
     }
+  }
+
+  /*
+   * Foto do contato.
+   *
+   * Antes só era buscada na criação do lead — então conversa que veio da
+   * importação (que não traz foto) ficava para sempre com a bolinha de inicial,
+   * mesmo depois de a pessoa mandar mensagem com a foto no payload. Agora
+   * qualquer mensagem preenche o que estiver faltando, e só isso: quem já tem
+   * foto não gasta requisição nenhuma.
+   */
+  const fotoDoPayload = body?.senderPhoto || body?.photo
+  if (!lead.avatarUrl && typeof fotoDoPayload === 'string' && fotoDoPayload) {
+    const hospedada = await rehospedarFotoPerfil(orgId, fotoDoPayload, phone)
+    if (hospedada) await db.update(leads).set({ avatarUrl: hospedada }).where(eq(leads.id, lead.id))
   }
 
   if (messageId) {
@@ -368,6 +395,15 @@ export async function processZapiMessage(orgId: string, body: any): Promise<Zapi
   await publishEvent(channels.leadActivities(lead.id), events.ACTIVITY_CREATED, { id: activity.id })
   if (leadCriadoAgora) {
     await publishEvent(channels.orgLeads(orgId), events.LEAD_CREATED, { id: lead.id })
+  }
+
+  // Respondeu a automação? O último a falar era o sistema e agora é a pessoa.
+  // Vale só pra mensagem que ENTRA — o eco da nossa própria mensagem não conta.
+  if (!isFromMe && (lead as any).ultimoRemetente === 'automated') {
+    await publishEvent(channels.orgLeads(orgId), events.LEAD_REPLIED_AUTOMATION, {
+      id: lead.id,
+      title: lead.title,
+    })
   }
   await publishEvent(channels.orgLeads(orgId), events.LEAD_UPDATED, { id: lead.id })
 
