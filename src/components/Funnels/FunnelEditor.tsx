@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import {
   ReactFlow,
   ReactFlowProvider,
@@ -20,6 +20,8 @@ import {
 } from '@xyflow/react'
 import '@xyflow/react/dist/style.css'
 import {
+  Lightning,
+  WhatsappLogo,
   PlayCircle,
   ChatCircleDots,
   HourglassSimple,
@@ -69,124 +71,313 @@ const CONDITION_WEBHOOKS: Record<string, string> = {
   pagamento: '/api/webhooks/recuperacao (confirmação)',
 }
 
-// ── Custom Nodes ────────────────────────────────────────────────────────────
+// ── Nós do canvas ───────────────────────────────────────────────────────────
+//
+// O visual é o do ManyChat, a pedido: cartão branco sobre fundo cinza claro,
+// cabeçalho com o canal em cima do nome do bloco, faixa de números em azul,
+// e o conteúdo da mensagem numa "bolha" cinza igual à do WhatsApp.
+//
+// O canvas mantém a aparência clara mesmo com o CRM no tema escuro. É uma
+// prancheta: as cores aqui são as do fluxo (verde = gatilho, azul = número,
+// cinza = mensagem) e precisam significar a mesma coisa nos dois temas.
 
-function NodeShell({ selected, color, icon, title, children, hasTarget = true, hasSource = true }: {
-  selected?: boolean
-  color: string
-  icon: React.ReactNode
-  title: string
-  children?: React.ReactNode
-  hasTarget?: boolean
-  hasSource?: boolean
-}) {
+/** Paleta do canvas — fixa, independente do tema do resto do app. */
+const C = {
+  cartao: '#FFFFFF',
+  borda: '#EAECF0',
+  texto: '#101828',
+  textoFraco: '#667085',
+  bolha: '#F2F4F7',
+  bolhaTexto: '#344054',
+  numero: '#2E90FA',
+  fio: '#98A2B3',
+  verde: '#ECFDF3',
+  verdeBorda: '#D1FADF',
+}
+
+const SOMBRA = '0 1px 3px rgba(16,24,40,.10), 0 8px 24px -8px rgba(16,24,40,.10)'
+
+/** Bolinha de conexão — igual nas duas pontas, como no ManyChat. */
+function Conector({ tipo, id, style }: { tipo: 'source' | 'target'; id?: string; style?: React.CSSProperties }) {
+  return (
+    <Handle
+      type={tipo}
+      id={id}
+      position={tipo === 'source' ? Position.Right : Position.Left}
+      style={{
+        width: 11,
+        height: 11,
+        background: C.fio,
+        border: '2px solid #fff',
+        boxShadow: '0 0 0 1px ' + C.fio,
+        ...style,
+      }}
+    />
+  )
+}
+
+function Cartao({ selected, largura = 288, children }: { selected?: boolean; largura?: number; children: React.ReactNode }) {
   return (
     <div
-      className={`rounded-xl border-2 shadow-sm w-56 overflow-hidden transition-shadow ${selected ? 'ring-2 ring-accent' : ''}`}
-      style={{ borderColor: color }}
+      style={{
+        width: largura,
+        background: C.cartao,
+        borderRadius: 16,
+        boxShadow: selected ? '0 0 0 2px ' + C.numero + ', ' + SOMBRA : SOMBRA,
+      }}
     >
-      {hasTarget && <Handle type="target" position={Position.Left} style={{ background: color, width: 10, height: 10 }} />}
-      <div className="px-3 py-2 flex items-center gap-2 font-semibold text-sm text-ink" style={{ background: `${color}22` }}>
-        {icon}
-        {title}
-      </div>
-      {children && <div className="px-3 py-2 text-xs text-muted bg-panel">{children}</div>}
-      {hasSource && <Handle type="source" position={Position.Right} style={{ background: color, width: 10, height: 10 }} />}
+      {children}
     </div>
   )
 }
 
+/** Cabeçalho: ícone redondo + canal em cima, nome do bloco embaixo. */
+function Cabecalho({ icone, canal, nome }: { icone: React.ReactNode; canal: string; nome: string }) {
+  return (
+    <div className="flex items-center gap-2.5 px-4 pt-3.5 pb-1">
+      {/* Selo do canal. O layout é o do ManyChat (print de um fluxo de
+          Instagram), mas o canal daqui é o WhatsApp — manter o degradê roxo do
+          Instagram deixaria o cartão bonito e mentindo sobre por onde a
+          mensagem sai. */}
+      <div
+        className="w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0"
+        style={{ background: '#25D366' }}
+      >
+        {icone}
+      </div>
+      <div className="min-w-0">
+        <p style={{ color: C.textoFraco }} className="text-[11px] leading-none">{canal}</p>
+        <p style={{ color: C.texto }} className="text-[15px] font-semibold leading-tight truncate">{nome}</p>
+      </div>
+    </div>
+  )
+}
+
+/**
+ * A faixa de números do ManyChat.
+ *
+ * Só entram métricas que o CRM mede de verdade. "Aberto" (recibo de leitura)
+ * ficou de fora porque ninguém registra isso aqui ainda — a coluna existiria
+ * com número inventado, e quem olha decide em cima dela.
+ */
+function Numeros({ stats }: { stats?: EstatisticasBloco }) {
+  const enviado = stats?.enviado ?? 0
+  const pct = (n: number) => (enviado > 0 ? ((n / enviado) * 100).toFixed(1).replace('.', ',') + '%' : '—')
+
+  const colunas = [
+    { valor: String(enviado), rotulo: 'Enviado' },
+    { valor: pct(stats?.entregue ?? 0), rotulo: 'Entregue' },
+    { valor: pct(stats?.respondeu ?? 0), rotulo: 'Respondeu' },
+    { valor: pct(stats?.clicou ?? 0), rotulo: 'Clicado' },
+  ]
+
+  return (
+    <div className="flex items-start justify-between px-4 pt-1.5 pb-2.5">
+      {colunas.map((c) => (
+        <div key={c.rotulo} className="text-center">
+          <p style={{ color: C.numero }} className="text-[17px] font-normal leading-tight tabular-nums">{c.valor}</p>
+          <p style={{ color: C.textoFraco }} className="text-[11px] leading-tight">{c.rotulo}</p>
+        </div>
+      ))}
+    </div>
+  )
+}
+
+/** Rodapé com a saída do bloco ("Próximo Passo", "Então"). */
+function Saida({ rotulo, id, top }: { rotulo: string; id?: string; top?: string }) {
+  return (
+    <div className="relative px-4 pb-3 pt-1">
+      <p style={{ color: C.textoFraco }} className="text-[12px] text-right">{rotulo}</p>
+      <Conector tipo="source" id={id} style={top ? { top } : undefined} />
+    </div>
+  )
+}
+
+function IconeCanal() {
+  return <WhatsappLogo size={16} weight="fill" color="#fff" />
+}
+
+export interface EstatisticasBloco {
+  enviado: number
+  entregue: number
+  respondeu: number
+  clicou: number
+}
+
+function statsDo(data: FunnelBlockData): EstatisticasBloco | undefined {
+  return (data as any).stats as EstatisticasBloco | undefined
+}
+
 function TriggerNode({ data, selected }: NodeProps<FlowNode>) {
   const config = data.config || {}
-  const webhook = TRIGGER_WEBHOOKS[config.trigger]
   return (
-    <NodeShell selected={selected} color="#8b5cf6" icon={<PlayCircle size={16} weight="fill" style={{ color: '#8b5cf6' }} />} title="Gatilho de outro app" hasTarget={true}>
-      {TRIGGER_LABELS[config.trigger] || 'Selecione o gatilho'}
-      {webhook && <p className="mt-1 text-[10px] text-violet-500 font-mono break-all">📡 {webhook}</p>}
-    </NodeShell>
+    <Cartao selected={selected} largura={310}>
+      <div className="flex items-center gap-2.5 px-4 pt-4 pb-3">
+        <Lightning size={20} weight="fill" color={C.texto} />
+        <p style={{ color: C.texto }} className="text-[16px] font-semibold">Quando…</p>
+      </div>
+
+      <div className="px-3 pb-2">
+        <div
+          className="flex items-center gap-2.5 rounded-xl px-3 py-2.5"
+          style={{ background: C.verde, border: '1px solid ' + C.verdeBorda }}
+        >
+          <div
+            className="w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0"
+            style={{ background: '#25D366' }}
+          >
+            <IconeCanal />
+          </div>
+          <div className="min-w-0">
+            <p style={{ color: C.texto }} className="text-[13px] font-medium leading-tight">
+              {TRIGGER_LABELS[config.trigger] || 'Selecione o gatilho'}
+            </p>
+            <p style={{ color: C.textoFraco }} className="text-[11px] leading-tight">
+              {TRIGGER_WEBHOOKS[config.trigger] ? 'Dispara sozinho quando o lead entra' : 'Escolha o que inicia este fluxo'}
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <Saida rotulo="Então" />
+    </Cartao>
   )
 }
 
 function MessageNode({ data, selected }: NodeProps<FlowNode>) {
   const config = data.config || {}
-  const text = (config.text || '').trim()
+  const texto = (config.text || '').trim()
   return (
-    <NodeShell selected={selected} color="#3b82f6" icon={<ChatCircleDots size={16} weight="fill" style={{ color: '#3b82f6' }} />} title="Mensagem">
-      {text ? <p className="line-clamp-3 whitespace-pre-wrap">{text}</p> : <span className="italic text-muted">Sem texto definido</span>}
-      {config.trackableUrl && <p className="mt-1 text-accent-2 truncate">🔗 {config.trackableUrl}</p>}
-    </NodeShell>
+    <Cartao selected={selected}>
+      <Conector tipo="target" />
+      <Cabecalho icone={<IconeCanal />} canal="WhatsApp" nome={config.titulo || 'Enviar Mensagem'} />
+      <Numeros stats={statsDo(data)} />
+
+      <div className="px-3 pb-1">
+        <div className="rounded-xl px-3.5 py-3" style={{ background: C.bolha }}>
+          {texto ? (
+            <p style={{ color: C.bolhaTexto }} className="text-[13px] leading-[1.55] whitespace-pre-wrap break-words line-clamp-[12]">
+              {texto}
+            </p>
+          ) : (
+            <p style={{ color: C.textoFraco }} className="text-[13px] italic">Sem texto definido</p>
+          )}
+        </div>
+      </div>
+
+      {config.trackableUrl && (
+        <div className="px-3 pb-1">
+          <div className="rounded-lg px-3 py-2 text-[12px] truncate" style={{ background: '#fff', border: '1px solid ' + C.borda, color: C.numero }}>
+            🔗 {config.trackableUrl}
+          </div>
+        </div>
+      )}
+
+      <Saida rotulo="Próximo Passo" />
+    </Cartao>
   )
 }
 
 function WaitNode({ data, selected }: NodeProps<FlowNode>) {
   const config = data.config || {}
-  const unitLabels: Record<string, string> = { seconds: 'segundos', minutes: 'minutos', hours: 'horas', days: 'dias' }
+  const unidades: Record<string, string> = { seconds: 'segundos', minutes: 'minutos', hours: 'horas', days: 'dias' }
   return (
-    <NodeShell selected={selected} color="#f59e0b" icon={<HourglassSimple size={16} weight="fill" style={{ color: '#f59e0b' }} />} title="Espera Minha Mensagem">
-      <div className="flex items-center gap-1.5 bg-amber-50 border border-amber-200 rounded-lg px-2 py-1 text-[11px] font-semibold text-amber-700">
-        <span>⏰</span>
-        <span>Espera {config.value ?? 0} {unitLabels[config.unit] || 'minutos'}</span>
+    <Cartao selected={selected} largura={260}>
+      <Conector tipo="target" />
+      <div className="flex items-center gap-2.5 px-4 pt-3.5 pb-1">
+        <div className="w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0" style={{ background: '#FFFAEB' }}>
+          <HourglassSimple size={15} weight="fill" color="#F79009" />
+        </div>
+        <div>
+          <p style={{ color: C.textoFraco }} className="text-[11px] leading-none">Espera</p>
+          <p style={{ color: C.texto }} className="text-[15px] font-semibold leading-tight">Antes de continuar</p>
+        </div>
       </div>
-    </NodeShell>
+      <div className="px-3 pb-1 pt-1.5">
+        <div className="rounded-xl px-3.5 py-2.5 text-[13px]" style={{ background: C.bolha, color: C.bolhaTexto }}>
+          {config.value ?? 0} {unidades[config.unit] || 'minutos'}
+        </div>
+      </div>
+      <Saida rotulo="Próximo Passo" />
+    </Cartao>
   )
 }
 
 function ConditionNode({ data, selected }: NodeProps<FlowNode>) {
   const config = data.config || {}
-  const unitLabels: Record<string, string> = { minutes: 'minutos', hours: 'horas', days: 'dias' }
+  const unidades: Record<string, string> = { minutes: 'minutos', hours: 'horas', days: 'dias' }
+  const stats = statsDo(data)
   return (
-    <div className={`rounded-xl border-2 shadow-sm w-56 overflow-hidden transition-shadow ${selected ? 'ring-2 ring-accent' : ''}`} style={{ borderColor: '#f97316' }}>
-      <Handle type="target" position={Position.Left} style={{ background: '#f97316', width: 10, height: 10 }} />
-      <div className="px-3 py-2 flex items-center gap-2 font-semibold text-sm text-ink" style={{ background: '#f9731622' }}>
-        <GitBranch size={16} weight="fill" style={{ color: '#f97316' }} />
-        Espera Mensagem Dele
-      </div>
-      <div className="px-3 py-2 text-xs text-muted bg-panel">
-        <p className="truncate">{CONDITION_TYPE_LABELS[config.conditionType] || CONDITION_TYPE_LABELS.respondeu}</p>
-        {CONDITION_WEBHOOKS[config.conditionType] && (
-          <p className="mt-1 text-[10px] text-orange-500 font-mono break-all">📡 {CONDITION_WEBHOOKS[config.conditionType]}</p>
-        )}
-      </div>
-      <div className="px-3 pb-2 bg-panel">
-        <div className="flex items-center gap-1.5 bg-amber-50 border border-amber-200 rounded-lg px-2 py-1 text-[11px] font-semibold text-amber-700">
-          <span>⏰</span>
-          <span>Espera {config.value ?? 0} {unitLabels[config.unit] || 'minutos'}</span>
+    <Cartao selected={selected}>
+      <Conector tipo="target" />
+      <div className="flex items-center gap-2.5 px-4 pt-3.5 pb-1">
+        <div className="w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0" style={{ background: '#FFF4ED' }}>
+          <GitBranch size={15} weight="fill" color="#EF6820" />
+        </div>
+        <div>
+          <p style={{ color: C.textoFraco }} className="text-[11px] leading-none">Condição</p>
+          <p style={{ color: C.texto }} className="text-[15px] font-semibold leading-tight">
+            {CONDITION_TYPE_LABELS[config.conditionType] || CONDITION_TYPE_LABELS.respondeu}
+          </p>
         </div>
       </div>
-      <div className="relative flex justify-between px-4 py-1.5 bg-void text-[11px] font-semibold">
-        <span className="text-emerald-600">Sim</span>
-        <span className="text-red-500">Não</span>
+      <Numeros stats={stats} />
+
+      <div className="px-3 pb-1">
+        <div className="rounded-xl px-3.5 py-2.5 text-[13px]" style={{ background: C.bolha, color: C.bolhaTexto }}>
+          Aguarda até {config.value ?? 0} {unidades[config.unit] || 'minutos'}
+        </div>
       </div>
-      <Handle type="source" position={Position.Right} id="yes" style={{ background: '#10b981', width: 10, height: 10, top: '35%' }} />
-      <Handle type="source" position={Position.Right} id="no" style={{ background: '#ef4444', width: 10, height: 10, top: '65%' }} />
-    </div>
+
+      <div className="relative px-4 pb-3 pt-2 space-y-2">
+        <div className="relative">
+          <p className="text-[12px] text-right" style={{ color: '#12B76A' }}>Respondeu</p>
+          <Conector tipo="source" id="yes" style={{ top: '50%' }} />
+        </div>
+        <div className="relative">
+          <p className="text-[12px] text-right" style={{ color: '#F04438' }}>Não respondeu</p>
+          <Conector tipo="source" id="no" style={{ top: '84%' }} />
+        </div>
+      </div>
+    </Cartao>
   )
 }
 
-function EndNode({ data, selected }: NodeProps<FlowNode>) {
-  return (
-    <NodeShell selected={selected} color="#6b7280" icon={<FlagCheckered size={16} weight="fill" style={{ color: '#6b7280' }} />} title="Fim" hasSource={false} />
-  )
-}
-
-/**
- * Move o lead de coluna no Kanban. O rótulo mostra o nome da etapa, não o uuid —
- * o nome vem em config.stageName, gravado junto pelo painel de edição, porque o
- * nó não tem como consultar a lista de etapas de dentro do canvas.
- */
 function MoveStageNode({ data, selected }: NodeProps<FlowNode>) {
   const config = data.config || {}
   return (
-    <NodeShell
-      selected={selected}
-      color="#14b8a6"
-      icon={<ArrowsLeftRight size={16} weight="fill" style={{ color: '#14b8a6' }} />}
-      title="Mover de etapa"
-    >
-      {config.stageName
-        ? <p className="font-semibold text-ink">→ {config.stageName}</p>
-        : <span className="italic text-muted">Selecione a etapa</span>}
-    </NodeShell>
+    <Cartao selected={selected} largura={260}>
+      <Conector tipo="target" />
+      <div className="flex items-center gap-2.5 px-4 pt-3.5 pb-1">
+        <div className="w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0" style={{ background: '#F0FDF9' }}>
+          <ArrowsLeftRight size={15} weight="fill" color="#15B79E" />
+        </div>
+        <div>
+          <p style={{ color: C.textoFraco }} className="text-[11px] leading-none">Pipeline</p>
+          <p style={{ color: C.texto }} className="text-[15px] font-semibold leading-tight">Mover de etapa</p>
+        </div>
+      </div>
+      <div className="px-3 pb-1 pt-1.5">
+        <div className="rounded-xl px-3.5 py-2.5 text-[13px]" style={{ background: C.bolha, color: C.bolhaTexto }}>
+          {config.stageName ? '→ ' + config.stageName : 'Selecione a etapa'}
+        </div>
+      </div>
+      <Saida rotulo="Próximo Passo" />
+    </Cartao>
+  )
+}
+
+function EndNode({ selected }: NodeProps<FlowNode>) {
+  return (
+    <Cartao selected={selected} largura={200}>
+      <Conector tipo="target" />
+      <div className="flex items-center gap-2.5 px-4 py-3.5">
+        <div className="w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0" style={{ background: C.bolha }}>
+          <FlagCheckered size={15} weight="fill" color={C.textoFraco} />
+        </div>
+        <p style={{ color: C.texto }} className="text-[15px] font-semibold">Fim do fluxo</p>
+      </div>
+    </Cartao>
   )
 }
 
@@ -375,17 +566,55 @@ export default function FunnelEditor({
   initialNodes,
   initialEdges,
   stages = [],
+  funnelId,
   onChange,
 }: {
   initialNodes: FlowNode[]
   initialEdges: Edge[]
   /** Etapas do pipeline, para o bloco "Mover de etapa". */
   stages?: StageOption[]
+  /** Quando informado, o canvas busca os números reais de cada bloco. */
+  funnelId?: string
   onChange: (nodes: FlowNode[], edges: Edge[]) => void
 }) {
   const [nodes, setNodes] = useState<FlowNode[]>(initialNodes)
   const [edges, setEdges] = useState<Edge[]>(initialEdges)
   const [selectedId, setSelectedId] = useState<string | null>(null)
+  const [stats, setStats] = useState<Record<string, EstatisticasBloco>>({})
+
+  /*
+   * Números reais por bloco.
+   *
+   * Ficam fora do `nodes` porque `nodes` é o que se SALVA — misturar métrica ali
+   * gravaria número de execução dentro do desenho do fluxo. Aqui eles são
+   * costurados só na hora de desenhar (nodesComStats).
+   */
+  useEffect(() => {
+    if (!funnelId) return
+    let cancelado = false
+    fetch(`/api/funnels/${funnelId}/metrics`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((json) => {
+        if (cancelado || !json?.data) return
+        const mapa: Record<string, EstatisticasBloco> = {}
+        const garante = (id: string) => (mapa[id] ??= { enviado: 0, entregue: 0, respondeu: 0, clicou: 0 })
+        for (const e of json.data.envios ?? []) {
+          const alvo = garante(e.block_id)
+          alvo.enviado = e.enviado
+          alvo.entregue = e.entregue
+        }
+        for (const c of json.data.clicks ?? []) garante(c.block_id).clicou = c.clicados
+        for (const r of json.data.responses ?? []) garante(r.block_id).respondeu = r.sim
+        setStats(mapa)
+      })
+      .catch(() => { /* canvas sem números continua utilizável */ })
+    return () => { cancelado = true }
+  }, [funnelId])
+
+  const nodesComStats = useMemo(
+    () => nodes.map((n) => (stats[n.id] ? { ...n, data: { ...n.data, stats: stats[n.id] } } : n)),
+    [nodes, stats]
+  )
 
   const emit = useCallback((n: FlowNode[], e: Edge[]) => {
     onChange(n, e)
@@ -408,10 +637,20 @@ export default function FunnelEditor({
   }, [nodes, emit])
 
   const onConnect = useCallback((connection: Connection) => {
-    const label = connection.sourceHandle === 'yes' ? 'Sim' : connection.sourceHandle === 'no' ? 'Não' : undefined
-    const color = connection.sourceHandle === 'yes' ? '#10b981' : connection.sourceHandle === 'no' ? '#ef4444' : '#94a3b8'
+    // Sem rótulo colorido no fio: no ManyChat quem diz o que é cada saída é o
+    // próprio cartão ("Respondeu" / "Não respondeu"), e o fio é só o traço que
+    // liga. Rótulo repetido no meio da curva só polui o canvas.
+    const color = connection.sourceHandle === 'yes'
+      ? '#12B76A'
+      : connection.sourceHandle === 'no'
+        ? '#F04438'
+        : '#98A2B3'
     setEdges((prev) => {
-      const next = addEdge({ ...connection, label, style: { stroke: color }, labelStyle: { fill: color, fontWeight: 700, fontSize: 11 } }, prev)
+      const next = addEdge({
+        ...connection,
+        type: 'smoothstep',
+        style: { stroke: color, strokeWidth: 1.5 },
+      }, prev)
       emit(nodes, next)
       return next
     })
@@ -463,7 +702,7 @@ export default function FunnelEditor({
     <ReactFlowProvider>
       <div className="relative w-full h-full">
         <ReactFlow
-          nodes={nodes}
+          nodes={nodesComStats}
           edges={edges}
           nodeTypes={nodeTypes}
           onNodesChange={onNodesChange}
@@ -472,10 +711,18 @@ export default function FunnelEditor({
           onNodeClick={(_, node) => setSelectedId(node.id)}
           onPaneClick={() => setSelectedId(null)}
           fitView
+          fitViewOptions={{ padding: 0.25 }}
           deleteKeyCode={['Backspace', 'Delete']}
+          // Curva suave em todo fio novo OU antigo — os que já estavam salvos no
+          // banco não têm `type`, e sem isto continuariam retos no meio do resto.
+          defaultEdgeOptions={{ type: 'smoothstep', style: { stroke: '#98A2B3', strokeWidth: 1.5 } }}
+          proOptions={{ hideAttribution: true }}
+          style={{ background: '#F7F8FA' }}
         >
-          <Background />
-          <Controls />
+          {/* Pontinhos bem discretos: dão a noção de deslocamento sem competir
+              com os cartões, que é o que o ManyChat faz. */}
+          <Background gap={22} size={1.4} color="#DCE0E8" />
+          <Controls showInteractive={false} />
         </ReactFlow>
 
         {/* Toolbar to add new blocks */}

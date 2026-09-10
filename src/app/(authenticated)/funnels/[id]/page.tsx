@@ -181,7 +181,7 @@ export default function FunnelEditorPage() {
       </div>
 
       <div className="flex-1 relative">
-        <FunnelEditor initialNodes={nodes as any} initialEdges={edges} stages={stageOptions} onChange={handleFlowChange as any} />
+        <FunnelEditor initialNodes={nodes as any} initialEdges={edges} stages={stageOptions} funnelId={funnelId} onChange={handleFlowChange as any} />
       </div>
     </div>
   )
