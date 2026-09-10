@@ -156,7 +156,7 @@ export async function processZapiMessage(orgId: string, body: any): Promise<Zapi
 
   let leadCriadoAgora = false
   let [lead] = await db
-    .select({ id: leads.id, title: leads.title, phone: leads.phone })
+    .select({ id: leads.id, title: leads.title, phone: leads.phone, stageId: leads.stageId })
     .from(leads)
     .where(and(eq(leads.organizationId, orgId), eq(leads.phone, phone), isNull(leads.deletedAt)))
     .limit(1)
@@ -182,7 +182,7 @@ export async function processZapiMessage(orgId: string, body: any): Promise<Zapi
           stageId: firstStage?.id || null,
           lastActivityAt: new Date(),
         })
-        .returning({ id: leads.id, title: leads.title, phone: leads.phone })
+        .returning({ id: leads.id, title: leads.title, phone: leads.phone, stageId: leads.stageId })
       lead = novo
       leadCriadoAgora = true
 
@@ -199,7 +199,7 @@ export async function processZapiMessage(orgId: string, body: any): Promise<Zapi
       // deixa só uma passar; a outra recupera o lead que venceu.
       if (!isUniqueViolation(err)) throw err
       const [existente] = await db
-        .select({ id: leads.id, title: leads.title, phone: leads.phone })
+        .select({ id: leads.id, title: leads.title, phone: leads.phone, stageId: leads.stageId })
         .from(leads)
         .where(and(eq(leads.organizationId, orgId), eq(leads.phone, phone), isNull(leads.deletedAt)))
         .limit(1)
@@ -281,9 +281,14 @@ export async function processZapiMessage(orgId: string, body: any): Promise<Zapi
   }
   if (!isFromMe) {
     leadUpdates.title = lead.title === lead.phone ? senderName : lead.title
-  } else {
+  } else if (lead.stageId) {
     // Respondeu pelo celular: o lead está sendo atendido por gente, e a etapa
     // acompanha — mesma regra que já vale pra Evolution.
+    //
+    // Só vale pra quem JÁ está no funil (`lead.stageId`). Conversa importada
+    // nasce sem etapa e precisa continuar assim: responder o fornecedor ou um
+    // contato antigo não pode criar card no Kanban — era exatamente a mistura
+    // que a importação evita.
     const [stage] = await db
       .select({ id: pipelineStages.id })
       .from(pipelineStages)

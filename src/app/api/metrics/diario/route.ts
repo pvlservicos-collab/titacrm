@@ -54,10 +54,16 @@ export async function GET(req: NextRequest) {
     ] = await Promise.all([
       // Leads que nasceram no dia — de qualquer origem (Agenda, site, indicação,
       // mensagem nova no WhatsApp).
+      //
+      // Conversa importada do WhatsApp fica de fora: ela não é lead, é contato
+      // antigo do aparelho (ver /api/integrations/zapi/chats). Contá-la daria um
+      // "374 leads novos" num dia em que ninguém entrou de verdade — o relatório
+      // perderia a credibilidade logo no primeiro uso.
       db.execute(sql`
         SELECT count(*)::int AS total
         FROM leads
         WHERE organization_id = ${org} AND deleted_at IS NULL
+          AND coalesce(custom_attributes->>'origem', '') <> 'conversa_whatsapp'
           AND created_at >= ${inicio} AND created_at < ${fim}
       `),
 
@@ -65,6 +71,7 @@ export async function GET(req: NextRequest) {
         SELECT coalesce(custom_attributes->>'lead_source', 'outros') AS fonte, count(*)::int AS total
         FROM leads
         WHERE organization_id = ${org} AND deleted_at IS NULL
+          AND coalesce(custom_attributes->>'origem', '') <> 'conversa_whatsapp'
           AND created_at >= ${inicio} AND created_at < ${fim}
         GROUP BY 1 ORDER BY 2 DESC
       `),

@@ -3,8 +3,15 @@
  *
  * A Z-API não tem endpoint de histórico e não guarda mensagens, então o máximo
  * que existe pra trazer de um número já em uso é QUEM são as conversas: nome e
- * telefone. É isso que este endpoint faz — cria/atualiza um lead por conversa,
- * sem mensagem nenhuma. O histórico do CRM começa quando o webhook é ligado.
+ * telefone. O histórico do CRM começa quando o webhook é ligado.
+ *
+ * CONVERSA NÃO É LEAD. O número já tinha centenas de conversas antes do CRM —
+ * fornecedor, pessoal, grupo — e jogar tudo isso no funil misturaria essa
+ * bagunça com os leads de verdade (Agenda, site, indicação). Por isso a linha
+ * criada aqui nasce SEM etapa: o Kanban só desenha card com etapa
+ * (PipelineBoard filtra por `stage_id`), então ela aparece no Chat e em lugar
+ * nenhum mais. Quem atender e decidir que aquilo virou negócio escolhe a etapa
+ * no painel do lead — aí sim entra no funil, por decisão de gente.
  *
  * Não sobrescreve lead que já existe (o nome no CRM costuma ser melhor que o
  * nome da agenda do celular) e nunca importa grupo, pela mesma razão da entrada
@@ -13,8 +20,8 @@
 import { NextRequest } from 'next/server'
 import { authenticateRequest, apiError } from '@/lib/api-auth'
 import { db } from '@/lib/db'
-import { integrations, leads, pipelineStages } from '@/lib/schema'
-import { and, asc, eq, isNull } from 'drizzle-orm'
+import { integrations, leads } from '@/lib/schema'
+import { and, eq, isNull } from 'drizzle-orm'
 import { isUniqueViolation } from '@/lib/db-helpers'
 import { normalizePhone } from '@/lib/leadSources'
 import { ZAPI_INTEGRATION_TYPE, fetchZapiChats } from '@/lib/zapi'
@@ -39,13 +46,6 @@ export async function POST(req: NextRequest) {
       ))
       .limit(1)
     if (!integration) return apiError(400, 'Integração Z-API não configurada.')
-
-    const [primeiraEtapa] = await db
-      .select({ id: pipelineStages.id })
-      .from(pipelineStages)
-      .where(and(eq(pipelineStages.organizationId, auth.organizationId), isNull(pipelineStages.deletedAt)))
-      .orderBy(asc(pipelineStages.rank))
-      .limit(1)
 
     let criados = 0
     let existentes = 0
@@ -89,11 +89,16 @@ export async function POST(req: NextRequest) {
             title: (conversa.name || '').trim() || phone,
             phone,
             integrationId: integration.id,
-            stageId: primeiraEtapa?.id ?? null,
+            // Sem etapa de propósito — ver o cabeçalho do arquivo.
+            stageId: null,
             // A conversa é antiga: usar "agora" faria todas elas irem pro topo da
             // lista de conversas como se tivessem acabado de chegar.
             lastActivityAt: horaDaConversa(conversa.lastMessageTime),
-            customAttributes: { lead_source: 'zapi_import' },
+            // `origem` e não `lead_source`: `lead_source` é o que marca CANAL DE
+            // AQUISIÇÃO e alimenta a coluna "Fonte:" do Kanban e o dashboard.
+            // Conversa importada não é aquisição, e usar a mesma chave a faria
+            // aparecer nos dois lugares como se fosse.
+            customAttributes: { origem: 'conversa_whatsapp' },
           })
           criados++
         } catch (err) {
