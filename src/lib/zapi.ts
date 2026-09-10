@@ -20,6 +20,7 @@
 import { db } from './db'
 import { integrations, integrationSecrets } from './schema'
 import { eq, and, isNull } from 'drizzle-orm'
+import { telefoneVariantes } from './leadSources'
 
 export const ZAPI_INTEGRATION_TYPE = 'whatsapp_zapi'
 export const ZAPI_INTEGRATION_NAME = 'WhatsApp Z-API'
@@ -139,15 +140,62 @@ function destinatario(phone: string): string {
   return phone.replace(/\D/g, '')
 }
 
+/** Resultado de um envio: o que a Z-API devolveu e o número que funcionou. */
+export interface EnvioZapi {
+  data: any
+  /** A forma do número que a Z-API aceitou — pode diferir da que foi pedida. */
+  telefone: string
+}
+
+/**
+ * Tenta enviar por cada forma do número até uma funcionar.
+ *
+ * O mesmo celular brasileiro existe com e sem o nono dígito, e qual das duas o
+ * WhatsApp aceita depende da idade da conta — não dá pra saber de fora. O
+ * endpoint `/phone-exists` da Z-API resolveria isso ANTES de enviar, mas nesta
+ * instância ele responde "Whatsapp is not responding" mesmo com a sessão
+ * conectada (testado duas vezes), então descobrir tentando é o caminho que sobra.
+ *
+ * Só tenta a segunda forma quando a primeira FALHA de verdade (a chamada
+ * lançou), nunca quando ela deu 2xx — senão a pessoa receberia a mesma mensagem
+ * duas vezes. Falhando todas, propaga o erro da primeira, que é o da forma
+ * canônica e o mais informativo pra quem for investigar.
+ */
+async function comCorrecaoDeNumero(
+  phone: string,
+  enviar: (numero: string) => Promise<any>
+): Promise<EnvioZapi> {
+  const formas = telefoneVariantes(phone)
+  const tentativas = formas.length > 0 ? formas : [destinatario(phone)]
+
+  let primeiroErro: unknown = null
+  for (const numero of tentativas) {
+    try {
+      const data = await enviar(numero)
+      return { data, telefone: numero }
+    } catch (err) {
+      if (primeiroErro === null) primeiroErro = err
+      console.warn('[zapi] envio falhou para ' + numero + '; tentando a outra forma do número', err)
+    }
+  }
+  throw primeiroErro ?? new Error('Falha ao enviar pela Z-API')
+}
+
 /* ── Envio ────────────────────────────────────────────────────────────────── */
 
-export async function sendZapiMessage(organizationId: string, phone: string, text: string) {
+export async function sendZapiMessage(
+  organizationId: string,
+  phone: string,
+  text: string
+): Promise<EnvioZapi> {
   const creds = await getZapiCredentials(organizationId)
-  return chamar(
-    creds,
-    'send-text',
-    { body: { phone: destinatario(phone), message: text } },
-    'Falha ao enviar mensagem pela Z-API'
+  return comCorrecaoDeNumero(phone, (numero) =>
+    chamar(
+      creds,
+      'send-text',
+      { body: { phone: destinatario(numero), message: text } },
+      'Falha ao enviar mensagem pela Z-API'
+    )
   )
 }
 
@@ -166,32 +214,35 @@ export async function sendZapiMedia(
   mediaUrl: string,
   caption?: string,
   fileName?: string
-) {
+): Promise<EnvioZapi> {
   const creds = await getZapiCredentials(organizationId)
-  const to = destinatario(phone)
 
-  if (mediaType === 'image' || mediaType === 'sticker') {
-    return chamar(creds, 'send-image', {
-      body: { phone: to, image: mediaUrl, ...(caption ? { caption } : {}) },
-    }, 'Falha ao enviar imagem pela Z-API')
-  }
+  return comCorrecaoDeNumero(phone, (numero) => {
+    const to = destinatario(numero)
 
-  if (mediaType === 'video') {
-    return chamar(creds, 'send-video', {
-      body: { phone: to, video: mediaUrl, ...(caption ? { caption } : {}) },
-    }, 'Falha ao enviar vídeo pela Z-API')
-  }
+    if (mediaType === 'image' || mediaType === 'sticker') {
+      return chamar(creds, 'send-image', {
+        body: { phone: to, image: mediaUrl, ...(caption ? { caption } : {}) },
+      }, 'Falha ao enviar imagem pela Z-API')
+    }
 
-  if (mediaType === 'audio') {
-    return chamar(creds, 'send-audio', {
-      body: { phone: to, audio: mediaUrl },
-    }, 'Falha ao enviar áudio pela Z-API')
-  }
+    if (mediaType === 'video') {
+      return chamar(creds, 'send-video', {
+        body: { phone: to, video: mediaUrl, ...(caption ? { caption } : {}) },
+      }, 'Falha ao enviar vídeo pela Z-API')
+    }
 
-  const extensao = extensaoDe(fileName, mediaUrl)
-  return chamar(creds, `send-document/${extensao}`, {
-    body: { phone: to, document: mediaUrl, fileName: fileName || `arquivo.${extensao}` },
-  }, 'Falha ao enviar documento pela Z-API')
+    if (mediaType === 'audio') {
+      return chamar(creds, 'send-audio', {
+        body: { phone: to, audio: mediaUrl },
+      }, 'Falha ao enviar áudio pela Z-API')
+    }
+
+    const extensao = extensaoDe(fileName, mediaUrl)
+    return chamar(creds, 'send-document/' + extensao, {
+      body: { phone: to, document: mediaUrl, fileName: fileName || ('arquivo.' + extensao) },
+    }, 'Falha ao enviar documento pela Z-API')
+  })
 }
 
 /** Extensão do arquivo, do nome ou da URL. "bin" quando não dá pra saber. */

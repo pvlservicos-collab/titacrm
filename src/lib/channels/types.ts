@@ -1,6 +1,14 @@
 export interface ChannelSendResult {
   externalId?: string
   raw?: any
+  /**
+   * A forma do número que o canal REALMENTE aceitou, quando o canal sabe dizer.
+   *
+   * O mesmo celular brasileiro existe com e sem o nono dígito e só dá pra saber
+   * qual funciona tentando; quem chama grava a que deu certo no lead, pra não
+   * repetir a tentativa perdida em toda mensagem seguinte.
+   */
+  recipienteCorrigido?: string
 }
 
 export interface ChannelAdapter {

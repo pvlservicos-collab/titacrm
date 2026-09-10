@@ -13,13 +13,13 @@ export const zapiAdapter: ChannelAdapter = {
   supportsGroups: false,
 
   async sendText(organizationId, _integrationId, recipient, content) {
-    const result = await sendZapiMessage(organizationId, recipient, content)
-    return { externalId: result?.messageId || result?.id, raw: result }
+    const { data, telefone } = await sendZapiMessage(organizationId, recipient, content)
+    return { externalId: data?.messageId || data?.id, raw: data, recipienteCorrigido: telefone }
   },
 
   async sendMedia(organizationId, _integrationId, recipient, mediaType, mediaUrl, caption, filename) {
-    const result = await sendZapiMedia(organizationId, recipient, mediaType, mediaUrl, caption, filename)
-    return { externalId: result?.messageId || result?.id, raw: result }
+    const { data, telefone } = await sendZapiMedia(organizationId, recipient, mediaType, mediaUrl, caption, filename)
+    return { externalId: data?.messageId || data?.id, raw: data, recipienteCorrigido: telefone }
   },
 
   async deleteMessage(organizationId, _integrationId, recipient, externalMessageId) {
