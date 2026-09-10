@@ -142,6 +142,22 @@ export async function processZapiMessage(orgId: string, body: any): Promise<Zapi
     : (telefoneCanonico(phoneBruto) || phoneBruto.replace(/\D/g, ''))
   if (!phone) return { status: 'skipped', reason: 'sem telefone' }
 
+  /*
+   * Comunidade, canal e lista de transmissão não são conversa com ninguém.
+   *
+   * Chegam com um id numérico gigante no lugar do telefone e `isGroup: false`,
+   * então passavam como se fossem contato: viravam uma linha no chat chamada
+   * "120363404701403742" (o "Pack de Figurinhas") que não dá pra abrir nem
+   * responder. E como o id é recriado a cada mensagem nova, apagar a linha não
+   * resolvia — ela voltava sozinha na próxima figurinha postada.
+   *
+   * Telefone com DDI cabe em 15 dígitos (padrão E.164); acima disso não é
+   * telefone.
+   */
+  if (!ehGrupo && phone.replace(/\D/g, '').length > 14) {
+    return { status: 'skipped', reason: 'comunidade/lista de transmissão' }
+  }
+
   // Status de mensagem ("entregue", "lida") não é conteúdo — vem por outro
   // callback e nunca deve virar linha na timeline.
   if (body?.type && body.type !== 'ReceivedCallback') {

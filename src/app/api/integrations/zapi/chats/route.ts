@@ -34,6 +34,21 @@ import { isUniqueViolation } from '@/lib/db-helpers'
 import { telefoneCanonico } from '@/lib/leadSources'
 import { ZAPI_INTEGRATION_TYPE, fetchZapiChats } from '@/lib/zapi'
 
+/**
+ * Só conversa com mensagem nos últimos N dias entra no chat.
+ *
+ * O WhatsApp guarda toda conversa que já existiu: neste número são 1.701, das
+ * quais 81 tiveram mensagem no último mês e 870 nem data têm. Trazer todas
+ * transforma a lista de conversas num catálogo de contatos, e a conversa de
+ * verdade se perde no meio — que é o mesmo problema que a planilha de 644
+ * contatos já tinha causado.
+ *
+ * As antigas continuam gravadas, só não aparecem na lista: a busca acha (é pra
+ * isso que a busca suspende essa regra) e, se a pessoa mandar mensagem, a
+ * conversa reaparece sozinha com a mensagem nova.
+ */
+const DIAS_DE_CONVERSA_ATIVA = 30
+
 const PAGINA_TAMANHO = 50
 /** Teto por chamada — a Vercel corta a função em 60s e o resto vem na próxima. */
 const MAX_PAGINAS_POR_CHAMADA = 6
@@ -49,6 +64,10 @@ export async function POST(req: NextRequest) {
      * A comparação é por nome sem diferenciar maiúscula/acento, porque quem pede
      * digita "lead magnet e crm", não o id "1203...-group".
      */
+    // `dias: 0` traz todas como conversa; qualquer número recorta pela idade.
+    const diasAtiva = body?.dias === undefined ? DIAS_DE_CONVERSA_ATIVA : Math.max(0, Number(body.dias) || 0)
+    const limiteAtiva = diasAtiva > 0 ? Date.now() - diasAtiva * 24 * 60 * 60 * 1000 : null
+
     const pedidoGrupos = body?.grupos
     const todosOsGrupos = pedidoGrupos === 'todos'
     const gruposEscolhidos = new Set(
@@ -143,7 +162,10 @@ export async function POST(req: NextRequest) {
             // devolve histórico. Marcar o tipo é o que a faz aparecer no chat,
             // que é o ponto de importar. O horário vem do WhatsApp, então a
             // ordem da lista continua sendo a ordem real das conversas.
-            lastActivityType: 'whatsapp',
+            // Marcar o tipo é o que faz a conversa aparecer na lista do Chat
+            // (ver LeadList). Fica nulo pra conversa velha: ela existe, dá pra
+            // achar na busca, e volta pra lista assim que chegar uma mensagem.
+            lastActivityType: ehConversaAtiva(conversa.lastMessageTime, limiteAtiva) ? 'whatsapp' : null,
             // `origem` e não `lead_source`: `lead_source` é o que marca CANAL DE
             // AQUISIÇÃO e alimenta a coluna "Fonte:" do Kanban e o dashboard.
             // Conversa importada não é aquisição, e usar a mesma chave a faria
@@ -174,6 +196,19 @@ export async function POST(req: NextRequest) {
   } catch (err: any) {
     return apiError(err.status || 500, err.message || 'Erro interno.')
   }
+}
+
+/**
+ * A conversa teve mensagem dentro da janela?
+ *
+ * Sem data (`lastMessageTime` ausente) conta como VELHA: são 870 aqui, e o que
+ * elas têm em comum é serem tão antigas que o WhatsApp já nem guarda quando foi.
+ */
+function ehConversaAtiva(quando: unknown, limite: number | null): boolean {
+  if (limite === null) return true
+  const n = Number(quando)
+  if (!Number.isFinite(n) || n <= 0) return false
+  return n >= limite
 }
 
 /** "Lead Magnet e CRM" e "lead magnet e crm" viram a mesma chave. */
