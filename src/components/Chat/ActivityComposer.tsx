@@ -72,6 +72,8 @@ function formatDuration(ms: number): string {
 // reaproveitando a mesma tela de prévia/legenda do clipe em vez de duplicar a lógica.
 export interface ActivityComposerHandle {
   receiveDroppedFile: (file: File) => void
+  /** Põe o cursor no campo de texto — usado ao abrir uma conversa. */
+  focar: () => void
 }
 
 const ActivityComposer = forwardRef<ActivityComposerHandle, ActivityComposerProps>(function ActivityComposer({
@@ -249,6 +251,7 @@ const ActivityComposer = forwardRef<ActivityComposerHandle, ActivityComposerProp
   // mesmo destino do clipe, só muda como o arquivo foi escolhido.
   useImperativeHandle(ref, () => ({
     receiveDroppedFile: setFileAsPendingMedia,
+    focar: () => inputRef.current?.focus(),
   }), [setFileAsPendingMedia])
 
   const handleCancelPendingMedia = () => {

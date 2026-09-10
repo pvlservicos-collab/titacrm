@@ -49,8 +49,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [error, setError] = useState<string | null>(null)
   const [onboardingCompleted, setOnboardingCompleted] = useState<boolean | null>(null)
   const [onboardingStatusLoaded, setOnboardingStatusLoaded] = useState(false)
+  const [organizacaoCarregando, setOrganizacaoCarregando] = useState(true)
 
-  const loading = status === 'loading'
+  /**
+   * `loading` cobre a sessão E a organização.
+   *
+   * Antes era só `status === 'loading'`, que fala apenas da sessão do NextAuth.
+   * A organização vem de um fetch separado (`/api/users/me`), então existia uma
+   * janela em que a sessão já tinha resolvido e a organização ainda não: nela,
+   * `organizationId` era null e TODA tela protegida mostrava "Nenhuma
+   * organização encontrada. Execute o seed.sql" — a primeira coisa que a pessoa
+   * via ao abrir o chat era uma mensagem de erro de instalação.
+   */
+  const loading = status === 'loading' || organizacaoCarregando
 
   const user = session?.user
     ? {
@@ -72,8 +83,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setPermissions(null)
       setOnboardingCompleted(null)
       setOnboardingStatusLoaded(false)
+      // Sem sessão não há o que carregar — deixar `true` aqui prenderia a tela
+      // de login num spinner eterno.
+      setOrganizacaoCarregando(false)
       return
     }
+
+    setOrganizacaoCarregando(true)
 
     async function loadOrganization() {
       try {
@@ -100,6 +116,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setError(err instanceof Error ? err.message : 'Erro ao carregar organização')
       } finally {
         setOnboardingStatusLoaded(true)
+        // No finally, não no sucesso: se o fetch falhar, a tela precisa sair do
+        // spinner e mostrar o estado real em vez de girar pra sempre.
+        setOrganizacaoCarregando(false)
       }
     }
 

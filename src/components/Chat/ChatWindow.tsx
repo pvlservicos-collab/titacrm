@@ -1,8 +1,8 @@
 'use client'
 
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { Image as ImageIcon } from '@phosphor-icons/react'
-import { useLeadActivities, useAuth, useChatButtonSettings } from '@/hooks'
+import { useLeadActivities, useAuth, useChatButtonSettings, useIsMobile } from '@/hooks'
 import { usePinnedMessages } from '@/hooks/usePinnedMessages'
 import { uploadClientFile } from '@/lib/blobClient'
 import { LeadWithOwner, LeadActivityWithActor } from '@/lib/types'
@@ -31,7 +31,26 @@ export default function ChatWindow({ lead, organizationId, onMessageSent }: Chat
   const { settings: chatButtonSettings, fireWebhook } = useChatButtonSettings()
   const [replyContext, setReplyContext] = useState<ReplyContext | null>(null)
   const [sendError, setSendError] = useState<string | null>(null)
+  const ehCelular = useIsMobile()
   const composerRef = useRef<ActivityComposerHandle>(null)
+
+  /**
+   * Abriu a conversa? O cursor já vai pro campo de texto.
+   *
+   * Quem atende clica na conversa pra responder — ter que clicar de novo no
+   * campo é um passo a mais em cada atendimento do dia.
+   *
+   * Só no desktop: no celular, focar sozinho abre o teclado por cima da
+   * conversa e esconde justamente a mensagem que a pessoa acabou de abrir pra
+   * ler.
+   */
+  useEffect(() => {
+    if (ehCelular) return
+    // Um quadro de atraso: no mesmo tick o composer ainda está montando com a
+    // conversa nova, e o focus se perderia no remonte.
+    const id = requestAnimationFrame(() => composerRef.current?.focar())
+    return () => cancelAnimationFrame(id)
+  }, [lead.id, ehCelular])
 
   // Arrastar-e-soltar um arquivo em qualquer ponto da conversa (não só no clipe) —
   // dragCounter conta enter/leave porque o navegador dispara esses eventos toda vez
