@@ -1,12 +1,13 @@
 import { after } from 'next/server'
 import { db } from '@/lib/db'
 import { leads, leadActivities, integrations, pipelineStages, webhookLogs } from '@/lib/schema'
-import { eq, and, isNull, asc, ilike } from 'drizzle-orm'
+import { eq, and, isNull, asc, ilike, inArray } from 'drizzle-orm'
 import { publishEvent, channels, events } from '@/lib/realtime'
 import { dispatchOutboundWebhook } from '@/lib/outbound-webhook'
 import { isUniqueViolation } from '@/lib/db-helpers'
 import { notifyInboundMessage } from '@/lib/push'
 import { ZAPI_INTEGRATION_TYPE, rehospedarMidiaZapi, rehospedarFotoPerfil } from '@/lib/zapi'
+import { telefoneVariantes, telefoneCanonico } from '@/lib/leadSources'
 
 /**
  * Entrada de mensagens da Z-API.
@@ -119,7 +120,11 @@ function extrair(body: any): Extraido | null {
 export async function processZapiMessage(orgId: string, body: any): Promise<ZapiProcessResult> {
   const messageId: string | undefined = body?.messageId
   const phoneBruto: string = String(body?.phone || '')
-  const phone = phoneBruto.replace(/\D/g, '')
+  // Grava sempre com o nono dígito e procura pelas duas formas: o JID do
+  // WhatsApp pode vir sem o 9 (ver telefoneVariantes) e, sem isso, a mesma
+  // pessoa vira um lead e uma conversa separados.
+  const variantes = telefoneVariantes(phoneBruto)
+  const phone = telefoneCanonico(phoneBruto) || phoneBruto.replace(/\D/g, '')
   if (!phone) return { status: 'skipped', reason: 'sem telefone' }
 
   // Mesma política da Evolution: grupo não vira conversa no CRM. Uma mensagem de
@@ -158,7 +163,7 @@ export async function processZapiMessage(orgId: string, body: any): Promise<Zapi
   let [lead] = await db
     .select({ id: leads.id, title: leads.title, phone: leads.phone, stageId: leads.stageId })
     .from(leads)
-    .where(and(eq(leads.organizationId, orgId), eq(leads.phone, phone), isNull(leads.deletedAt)))
+    .where(and(eq(leads.organizationId, orgId), inArray(leads.phone, variantes), isNull(leads.deletedAt)))
     .limit(1)
 
   if (!lead) {
@@ -201,7 +206,7 @@ export async function processZapiMessage(orgId: string, body: any): Promise<Zapi
       const [existente] = await db
         .select({ id: leads.id, title: leads.title, phone: leads.phone, stageId: leads.stageId })
         .from(leads)
-        .where(and(eq(leads.organizationId, orgId), eq(leads.phone, phone), isNull(leads.deletedAt)))
+        .where(and(eq(leads.organizationId, orgId), inArray(leads.phone, variantes), isNull(leads.deletedAt)))
         .limit(1)
       if (!existente) throw err
       lead = existente

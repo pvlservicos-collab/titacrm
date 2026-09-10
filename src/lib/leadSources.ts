@@ -105,6 +105,49 @@ export function normalizePhone(value: unknown): string | null {
   return digits
 }
 
+/**
+ * As duas formas que o MESMO celular brasileiro assume, com e sem o nono dígito.
+ *
+ * Medido em produção: o CRM manda mensagem para 55 96 9 9171-2835 e o webhook do
+ * WhatsApp devolve o contato como 55 96 9171-2835 — o JID de contas antigas não
+ * carrega o 9 que foi acrescentado aos celulares. Sem casar as duas formas, a
+ * mesma pessoa vira dois registros: o lead que veio da Agenda de um lado, a
+ * conversa do WhatsApp do outro, e ninguém percebe que são a mesma — o histórico
+ * fica partido e o atendimento fala com "um lead novo" que já era conhecido.
+ *
+ * Só mexe em celular brasileiro (55 + DDD + 8 ou 9 dígitos começando em 6-9).
+ * Fixo e número internacional passam intactos: inventar um 9 ali criaria um
+ * telefone que não existe.
+ */
+export function telefoneVariantes(value: unknown): string[] {
+  const digits = digitsOnly(value)
+  if (!digits || !digits.startsWith('55')) return digits ? [digits] : []
+
+  const resto = digits.slice(2)
+  const ddd = resto.slice(0, 2)
+  const numero = resto.slice(2)
+
+  if (numero.length === 9 && numero.startsWith('9')) {
+    return [digits, `55${ddd}${numero.slice(1)}`]
+  }
+  if (numero.length === 8 && /^[6-9]/.test(numero)) {
+    return [`55${ddd}9${numero}`, digits]
+  }
+  return [digits]
+}
+
+/**
+ * A forma que o CRM grava: celular brasileiro sempre COM o nono dígito.
+ *
+ * É a mesma que `normalizePhone` produz para o que vem da Agenda e do site, e é
+ * a que a Cloud API e a Z-API aceitam para enviar. Guardar sempre a mesma forma
+ * é o que faz o telefone servir de chave.
+ */
+export function telefoneCanonico(value: unknown): string | null {
+  const variantes = telefoneVariantes(value)
+  return variantes[0] ?? null
+}
+
 function trimmed(value: unknown): string | null {
   if (value === null || value === undefined) return null
   const s = String(value).trim()

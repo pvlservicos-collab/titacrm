@@ -1,12 +1,13 @@
 import { after } from 'next/server'
 import { db } from '@/lib/db'
 import { leads, leadActivities, integrations, pipelineStages, webhookLogs } from '@/lib/schema'
-import { eq, and, isNull, asc, ilike } from 'drizzle-orm'
+import { eq, and, isNull, asc, ilike, inArray } from 'drizzle-orm'
 import { publishEvent, channels, events } from '@/lib/realtime'
 import { dispatchOutboundWebhook } from '@/lib/outbound-webhook'
 import { downloadEvolutionMedia, fetchEvolutionProfilePicture } from '@/lib/evolution'
 import { isUniqueViolation } from '@/lib/db-helpers'
 import { notifyInboundMessage } from '@/lib/push'
+import { telefoneVariantes, telefoneCanonico } from '@/lib/leadSources'
 
 // Processamento de uma mensagem Evolution/Baileys já reconhecida como conteúdo real
 // (não recibo de entrega/leitura) — compartilhado entre o webhook em tempo real
@@ -113,8 +114,12 @@ export async function processEvolutionMessage(
   // de criar lead, gravar atividade ou disparar o webhook de saída.
   if (isGroup) return { status: 'skipped', reason: 'group' }
   const phoneJid = (!isGroup && key.addressingMode === 'lid' && key.remoteJidAlt) ? key.remoteJidAlt : remoteJid
-  const phone = phoneJid.split('@')[0]
-  if (!phone) return { status: 'skipped', reason: 'no phone' }
+  const phoneJid_ = phoneJid.split('@')[0]
+  if (!phoneJid_) return { status: 'skipped', reason: 'no phone' }
+  // Nono dígito: o JID pode vir sem o 9 do celular (ver telefoneVariantes em
+  // leadSources). Grava a forma canônica e casa com as duas.
+  const variantes = telefoneVariantes(phoneJid_)
+  const phone = telefoneCanonico(phoneJid_) || phoneJid_
 
   const extracted = extractMessage(data)
   if (!extracted) {
@@ -145,7 +150,7 @@ export async function processEvolutionMessage(
     .where(
       and(
         eq(leads.organizationId, orgId),
-        eq(leads.phone, phone),
+        inArray(leads.phone, variantes),
         isNull(leads.deletedAt)
       )
     )
@@ -199,7 +204,7 @@ export async function processEvolutionMessage(
       const [existingLead] = await db
         .select({ id: leads.id, title: leads.title, phone: leads.phone })
         .from(leads)
-        .where(and(eq(leads.organizationId, orgId), eq(leads.phone, phone), isNull(leads.deletedAt)))
+        .where(and(eq(leads.organizationId, orgId), inArray(leads.phone, variantes), isNull(leads.deletedAt)))
         .limit(1)
       if (!existingLead) throw err
       lead = existingLead
