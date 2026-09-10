@@ -54,8 +54,31 @@ async function getNextBlock(funnelId: string, sourceBlockId: string, branch: 'de
   return block || null
 }
 
+/**
+ * Primeiro nome, do jeito que uma pessoa chamaria: "OTONIEL de paula" → "Otoniel".
+ *
+ * `{nome}` antes virava o título inteiro do lead, e as mensagens do funil saíam
+ * "Oi Otoniel de paula!" ou "Oi Pedro Victor Site VdT!" — o que ninguém da
+ * equipe escreveria, e é o jeito mais rápido de uma mensagem automática
+ * parecer automática.
+ *
+ * Se o título não tem nome (lead que ficou com o telefone no lugar), devolve
+ * vazio: "Oi 5511987654321!" é pior do que só "Oi!".
+ */
+function primeiroNome(titulo: string | null | undefined): string {
+  const primeiro = (titulo || '').trim().split(/\s+/)[0] || ''
+  if (!/\p{L}/u.test(primeiro)) return ''
+  return primeiro.charAt(0).toLocaleUpperCase('pt-BR') + primeiro.slice(1).toLocaleLowerCase('pt-BR')
+}
+
 async function renderMessage(text: string, opts: { leadTitle: string; executionId: string; blockId: string; trackableUrl?: string; context?: Record<string, any> }) {
-  let rendered = text.replace(/\{nome\}/gi, opts.leadTitle || '')
+  const nome = primeiroNome(opts.leadTitle)
+  let rendered = text
+    // {nome_completo} existe pra quando o nome inteiro for mesmo o que se quer.
+    .replace(/\{nome_completo\}/gi, (opts.leadTitle || '').trim())
+    .replace(/\{nome\}/gi, nome)
+  // Sem nome, "Oi {nome}!" viraria "Oi !" — junta a pontuação de volta.
+  if (!nome) rendered = rendered.replace(/ +([!?,.])/g, '$1').replace(/ {2,}/g, ' ')
 
   if (rendered.includes('{link}') && opts.trackableUrl) {
     const token = randomBytes(8).toString('hex')
