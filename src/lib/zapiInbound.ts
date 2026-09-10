@@ -176,6 +176,19 @@ export async function processZapiMessage(orgId: string, body: any): Promise<Zapi
     .where(and(eq(leads.organizationId, orgId), inArray(leads.phone, variantes), isNull(leads.deletedAt)))
     .limit(1)
 
+  /*
+   * Grupo só existe no CRM se ALGUÉM o trouxe de propósito (pela importação).
+   *
+   * O número está em ~46 grupos e quase todos são conversa interna — equipe,
+   * turmas de mentoria, churrasco. Se a chegada de mensagem criasse a conversa,
+   * bastava alguém falar em qualquer um deles pra ele aparecer no chat, e a
+   * lista voltaria a encher sozinha. Então: mensagem de grupo desconhecido é
+   * descartada; a de grupo conhecido entra normalmente.
+   */
+  if (!lead && ehGrupo) {
+    return { status: 'skipped', reason: 'grupo não importado' }
+  }
+
   if (!lead) {
     const [firstStage] = ehGrupo
       ? [undefined]

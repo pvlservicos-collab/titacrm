@@ -16,10 +16,14 @@
  * Não sobrescreve lead que já existe: o nome no CRM costuma ser melhor que o
  * nome da agenda do celular.
  *
- * Grupo entra também, pelo id dele ("1203...-group") no lugar do telefone e
- * marcado com `is_group`. Como toda conversa importada, fica sem etapa — o que
- * importa aqui é o grupo nunca virar card de funil, já que num grupo escrevem
- * várias pessoas e o card seria de quem, afinal?
+ * Grupo é OPT-IN. O número está em dezenas de grupos que são conversa interna
+ * (equipe, turmas, churrasco) e trazer todos só encheria o chat. Por isso o
+ * padrão é não importar nenhum: quem quiser um grupo específico manda o nome
+ * dele em `grupos`, e só ele entra.
+ *
+ * Grupo importado é endereçado pelo id ("1203...-group") no lugar do telefone e
+ * fica sem etapa, como toda conversa — num grupo escrevem várias pessoas, e o
+ * card de funil seria de quem, afinal?
  */
 import { NextRequest } from 'next/server'
 import { authenticateRequest, apiError } from '@/lib/api-auth'
@@ -39,6 +43,19 @@ export async function POST(req: NextRequest) {
     const auth = await authenticateRequest(req)
     const body = await req.json().catch(() => ({}))
     const paginaInicial = Math.max(1, Number(body?.pagina) || 1)
+
+    /**
+     * Quais grupos trazer: `'todos'`, ou uma lista de nomes/ids. Ausente = nenhum.
+     * A comparação é por nome sem diferenciar maiúscula/acento, porque quem pede
+     * digita "lead magnet e crm", não o id "1203...-group".
+     */
+    const pedidoGrupos = body?.grupos
+    const todosOsGrupos = pedidoGrupos === 'todos'
+    const gruposEscolhidos = new Set(
+      (Array.isArray(pedidoGrupos) ? pedidoGrupos : []).map((g: unknown) => chaveDeNome(String(g)))
+    )
+    const querEsteGrupo = (nome: string, id: string) =>
+      todosOsGrupos || gruposEscolhidos.has(chaveDeNome(nome)) || gruposEscolhidos.has(chaveDeNome(id))
 
     const [integration] = await db
       .select({ id: integrations.id })
@@ -71,7 +88,12 @@ export async function POST(req: NextRequest) {
           ? String(conversa.phone || '').trim()
           : normalizePhone(conversa.phone)
         if (!phone) continue
-        if (conversa.isGroup) grupos++
+        if (conversa.isGroup) {
+          if (!querEsteGrupo(String(conversa.name || ''), phone)) {
+            grupos++
+            continue
+          }
+        }
 
         const [existente] = await db
           .select({ id: leads.id })
@@ -123,13 +145,22 @@ export async function POST(req: NextRequest) {
     return Response.json({
       criados,
       existentes,
-      grupos: grupos,
+      grupos_ignorados: grupos,
       proxima_pagina: acabou ? null : pagina + 1,
       fim: acabou,
     })
   } catch (err: any) {
     return apiError(err.status || 500, err.message || 'Erro interno.')
   }
+}
+
+/** "Lead Magnet e CRM" e "lead magnet e crm" viram a mesma chave. */
+function chaveDeNome(valor: string): string {
+  return valor
+    .trim()
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/\p{M}/gu, '')
 }
 
 /** `lastMessageTime` vem em milissegundos (às vezes como string). */
