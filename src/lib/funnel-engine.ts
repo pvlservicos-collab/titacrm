@@ -109,6 +109,18 @@ async function sendMessageBlock(execution: { id: string; funnelId: string; organ
       if (result.externalId) metadata[adapter.metadataIdKey] = result.externalId
       metadata.channel = 'automacao'
       metadata.send_status = 'sent'
+
+      // Mesma correção do envio manual: se o canal só conseguiu entregar na
+      // outra forma do número (com/sem nono dígito), o lead passa a guardar a
+      // que funciona.
+      if (result.recipienteCorrigido && result.recipienteCorrigido !== lead.phone) {
+        metadata.telefone_corrigido = result.recipienteCorrigido
+        try {
+          await db.update(leads).set({ phone: result.recipienteCorrigido }).where(eq(leads.id, lead.id))
+        } catch (err) {
+          console.error('[funnel] falha ao gravar o telefone corrigido:', err)
+        }
+      }
     } catch (err: any) {
       metadata.send_status = 'failed'
       metadata.send_error = err.message || 'Erro ao enviar mensagem.'

@@ -249,6 +249,28 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
         metadata.send_status = 'sent'
         if (result.externalId) metadata[adapter.metadataIdKey] = result.externalId
+
+        // O canal pode ter descoberto que o número só funciona na outra forma
+        // (celular brasileiro com e sem o nono dígito). Grava a que deu certo:
+        // sem isso, toda mensagem seguinte pra essa pessoa gastaria de novo uma
+        // tentativa perdida, e o telefone do lead continuaria errado na tela.
+        if (
+          result.recipienteCorrigido &&
+          actualLeadId &&
+          integrationTyp !== 'instagram_direct' &&
+          result.recipienteCorrigido !== phone
+        ) {
+          metadata.telefone_corrigido = result.recipienteCorrigido
+          try {
+            await db.update(leads)
+              .set({ phone: result.recipienteCorrigido })
+              .where(eq(leads.id, actualLeadId))
+          } catch (err) {
+            // Corrigir telefone é melhoria, não pode derrubar um envio que já
+            // deu certo (ex: o número corrigido já pertence a outro lead).
+            console.error('[messages] falha ao gravar o telefone corrigido:', err)
+          }
+        }
       } catch (err: any) {
         metadata.send_status = 'failed'
         metadata.send_error = err.message || 'Erro ao enviar mensagem.'

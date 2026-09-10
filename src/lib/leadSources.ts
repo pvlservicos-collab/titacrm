@@ -92,16 +92,30 @@ export function digitsOnly(value: unknown): string | null {
  * enviar: assim o número certo é o que fica gravado, e o dedupe do site_evento
  * (que usa o telefone como chave) compara sempre o mesmo formato.
  *
- * Só acrescenta em número de 10 ou 11 dígitos que ainda não comece com 55, pra
- * não estragar um contato internacional que já venha completo. Mesma regra do
- * scripts/importar-csv-leads.mjs — os 644 da planilha já estão com o 55.
+ * Acrescenta em TODO número de 10 ou 11 dígitos, inclusive nos que já começam
+ * com 55 — e essa exceção, que parecia proteção, era um bug.
+ *
+ * 55 é DDI do Brasil e também o DDD do Rio Grande do Sul (Santa Maria,
+ * Uruguaiana, Bagé). Um gaúcho digitando "55 99166-9673" mandava 11 dígitos
+ * começando com 55, o código lia aquilo como "já tem DDI" e gravava
+ * `55991669673` — que não é telefone nenhum: nem tem DDI, nem tem 13 dígitos.
+ * Cinco leads reais estavam assim no banco, sem nunca poder receber mensagem.
+ *
+ * A regra não depende do prefixo e sim do TAMANHO: 10 ou 11 dígitos é DDD +
+ * número, sempre sem DDI (com DDI teria 12 ou 13).
+ *
+ * A exceção são os 11 dígitos que NÃO têm 9 na terceira casa. Todo celular
+ * brasileiro tem: são DDD (2) + 9 + oito dígitos. Um "14155552671" (EUA: 1 +
+ * 415 + 5552671) também tem 11 dígitos, e sem essa checagem viraria
+ * "5514155552671" — um número que não existe. Com 10 dígitos não dá pra
+ * distinguir de um americano sem o código do país, e aí assume-se Brasil, que
+ * é de onde vem praticamente todo lead deste CRM.
  */
 export function normalizePhone(value: unknown): string | null {
   const digits = digitsOnly(value)
   if (!digits) return null
-  if ((digits.length === 10 || digits.length === 11) && !digits.startsWith('55')) {
-    return '55' + digits
-  }
+  if (digits.length === 11 && digits[2] !== '9') return digits
+  if (digits.length === 10 || digits.length === 11) return '55' + digits
   return digits
 }
 
@@ -120,7 +134,10 @@ export function normalizePhone(value: unknown): string | null {
  * telefone que não existe.
  */
 export function telefoneVariantes(value: unknown): string[] {
-  const digits = digitsOnly(value)
+  // normalizePhone primeiro: um "96 99171-2835" (11 dígitos, sem DDI) precisa
+  // virar 13 antes de a gente raciocinar sobre o nono dígito — inclusive no
+  // caso do DDD 55, que sem isso seria confundido com o código do país.
+  const digits = normalizePhone(value)
   if (!digits || !digits.startsWith('55')) return digits ? [digits] : []
 
   const resto = digits.slice(2)
