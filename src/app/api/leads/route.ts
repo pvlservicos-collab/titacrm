@@ -109,7 +109,7 @@ export async function GET(req: NextRequest) {
     // Atendimento (etiqueta de quem está atendendo + aba "Humano"). Calculado das
     // mensagens a cada leitura, nunca gravado — ver src/lib/atendentes.ts. Só na
     // lista do Chat, que é a única tela que mostra.
-    const atendimento: Record<string, { atendente: string | null; humano: boolean }> = {}
+    const atendimento: Record<string, { autores: string[]; humano: boolean }> = {}
     if (scope === 'conversas' && leadIds.length > 0) {
       // Mensagem de robô (funil, automação, agente de IA) não é atendimento.
       const manual = sql`(
@@ -119,8 +119,10 @@ export async function GET(req: NextRequest) {
       )`
       const linhas = await db.execute(sql`
         SELECT a.lead_id,
-          (array_agg(a.actor_member_id ORDER BY a.created_at DESC)
-            FILTER (WHERE a.actor_member_id IS NOT NULL AND ${manual}))[1] AS atendente,
+          -- Todos os autores, do mais recente pro mais antigo: quem é do time
+          -- de atendimento decide a tela (a conta de admin não vira etiqueta).
+          array_agg(a.actor_member_id ORDER BY a.created_at DESC)
+            FILTER (WHERE a.actor_member_id IS NOT NULL AND ${manual}) AS autores,
           bool_or(${manual}) AS teve_manual,
           min(a.created_at) FILTER (WHERE a.metadata->>'automated' = 'true' OR a.metadata->>'source' = 'funnel') AS primeira_automatica,
           max(a.created_at) FILTER (WHERE a.metadata->>'direction' = 'inbound') AS ultima_do_lead
@@ -131,12 +133,15 @@ export async function GET(req: NextRequest) {
         GROUP BY a.lead_id
       `)
       for (const l of linhas.rows as {
-        lead_id: string; atendente: string | null; teve_manual: boolean | null
+        lead_id: string; autores: string[] | null; teve_manual: boolean | null
         primeira_automatica: string | null; ultima_do_lead: string | null
       }[]) {
         const respondeuAutomacao = !!l.primeira_automatica && !!l.ultima_do_lead &&
           new Date(l.ultima_do_lead) > new Date(l.primeira_automatica)
-        atendimento[l.lead_id] = { atendente: l.atendente, humano: !!l.teve_manual || respondeuAutomacao }
+        atendimento[l.lead_id] = {
+          autores: [...new Set(l.autores ?? [])],
+          humano: !!l.teve_manual || respondeuAutomacao,
+        }
       }
     }
 
@@ -144,7 +149,7 @@ export async function GET(req: NextRequest) {
       ...mapLead(r.lead),
       // Grupo não é atendimento de lead: fica fora das etiquetas e da aba Humano.
       ...(scope === 'conversas' && {
-        atendente_member_id: r.lead.isGroup ? null : atendimento[r.lead.id]?.atendente ?? null,
+        autores_manuais: r.lead.isGroup ? [] : atendimento[r.lead.id]?.autores ?? [],
         em_atendimento_humano: r.lead.isGroup ? false : atendimento[r.lead.id]?.humano ?? false,
       }),
       lead_tags: tagsMap[r.lead.id] || [],

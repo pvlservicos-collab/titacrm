@@ -212,7 +212,10 @@ export default function ChatPage() {
           last_activity_at: new Date().toISOString(),
           // A lista recalcula no servidor a cada poucos segundos; isto só evita
           // a etiqueta de quem respondeu demorar a aparecer.
-          ...(!l.is_group && memberId && { atendente_member_id: memberId, em_atendimento_humano: true }),
+          ...(!l.is_group && memberId && {
+            autores_manuais: [memberId, ...(l.autores_manuais ?? []).filter(id => id !== memberId)],
+            em_atendimento_humano: true,
+          }),
           owner_member_id: shouldAssign ? memberId : l.owner_member_id,
           owner: shouldAssign ? { id: memberId, profiles: { full_name: fullName, avatar_url: user?.image || undefined } } : l.owner,
         }

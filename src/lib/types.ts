@@ -69,11 +69,12 @@ export interface Lead {
   /**
    * Atendimento — calculado na hora pela lista de conversas (GET /api/leads),
    * a partir das mensagens; não é coluna, nada é gravado. Ver src/lib/atendentes.ts.
-   *   atendente_member_id   quem mandou a última mensagem manual pelo CRM
+   *   autores_manuais       quem mandou mensagem manual pelo CRM, do mais
+   *                         recente pro mais antigo (sem repetir)
    *   em_atendimento_humano a conversa está com o time (alguém respondeu à mão,
    *                         ou o lead respondeu a mensagem automática)
    */
-  atendente_member_id?: string | null
+  autores_manuais?: string[]
   em_atendimento_humano?: boolean
   custom_attributes?: Record<string, any>
   // Endereço salvo do cliente — preenchido a partir do último pedido com

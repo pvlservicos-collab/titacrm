@@ -8,7 +8,7 @@ import { useSession } from 'next-auth/react'
 import { useLeadSearch } from '@/hooks/useLeadSearch'
 import { DIAS_CONVERSA_IMPORTADA } from '@/lib/conversas'
 import { useTags, useOrganizationMembers } from '@/hooks'
-import { montarAtendentes, type Atendente } from '@/lib/atendentes'
+import { montarAtendentes, atendenteDaConversa, type Atendente } from '@/lib/atendentes'
 import LeadListItem from './LeadListItem'
 import ChatFilterTabs, { type ChatTab } from './ChatFilterTabs'
 import { getWhatsAppWindowState } from '@/lib/whatsappWindow'
@@ -120,7 +120,7 @@ export default function LeadList({
   // etiqueta "VIP" ao mesmo tempo) em vez de ser mais uma aba.
   const { allTags } = useTags(organizationId)
 
-  // Abas por pessoa: o time fixo sempre; os demais só enquanto atendem alguém.
+  // Abas por pessoa: só o time de atendimento (Augusto, Michele, Cau).
   const { members } = useOrganizationMembers(organizationId || '')
   const atendentes = useMemo(() => montarAtendentes(members), [members])
   const atendentePorId = useMemo(() => {
@@ -332,16 +332,14 @@ export default function LeadList({
     : semArquivados.filter((hit) => ehConversaVisivel(hit.lead))
 
   const tabCounts: Record<string, number> = { all: nonArchivedHits.length, human: 0, urgent: 0 }
+  const atendenteDoLead: Record<string, Atendente | undefined> = {}
   for (const hit of nonArchivedHits) {
     if (isHumano(hit.lead)) tabCounts.human++
     if (isUrgent(hit.lead)) tabCounts.urgent++
-    const atendente = hit.lead.atendente_member_id
-    if (atendente) tabCounts[`atendente:${atendente}`] = (tabCounts[`atendente:${atendente}`] ?? 0) + 1
+    const atendente = atendenteDaConversa(hit.lead.autores_manuais, atendentePorId)
+    atendenteDoLead[hit.lead.id] = atendente
+    if (atendente) tabCounts[`atendente:${atendente.id}`] = (tabCounts[`atendente:${atendente.id}`] ?? 0) + 1
   }
-
-  const abasDeAtendente = atendentes.filter((a) =>
-    a.fixo || (tabCounts[`atendente:${a.id}`] ?? 0) > 0 || activeTab === `atendente:${a.id}`
-  )
 
   const tabFilteredHitsBeforeTags = activeTab === 'all'
     ? nonArchivedHits
@@ -349,7 +347,7 @@ export default function LeadList({
       ? nonArchivedHits.filter((hit) => isHumano(hit.lead))
       : activeTab === 'urgent'
         ? nonArchivedHits.filter((hit) => isUrgent(hit.lead))
-        : nonArchivedHits.filter((hit) => `atendente:${hit.lead.atendente_member_id}` === activeTab)
+        : nonArchivedHits.filter((hit) => `atendente:${atendenteDoLead[hit.lead.id]?.id}` === activeTab)
 
   // Etiqueta é um filtro à parte, combinado com a aba ativa — não substitui, só
   // restringe mais. Mantém quem tem pelo menos uma das etiquetas marcadas.
@@ -442,7 +440,7 @@ export default function LeadList({
         </div>
       </div>
 
-      <ChatFilterTabs activeTab={activeTab} onChange={setActiveTab} counts={tabCounts} atendentes={abasDeAtendente} />
+      <ChatFilterTabs activeTab={activeTab} onChange={setActiveTab} counts={tabCounts} atendentes={atendentes} />
 
       {/* Leads List */}
       <div ref={scrollContainerRef} className="flex-1 overflow-y-auto overflow-x-hidden chat-dark-scroll">
@@ -482,7 +480,7 @@ export default function LeadList({
                   hit={hit}
                   query={search}
                   hideReplyHighlight={hideReplyHighlight}
-                  atendente={lead.atendente_member_id ? atendentePorId[lead.atendente_member_id] : undefined}
+                  atendente={atendenteDoLead[lead.id] ?? atendenteDaConversa(lead.autores_manuais, atendentePorId)}
                 />
               )
             })}
