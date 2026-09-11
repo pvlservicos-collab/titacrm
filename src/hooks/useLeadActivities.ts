@@ -4,7 +4,7 @@
  * useLeadActivities — substitui queries diretas ao Supabase
  * Busca atividades via API + Pusher para realtime
  */
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { useSession } from 'next-auth/react'
 import { LeadActivityWithActor } from '@/lib/types'
 import { usePusherChannel } from './usePusher'
@@ -17,40 +17,84 @@ const CHANNEL_LABELS: Record<string, string> = {
   whatsapp_cloud_official: 'API Oficial',
 }
 
+/*
+ * Última versão de cada conversa já aberta nesta aba. Reabrir uma conversa
+ * mostra na hora o que ela tinha (e atualiza por trás), em vez de esperar o
+ * servidor. É por conversa — a chave é o id do lead —, então nunca mistura.
+ */
+const conversasJaAbertas = new Map<string, LeadActivityWithActor[]>()
+const LIMITE_DE_CONVERSAS_GUARDADAS = 60
+
+function guardarConversa(leadId: string, atividades: LeadActivityWithActor[]) {
+  conversasJaAbertas.delete(leadId) // reinsere no fim: a mais recente fica por último
+  conversasJaAbertas.set(leadId, atividades)
+  if (conversasJaAbertas.size > LIMITE_DE_CONVERSAS_GUARDADAS) {
+    const maisAntiga = conversasJaAbertas.keys().next().value
+    if (maisAntiga) conversasJaAbertas.delete(maisAntiga)
+  }
+}
+
 export function useLeadActivities(organizationId: string, leadId: string) {
   const { data: session } = useSession()
   const { addNotification } = useNotification()
-  const [activities, setActivities] = useState<LeadActivityWithActor[]>([])
-  const [loading, setLoading] = useState(true)
+  const [activities, setActivities] = useState<LeadActivityWithActor[]>(() => conversasJaAbertas.get(leadId) ?? [])
+  const [loading, setLoading] = useState(() => !conversasJaAbertas.has(leadId))
   const [error, setError] = useState<string | null>(null)
+
+  /*
+   * Precisão ao trocar de conversa. As mensagens chegam do servidor depois de
+   * um tempo, e sem estas duas travas a tela mostrava a conversa errada:
+   *
+   *   1. trocou de A pra B: o nome já era B, mas as mensagens continuavam as de
+   *      A até as de B chegarem — "cliquei numa e abriu outra";
+   *   2. uma busca de A ainda em andamento (a abertura ou a atualização de 4 em
+   *      4 segundos) terminava DEPOIS da de B e escrevia as mensagens de A por
+   *      cima de B.
+   *
+   * Agora a troca limpa na hora (ou mostra a versão guardada de B), e toda
+   * resposta confere se ainda é da conversa aberta antes de entrar na tela.
+   * Quem usa isto no chat também remonta a conversa por lead (key), o que já
+   * garante o mesmo — as travas ficam pra qualquer outro uso.
+   */
+  const leadAberto = useRef(leadId)
+  leadAberto.current = leadId
+  const [leadDoEstado, setLeadDoEstado] = useState(leadId)
+  if (leadDoEstado !== leadId) {
+    setLeadDoEstado(leadId)
+    setActivities(conversasJaAbertas.get(leadId) ?? [])
+    setLoading(!conversasJaAbertas.has(leadId))
+  }
 
   const fetchActivities = useCallback(async (showLoading = true) => {
     if (!organizationId || !leadId) return
     if (!session) return
+    const alvo = leadId
     try {
-      if (showLoading) setLoading(true)
-      const res = await fetch(`/api/leads/${leadId}/messages`)
+      if (showLoading && !conversasJaAbertas.has(alvo)) setLoading(true)
+      const res = await fetch(`/api/leads/${alvo}/messages`)
       if (!res.ok) throw new Error('Falha ao carregar atividades')
       const json = await res.json()
+      if (leadAberto.current !== alvo) return // a pessoa já está em outra conversa
 
       const filtered = (json.data || []).filter((a: any) => {
         if (a.type === 'system' && a.metadata?.source === 'custom_field') return false
         return true
       })
+      guardarConversa(alvo, filtered)
       // Mensagem otimista (a que acabou de ser digitada e ainda está a caminho do
       // servidor) fica na tela até o envio terminar — a busca periódica pode
       // chegar no meio e, sem isto, a mensagem piscaria: some e volta.
       setActivities((prev) => {
-        const pendentes = prev.filter((a) => a.metadata?.is_optimistic)
+        const pendentes = prev.filter((a) => a.metadata?.is_optimistic && a.lead_id === alvo)
         const proxima = pendentes.length ? [...filtered, ...pendentes] : filtered
         // Nada mudou: devolve o mesmo array e o React não redesenha a conversa.
         if (JSON.stringify(proxima) === JSON.stringify(prev)) return prev
         return proxima
       })
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Erro desconhecido')
+      if (leadAberto.current === alvo) setError(err instanceof Error ? err.message : 'Erro desconhecido')
     } finally {
-      if (showLoading) setLoading(false)
+      if (leadAberto.current === alvo) setLoading(false)
     }
   }, [organizationId, leadId, session])
 

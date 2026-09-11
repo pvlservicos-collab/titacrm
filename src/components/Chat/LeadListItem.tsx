@@ -1,6 +1,6 @@
 'use client'
 
-import { memo, useRef } from 'react'
+import { memo } from 'react'
 import { LeadWithOwner, SearchHit } from '@/lib/types'
 import { Robot, PushPin } from '@phosphor-icons/react'
 import { getInitials, formatPhone, renderSnippet } from '@/lib/utils'
@@ -12,7 +12,6 @@ import type { Atendente } from '@/lib/atendentes'
 interface LeadListItemProps {
     lead: LeadWithOwner
     isSelected: boolean
-    onClick: (lead: LeadWithOwner) => void
     onContextMenu: (e: React.MouseEvent, lead: LeadWithOwner) => void
     timeStr: string
     hit?: SearchHit
@@ -33,7 +32,7 @@ const PAYMENT_STATUS_TAGS: Record<string, { label: string; style: React.CSSPrope
     Object.entries(PAYMENT_STATUS_META).map(([value, meta]) => [value, { label: meta.label, style: TONE_STYLES[meta.tone] }])
 )
 
-const LeadListItem = ({ lead, isSelected, onClick, onContextMenu, timeStr, hit, query, hideReplyHighlight, atendente }: LeadListItemProps) => {
+const LeadListItem = ({ lead, isSelected, onContextMenu, timeStr, hit, query, hideReplyHighlight, atendente }: LeadListItemProps) => {
     // Conversa importada não tem prévia (a Z-API não traz mensagem antiga).
     // "Ver conversa" prometia um histórico que não existe; dizer de onde ela veio
     // prepara pra tela vazia em vez de surpreender.
@@ -66,34 +65,14 @@ const LeadListItem = ({ lead, isSelected, onClick, onContextMenu, timeStr, hit, 
             ? 'linear-gradient(to right, rgba(255,255,255,0.07), transparent 80%)'
             : undefined)
 
-    /*
-     * Com mouse, a conversa abre ao APERTAR o botão, não ao soltar.
-     *
-     * A lista se reordena sozinha quando entra mensagem. Um clique é apertar +
-     * soltar, e se a lista andar entre os dois (um grupo ativo recebe mensagem o
-     * tempo todo), o "soltar" cai na linha que passou a ocupar aquele lugar — e
-     * abria a conversa de baixo. Apertando, vale a linha que a pessoa viu e mirou.
-     *
-     * Só botão esquerdo e só mouse: o direito é o menu de contexto, e no toque o
-     * apertar também começa uma rolagem — lá continua valendo o clique normal,
-     * assim como no teclado (Enter).
-     */
-    const abertoAoApertar = useRef(false)
 
     return (
         <div className="w-full flex-shrink-0 relative">
+            {/* Abrir a conversa é decidido pela lista (LeadList), pela linha que
+                estava embaixo do mouse/dedo na hora do toque — ver `aoApertar`. */}
             <button
-                onPointerDown={(e) => {
-                    abertoAoApertar.current = e.pointerType === 'mouse' && e.button === 0
-                    if (abertoAoApertar.current) onClick(lead)
-                }}
-                onClick={() => {
-                    if (abertoAoApertar.current) {
-                        abertoAoApertar.current = false
-                        return
-                    }
-                    onClick(lead)
-                }}
+                type="button"
+                data-lead-id={lead.id}
                 onContextMenu={(e) => onContextMenu(e, lead)}
                 className={`w-full text-left px-4 py-3 border-b border-[var(--chat-border)] transition-colors ${isSelected
                     ? 'bg-white/[0.07] border-l-[3px] border-l-[var(--chat-accent)]'

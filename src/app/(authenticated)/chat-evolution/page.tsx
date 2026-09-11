@@ -82,7 +82,12 @@ export default function ChatEvolutionPage() {
     setSelectedLead(lead)
   }, [])
 
-  const displayedLeadId = selectedLead?.id || (allLeads.length > 0 ? allLeads[0].id : null)
+  // Sem clique ainda, abre a conversa do topo — mas a que estava no topo na
+  // hora de abrir a tela, e fica nela. Antes era "a do topo agora": com a lista
+  // se reordenando sozinha, a conversa na tela trocava sem ninguém clicar.
+  const conversaInicial = useRef<string | null>(null)
+  if (!conversaInicial.current && allLeads.length > 0) conversaInicial.current = allLeads[0].id
+  const displayedLeadId = selectedLead?.id || conversaInicial.current
   const displayedLead = allLeads.find(l => l.id === displayedLeadId) || selectedLead
   const { stages: leadStages, loading: stagesLoading } = useLeadPipelineStages(displayedLead?.stage_id)
   const { history: stageHistory, loading: historyLoading } = useStageHistory(displayedLead?.id || '')
@@ -231,6 +236,9 @@ export default function ChatEvolutionPage() {
       <div className="flex-1 min-w-0">
         {displayedLead ? (
           <ChatWindow
+            // Uma conversa = uma área de tela: trocar de lead remonta tudo, e
+            // nada da conversa anterior (mensagens, rascunho, fixadas) sobra.
+            key={displayedLead.id}
             lead={displayedLead}
             organizationId={organizationId}
             onMessageSent={handleChatMessageSent}
@@ -245,6 +253,7 @@ export default function ChatEvolutionPage() {
 
       {displayedLead && (
         <LeadDetailsSidebar
+          key={displayedLead.id}
           lead={displayedLead}
           stages={leadStages}
           stageHistory={stageHistory}

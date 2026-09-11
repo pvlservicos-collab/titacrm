@@ -167,6 +167,26 @@ export default function LeadList({
   const menuRef = useRef<HTMLDivElement>(null)
   const scrollContainerRef = useRef<HTMLDivElement>(null)
 
+  /*
+   * Precisão no clique: abre a conversa que estava embaixo do mouse/dedo na
+   * hora do TOQUE, nunca a que está lá na hora de soltar.
+   *
+   * A lista se reordena sozinha (conversa com mensagem nova sobe pro topo). Um
+   * clique é apertar + soltar; se a lista andar no meio, o navegador entrega o
+   * clique pra linha que passou a ocupar aquele lugar — e abria outra conversa.
+   *
+   *   mouse: abre já ao apertar (botão esquerdo);
+   *   toque: guarda qual linha foi tocada e abre essa quando o toque termina
+   *          como toque (se virar rolagem, o navegador cancela e nada abre);
+   *   teclado (Enter): abre a linha em foco.
+   *
+   * Fica na lista e não em cada linha porque, quando a lista anda, o "soltar"
+   * cai em OUTRA linha — só quem enxerga todas sabe qual foi a tocada.
+   */
+  const leadsNaTela = useRef<Record<string, LeadWithOwner>>({})
+  const linhaTocada = useRef<string | null>(null)
+  const abertoPeloMouse = useRef(false)
+
   const INITIAL_DISPLAY = 20
   const DISPLAY_INCREMENT = 15
   const [displayLimit, setDisplayLimit] = useState(INITIAL_DISPLAY)
@@ -358,6 +378,42 @@ export default function LeadList({
       )
 
   const visibleHits = tabFilteredHits.slice(0, displayLimit)
+  leadsNaTela.current = Object.fromEntries(visibleHits.map((hit) => [hit.lead.id, hit.lead]))
+
+  const leadDaLinha = (alvo: EventTarget | null): LeadWithOwner | undefined => {
+    const linha = (alvo as HTMLElement | null)?.closest?.('[data-lead-id]') as HTMLElement | null
+    const id = linha?.dataset.leadId
+    return id ? leadsNaTela.current[id] : undefined
+  }
+
+  const aoApertar = (e: React.PointerEvent) => {
+    const lead = leadDaLinha(e.target)
+    abertoPeloMouse.current = false
+    linhaTocada.current = null
+    if (!lead) return
+    if (e.pointerType === 'mouse') {
+      if (e.button !== 0) return // direito é o menu da conversa
+      abertoPeloMouse.current = true
+      handleLeadClick(lead)
+      return
+    }
+    linhaTocada.current = lead.id
+  }
+
+  const aoClicar = (e: React.MouseEvent) => {
+    if (abertoPeloMouse.current) {
+      abertoPeloMouse.current = false // já abriu ao apertar
+      return
+    }
+    if (linhaTocada.current) {
+      const lead = leadsNaTela.current[linhaTocada.current]
+      linhaTocada.current = null
+      if (lead) handleLeadClick(lead)
+      return
+    }
+    const lead = leadDaLinha(e.target) // teclado
+    if (lead) handleLeadClick(lead)
+  }
 
   return (
     <div className="flex flex-col h-full border-r border-[var(--chat-border)] bg-[var(--chat-bg-base)] surface-rail">
@@ -462,7 +518,12 @@ export default function LeadList({
             )}
           </div>
         ) : (
-          <div className="flex flex-col min-h-full">
+          <div
+            className="flex flex-col min-h-full"
+            onPointerDown={aoApertar}
+            onPointerCancel={() => { linhaTocada.current = null }}
+            onClick={aoClicar}
+          >
             {visibleHits.map((hit) => {
               const lead = hit.lead
               const isSelected = selectedLeadId === lead.id
@@ -475,7 +536,6 @@ export default function LeadList({
                   lead={lead}
                   isSelected={isSelected}
                   timeStr={timeStr}
-                  onClick={handleLeadClick}
                   onContextMenu={handleContextMenu}
                   hit={hit}
                   query={search}

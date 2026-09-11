@@ -103,7 +103,12 @@ export default function ChatPage() {
   // Resolve the displayed lead: prefer the freshest version from context; fall back
   // to the clicked `selectedLead` when the lead isn't in memory (search hits can
   // point at leads outside the 1000-row Supabase cap loaded by LeadsContext).
-  const displayedLeadId = selectedLead?.id || (allLeads.length > 0 ? allLeads[0].id : null)
+  // Sem clique ainda, abre a conversa do topo — mas a que estava no topo na
+  // hora de abrir a tela, e fica nela. Antes era "a do topo agora": com a lista
+  // se reordenando sozinha, a conversa na tela trocava sem ninguém clicar.
+  const conversaInicial = useRef<string | null>(null)
+  if (!conversaInicial.current && allLeads.length > 0) conversaInicial.current = allLeads[0].id
+  const displayedLeadId = selectedLead?.id || conversaInicial.current
   const displayedLead = allLeads.find(l => l.id === displayedLeadId) || selectedLead
   // Pass the lead's stage_id directly — the hook resolves the pipeline internally
   const { stages: leadStages, loading: stagesLoading } = useLeadPipelineStages(displayedLead?.stage_id)
@@ -303,13 +308,16 @@ export default function ChatPage() {
                   )}
                 </div>
                 <span className="flex-1 min-w-0 truncate text-sm font-medium text-[var(--chat-text-primary)]">{displayedLead.title}</span>
-                <LeadOrderStatusBadges leadId={displayedLead.id} />
+                <LeadOrderStatusBadges key={displayedLead.id} leadId={displayedLead.id} />
                 <button onClick={() => setShowMobileDetails(true)} className="btn-icon w-9 h-9" aria-label="Detalhes do contato">
                   <Info size={20} />
                 </button>
               </div>
               <div className="flex-1 min-h-0">
                 <ChatWindow
+                  // Uma conversa = uma área de tela: trocar de lead remonta tudo, e
+                  // nada da conversa anterior (mensagens, rascunho, fixadas) sobra.
+                  key={displayedLead.id}
                   lead={displayedLead}
                   organizationId={organizationId}
                   onMessageSent={handleChatMessageSent}
@@ -328,6 +336,7 @@ export default function ChatPage() {
             {/* flex: o painel estica até a altura da tela e rola por dentro. Sem isso
                 ele crescia do tamanho do conteúdo e o fim ficava cortado, sem rolar. */}
             <LeadDetailsSidebar
+              key={displayedLead.id}
               lead={displayedLead}
               stages={leadStages}
               stageHistory={stageHistory}
@@ -353,7 +362,7 @@ export default function ChatPage() {
         <LeadList
           leads={allLeads}
           selectedLeadId={displayedLead?.id}
-          onSelectLead={setSelectedLead}
+          onSelectLead={handleSelectLead}
           onUpdateLead={handleUpdateLead}
           loading={false}
           organizationId={organizationId}
@@ -364,6 +373,9 @@ export default function ChatPage() {
       <div className="flex-1 min-w-0">
         {displayedLead ? (
           <ChatWindow
+            // Uma conversa = uma área de tela: trocar de lead remonta tudo, e
+            // nada da conversa anterior (mensagens, rascunho, fixadas) sobra.
+            key={displayedLead.id}
             lead={displayedLead}
             organizationId={organizationId}
             onMessageSent={handleChatMessageSent}
@@ -378,6 +390,7 @@ export default function ChatPage() {
       {/* Right — Lead Details Sidebar */}
       {displayedLead && (
         <LeadDetailsSidebar
+          key={displayedLead.id}
           lead={displayedLead}
           stages={leadStages}
           stageHistory={stageHistory}
