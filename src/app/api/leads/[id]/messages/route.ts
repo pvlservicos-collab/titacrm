@@ -12,6 +12,7 @@ import { isOrgAdmin } from '@/lib/admin-auth'
 import { isUniqueViolation } from '@/lib/db-helpers'
 
 const CHANNEL_LABELS: Record<string, string> = {
+  whatsapp_zapi: 'Z-API',
   whatsapp_evolution: 'Nº 2 (Evolution)',
   whatsapp_cloud_official: 'API Oficial',
   instagram_direct: 'Instagram',
@@ -203,7 +204,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       const phone = lead?.phone || decodedPhone
 
       // Lookup lead's integration type
-      let integrationTyp = 'whatsapp_cloud_official'
+      let integrationTyp: string | null = null
       let leadIntegrationId: string | null = null
       if (lead) {
         const [fullLead] = await db
@@ -212,15 +213,23 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
           .where(eq(leads.id, actualLeadId!))
           .limit(1)
         if (fullLead?.integrationId) {
-          leadIntegrationId = fullLead.integrationId
           const [integ] = await db
             .select({ type: integrations.type })
             .from(integrations)
-            .where(eq(integrations.id, fullLead.integrationId))
+            .where(and(eq(integrations.id, fullLead.integrationId), isNull(integrations.deletedAt)))
             .limit(1)
-          if (integ?.type) integrationTyp = integ.type
+          if (integ?.type) {
+            integrationTyp = integ.type
+            leadIntegrationId = fullLead.integrationId
+          }
         }
       }
+      // Lead sem conversa ligada a um número — o caso de todo lead que chega pela
+      // Agenda, pelo site ou por indicação, até ele responder — sai pela Z-API,
+      // o mesmo número da mensagem automática. Antes caía na API Oficial, que não
+      // está configurada: a primeira mensagem manual pra um lead novo falhava
+      // sempre com "Integração com WhatsApp não configurada" (triângulo vermelho).
+      if (!integrationTyp) integrationTyp = 'whatsapp_zapi'
       metadata.channel = integrationTyp
 
       try {
