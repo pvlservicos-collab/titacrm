@@ -33,13 +33,13 @@ function NotificationItem({
     return (
         <button
             onClick={() => onClickNotification(notification)}
-            className={`w-full text-left px-4 py-3 flex items-start gap-3 transition-colors hover:bg-gray-50 ${!notification.is_read ? 'bg-blue-50/40' : ''
+            className={`w-full text-left px-4 py-3 flex items-start gap-3 transition-colors hover:bg-white/[0.06] ${!notification.is_read ? 'bg-[#3b82f6]/[0.10]' : ''
                 }`}
         >
             {/* Unread dot */}
             <div className="pt-1.5 shrink-0">
                 {!notification.is_read ? (
-                    <div className="w-2 h-2 rounded-full bg-blue-500" />
+                    <div className="w-2 h-2 rounded-full bg-[#3b82f6]" />
                 ) : (
                     <div className="w-2 h-2" />
                 )}
@@ -47,19 +47,19 @@ function NotificationItem({
 
             {/* Content */}
             <div className="flex-1 min-w-0">
-                <p className="text-sm text-gray-800 leading-snug">
+                <p className="text-sm text-[#f4f4f5] leading-snug">
                     {notification.title && (
                         <span className="font-medium">{notification.title}</span>
                     )}
                     {notification.title && notification.content && ' '}
                     {notification.content && (
-                        <span className="text-gray-600">{notification.content}</span>
+                        <span className="text-[#a1a1aa]">{notification.content}</span>
                     )}
                     {!notification.title && !notification.content && (
-                        <span className="text-gray-500 italic">Nova notificação</span>
+                        <span className="text-[#a1a1aa] italic">Nova notificação</span>
                     )}
                 </p>
-                <p className="text-xs text-gray-400 mt-0.5">
+                <p className="text-xs text-[#71717a] mt-0.5">
                     {formatRelativeTime(notification.created_at)}
                 </p>
             </div>
@@ -70,6 +70,36 @@ function NotificationItem({
 export default function NotificationDropdown() {
     const [open, setOpen] = useState(false)
     const dropdownRef = useRef<HTMLDivElement>(null)
+    const botaoRef = useRef<HTMLButtonElement>(null)
+    /*
+     * A janela abria "absolute right-0" a partir do sino, com 360px fixos. No
+     * celular o sino não fica colado na borda direita (o botão de tema e o
+     * avatar vêm depois), então os 360px pra esquerda passavam da tela. Agora
+     * ela é posicionada pela tela: alinhada ao sino quando cabe, empurrada pra
+     * dentro quando não cabe, e nunca mais larga que a tela menos 16px.
+     */
+    const [posicao, setPosicao] = useState<{ top: number; right: number; width: number } | null>(null)
+
+    useEffect(() => {
+        if (!open) return
+        const calcular = () => {
+            const r = botaoRef.current?.getBoundingClientRect()
+            if (!r) return
+            const margem = 8
+            // clientWidth e não innerWidth: a barra de cima (onde a janela mora) não
+            // inclui a barra de rolagem da página.
+            const larguraTela = document.documentElement.clientWidth
+            const largura = Math.min(360, larguraTela - margem * 2)
+            // Direita da janela alinhada à direita do sino; se isso jogar a
+            // esquerda pra fora, puxa pra dentro.
+            let right = Math.max(margem, larguraTela - r.right)
+            if (larguraTela - right - largura < margem) right = larguraTela - largura - margem
+            setPosicao({ top: r.bottom + 8, right, width: largura })
+        }
+        calcular()
+        window.addEventListener('resize', calcular)
+        return () => window.removeEventListener('resize', calcular)
+    }, [open])
     const router = useRouter()
     const {
         notifications,
@@ -112,6 +142,7 @@ export default function NotificationDropdown() {
         <div className="relative" ref={dropdownRef}>
             {/* Bell button */}
             <button
+                ref={botaoRef}
                 onClick={() => setOpen(!open)}
                 className="relative p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
             >
@@ -124,15 +155,21 @@ export default function NotificationDropdown() {
             </button>
 
             {/* Dropdown */}
-            {open && (
-                <div className="absolute right-0 top-full mt-2 w-[360px] bg-white border border-gray-100 rounded-xl shadow-lg shadow-gray-200/60 z-50 animate-in fade-in slide-in-from-top-2 overflow-hidden">
+            {/* Fundo preto e cores fixas, iguais em tema claro e escuro: antes o
+                fundo era branco e o texto seguia o tema — no escuro, texto claro
+                em fundo claro, ilegível. */}
+            {open && posicao && (
+                <div
+                    className="fixed bg-[#0a0a0a] border border-white/10 rounded-xl shadow-2xl shadow-black/60 z-50 animate-in fade-in slide-in-from-top-2 overflow-hidden"
+                    style={{ top: posicao.top, right: posicao.right, width: posicao.width }}
+                >
                     {/* Header */}
-                    <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100">
-                        <h3 className="text-sm font-semibold text-gray-800">Notificações</h3>
+                    <div className="flex items-center justify-between px-4 py-3 border-b border-white/10">
+                        <h3 className="text-sm font-semibold text-[#f4f4f5]">Notificações</h3>
                         {unreadCount > 0 && (
                             <button
                                 onClick={handleMarkAllAsRead}
-                                className="text-xs font-semibold text-blue-500 hover:text-blue-700 transition-colors uppercase tracking-wide"
+                                className="text-xs font-semibold text-[#60a5fa] hover:text-[#93c5fd] transition-colors uppercase tracking-wide"
                             >
                                 Marcar lidas
                             </button>
@@ -140,18 +177,18 @@ export default function NotificationDropdown() {
                     </div>
 
                     {/* Notification list */}
-                    <div className="max-h-[340px] overflow-y-auto overscroll-contain">
+                    <div className="max-h-[min(340px,calc(100dvh-140px))] overflow-y-auto overscroll-contain">
                         {loading ? (
                             <div className="flex items-center justify-center py-8">
-                                <div className="w-5 h-5 border-2 border-gray-200 border-t-blue-500 rounded-full animate-spin" />
+                                <div className="w-5 h-5 border-2 border-white/15 border-t-[#3b82f6] rounded-full animate-spin" />
                             </div>
                         ) : notifications.length === 0 ? (
-                            <div className="flex flex-col items-center justify-center py-10 text-gray-400 gap-2">
+                            <div className="flex flex-col items-center justify-center py-10 text-[#71717a] gap-2">
                                 <BellSlash size={32} weight="light" />
                                 <p className="text-sm">Nenhuma notificação</p>
                             </div>
                         ) : (
-                            <div className="divide-y divide-gray-50">
+                            <div className="divide-y divide-white/[0.06]">
                                 {notifications.map((notification) => (
                                     <NotificationItem
                                         key={notification.id}
@@ -165,13 +202,13 @@ export default function NotificationDropdown() {
 
                     {/* Footer */}
                     {notifications.length > 0 && (
-                        <div className="border-t border-gray-100 px-4 py-2.5">
+                        <div className="border-t border-white/10 px-4 py-2.5">
                             <button
                                 onClick={() => {
                                     setOpen(false)
                                     router.push('/notifications')
                                 }}
-                                className="w-full text-center text-xs font-medium text-blue-500 hover:text-blue-700 transition-colors"
+                                className="w-full text-center text-xs font-medium text-[#60a5fa] hover:text-[#93c5fd] transition-colors"
                             >
                                 Ver todas as notificações
                             </button>

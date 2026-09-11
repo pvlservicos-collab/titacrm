@@ -210,6 +210,9 @@ export default function ChatPage() {
           last_message_content: content,
           last_message_sender_type: 'human' as const,
           last_activity_at: new Date().toISOString(),
+          // A lista recalcula no servidor a cada poucos segundos; isto só evita
+          // a etiqueta de quem respondeu demorar a aparecer.
+          ...(!l.is_group && memberId && { atendente_member_id: memberId, em_atendimento_humano: true }),
           owner_member_id: shouldAssign ? memberId : l.owner_member_id,
           owner: shouldAssign ? { id: memberId, profiles: { full_name: fullName, avatar_url: user?.image || undefined } } : l.owner,
         }
@@ -318,7 +321,9 @@ export default function ChatPage() {
         )}
 
         {showMobileDetails && displayedLead && (
-          <div className="fixed inset-0 z-50 bg-[var(--chat-bg-base)]">
+          <div className="fixed inset-0 z-50 flex bg-[var(--chat-bg-base)]">
+            {/* flex: o painel estica até a altura da tela e rola por dentro. Sem isso
+                ele crescia do tamanho do conteúdo e o fim ficava cortado, sem rolar. */}
             <LeadDetailsSidebar
               lead={displayedLead}
               stages={leadStages}

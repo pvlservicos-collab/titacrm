@@ -106,8 +106,47 @@ export async function GET(req: NextRequest) {
       }
     }
 
+    // Atendimento (etiqueta de quem está atendendo + aba "Humano"). Calculado das
+    // mensagens a cada leitura, nunca gravado — ver src/lib/atendentes.ts. Só na
+    // lista do Chat, que é a única tela que mostra.
+    const atendimento: Record<string, { atendente: string | null; humano: boolean }> = {}
+    if (scope === 'conversas' && leadIds.length > 0) {
+      // Mensagem de robô (funil, automação, agente de IA) não é atendimento.
+      const manual = sql`(
+        a.metadata->>'direction' = 'outbound'
+        AND coalesce(a.metadata->>'automated', 'false') <> 'true'
+        AND coalesce(a.metadata->>'source', '') NOT IN ('funnel', 'ai', 'ai_agent', 'automation')
+      )`
+      const linhas = await db.execute(sql`
+        SELECT a.lead_id,
+          (array_agg(a.actor_member_id ORDER BY a.created_at DESC)
+            FILTER (WHERE a.actor_member_id IS NOT NULL AND ${manual}))[1] AS atendente,
+          bool_or(${manual}) AS teve_manual,
+          min(a.created_at) FILTER (WHERE a.metadata->>'automated' = 'true' OR a.metadata->>'source' = 'funnel') AS primeira_automatica,
+          max(a.created_at) FILTER (WHERE a.metadata->>'direction' = 'inbound') AS ultima_do_lead
+        FROM lead_activities a
+        WHERE a.organization_id = ${auth.organizationId}
+          AND a.lead_id = ANY(${sql.raw(`ARRAY['${leadIds.join("','")}']::uuid[]`)})
+          AND a.metadata->>'direction' IS NOT NULL
+        GROUP BY a.lead_id
+      `)
+      for (const l of linhas.rows as {
+        lead_id: string; atendente: string | null; teve_manual: boolean | null
+        primeira_automatica: string | null; ultima_do_lead: string | null
+      }[]) {
+        const respondeuAutomacao = !!l.primeira_automatica && !!l.ultima_do_lead &&
+          new Date(l.ultima_do_lead) > new Date(l.primeira_automatica)
+        atendimento[l.lead_id] = { atendente: l.atendente, humano: !!l.teve_manual || respondeuAutomacao }
+      }
+    }
+
     const result = rows.map((r) => ({
       ...mapLead(r.lead),
+      // Grupo não é atendimento de lead: fica fora das etiquetas e da aba Humano.
+      ...(scope === 'conversas' && {
+        atendente_member_id: r.lead.isGroup ? null : atendimento[r.lead.id]?.atendente ?? null,
+        em_atendimento_humano: r.lead.isGroup ? false : atendimento[r.lead.id]?.humano ?? false,
+      }),
       lead_tags: tagsMap[r.lead.id] || [],
       integration: r.integrationType ? ({ type: r.integrationType } as Integration) : undefined,
       owner: r.ownerMemberIdJoin

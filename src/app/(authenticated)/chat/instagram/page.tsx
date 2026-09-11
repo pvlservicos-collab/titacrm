@@ -308,7 +308,9 @@ export default function ChatInstagramPage() {
         )}
 
         {showMobileDetails && displayedLead && (
-          <div className="fixed inset-0 z-50 bg-[var(--chat-bg-base)]">
+          <div className="fixed inset-0 z-50 flex bg-[var(--chat-bg-base)]">
+            {/* flex: o painel estica até a altura da tela e rola por dentro. Sem isso
+                ele crescia do tamanho do conteúdo e o fim ficava cortado, sem rolar. */}
             <LeadDetailsSidebar
               lead={displayedLead}
               stages={leadStages}

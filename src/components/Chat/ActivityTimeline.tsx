@@ -416,9 +416,15 @@ const MessageBubble = memo(function MessageBubble({
         <div className="relative">
           {/* Reply/Pin/Delete buttons — outgoing (appear on left). Fica sempre visível
               (não só no hover) quando a mensagem está selecionada pra apagar em lote,
-              senão o checkbox marcado "some" assim que o mouse sai da bolha. */}
+              senão o checkbox marcado "some" assim que o mouse sai da bolha.
+              Presos pela borda da bolha (right-full) e não a uma distância fixa
+              dela (-left-9): com 3-4 botões a fileira passava de 36px e cobria o
+              começo da bolha — no áudio, justo o play e a barra de reprodução.
+              Assim ela cresce só pra esquerda, pra fora da mensagem. O espaço é pr-2 e
+              não mr-2 de propósito: padding faz parte da área do hover, então o
+              mouse vai da bolha pros botões sem passar por um vão que os apaga. */}
           {!isDeleted && (onTogglePin || onReply || (onRequestDelete && canDelete)) && (
-            <div className={`absolute -left-9 top-1/2 -translate-y-1/2 flex items-center gap-1 transition-opacity z-20 ${isSelected ? 'opacity-100' : 'opacity-0 group-hover/msg:opacity-100'}`}>
+            <div className={`absolute right-full pr-2 top-1/2 -translate-y-1/2 flex items-center gap-1 transition-opacity z-20 ${isSelected ? 'opacity-100' : 'opacity-0 group-hover/msg:opacity-100'}`}>
               {onToggleSelect && canDelete && (
                 <button
                   onClick={() => onToggleSelect(activity)}
@@ -550,9 +556,11 @@ const MessageBubble = memo(function MessageBubble({
           </div>
         )}
         <div className="relative">
-          {/* Reply/Pin buttons — inbound (appear on right) */}
+          {/* Reply/Pin buttons — inbound (appear on right). Presos pela borda da
+              bolha (left-full), pelo mesmo motivo do lado de quem envia: crescem
+              pra fora da mensagem, nunca por cima dela. */}
           {(onTogglePin || onReply) && (
-            <div className="absolute -right-9 top-1/2 -translate-y-1/2 flex items-center gap-1 opacity-0 group-hover/msg:opacity-100 transition-opacity z-20">
+            <div className="absolute left-full pl-2 top-1/2 -translate-y-1/2 flex items-center gap-1 opacity-0 group-hover/msg:opacity-100 transition-opacity z-20">
               {onTogglePin && (
                 <button
                   onClick={() => onTogglePin(activity)}

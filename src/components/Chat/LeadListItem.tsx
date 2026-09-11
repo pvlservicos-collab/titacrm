@@ -7,6 +7,7 @@ import { getInitials, formatPhone, renderSnippet } from '@/lib/utils'
 import IntegrationBadge from '@/components/Shared/IntegrationBadge'
 import LeadBadges from '@/components/Shared/LeadBadges'
 import { PAYMENT_STATUS_META, TONE_STYLES } from '@/lib/orderStatus'
+import type { Atendente } from '@/lib/atendentes'
 
 interface LeadListItemProps {
     lead: LeadWithOwner
@@ -17,6 +18,8 @@ interface LeadListItemProps {
     hit?: SearchHit
     query?: string
     hideReplyHighlight?: boolean
+    /** Quem está atendendo — etiqueta colorida com o nome, controle interno. */
+    atendente?: Atendente
 }
 
 const PAYMENT_METHOD_TAGS: Record<string, { label: string; style: React.CSSProperties }> = {
@@ -30,7 +33,7 @@ const PAYMENT_STATUS_TAGS: Record<string, { label: string; style: React.CSSPrope
     Object.entries(PAYMENT_STATUS_META).map(([value, meta]) => [value, { label: meta.label, style: TONE_STYLES[meta.tone] }])
 )
 
-const LeadListItem = ({ lead, isSelected, onClick, onContextMenu, timeStr, hit, query, hideReplyHighlight }: LeadListItemProps) => {
+const LeadListItem = ({ lead, isSelected, onClick, onContextMenu, timeStr, hit, query, hideReplyHighlight, atendente }: LeadListItemProps) => {
     // Conversa importada não tem prévia (a Z-API não traz mensagem antiga).
     // "Ver conversa" prometia um histórico que não existe; dizer de onde ela veio
     // prepara pra tela vazia em vez de surpreender.
@@ -136,9 +139,20 @@ const LeadListItem = ({ lead, isSelected, onClick, onContextMenu, timeStr, hit, 
                         </div>
 
                         {/* Status: se um humano da equipe já respondeu, isso prevalece sobre "só contactado" */}
-                        <span className={`text-[9px] font-bold uppercase tracking-wide ${lead.last_message_sender_type === 'human' ? 'text-teal-500' : 'text-[var(--chat-text-tertiary)]'}`}>
-                            {lead.last_message_sender_type === 'human' ? 'Respondeu (humano)' : 'Contactado'}
-                        </span>
+                        <div className="flex items-center gap-1.5">
+                            {atendente && (
+                                <span
+                                    className="text-[9px] font-bold uppercase tracking-wide px-1.5 py-[1px] rounded-full border flex-shrink-0"
+                                    style={{ color: atendente.cor, backgroundColor: atendente.cor + '1F', borderColor: atendente.cor + '66' }}
+                                    title={`${atendente.nome} está atendendo`}
+                                >
+                                    {atendente.nome}
+                                </span>
+                            )}
+                            <span className={`text-[9px] font-bold uppercase tracking-wide ${lead.last_message_sender_type === 'human' ? 'text-teal-500' : 'text-[var(--chat-text-tertiary)]'}`}>
+                                {lead.last_message_sender_type === 'human' ? 'Respondeu (humano)' : 'Contactado'}
+                            </span>
+                        </div>
 
                         <div className="flex items-center gap-1.5 overflow-hidden w-full">
                             {SenderIcon && <SenderIcon weight="fill" className={`flex-shrink-0 ${iconColor} w-3.5 h-3.5`} />}
@@ -203,6 +217,8 @@ export default memo(LeadListItem, (prevProps, nextProps) => {
         prevProps.lead.custom_attributes?.last_order_payment_method === nextProps.lead.custom_attributes?.last_order_payment_method &&
         prevProps.isSelected === nextProps.isSelected &&
         prevProps.hideReplyHighlight === nextProps.hideReplyHighlight &&
+        prevProps.atendente?.id === nextProps.atendente?.id &&
+        prevProps.atendente?.cor === nextProps.atendente?.cor &&
         prevProps.timeStr === nextProps.timeStr &&
         prevProps.query === nextProps.query &&
         prevProps.hit?.matchType === nextProps.hit?.matchType &&

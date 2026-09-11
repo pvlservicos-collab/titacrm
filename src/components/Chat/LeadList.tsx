@@ -1,13 +1,14 @@
 'use client'
 
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import { LeadWithOwner, SearchHit } from '@/lib/types'
 import { MagnifyingGlass, PushPin, Archive, ArrowCounterClockwise, Tag as TagIcon, Check } from '@phosphor-icons/react'
 import LoadingSpinner from '@/components/Shared/LoadingSpinner'
 import { useSession } from 'next-auth/react'
 import { useLeadSearch } from '@/hooks/useLeadSearch'
 import { DIAS_CONVERSA_IMPORTADA } from '@/lib/conversas'
-import { useTags } from '@/hooks'
+import { useTags, useOrganizationMembers } from '@/hooks'
+import { montarAtendentes, type Atendente } from '@/lib/atendentes'
 import LeadListItem from './LeadListItem'
 import ChatFilterTabs, { type ChatTab } from './ChatFilterTabs'
 import { getWhatsAppWindowState } from '@/lib/whatsappWindow'
@@ -15,6 +16,18 @@ import { getWhatsAppWindowState } from '@/lib/whatsappWindow'
 function isUrgent(lead: LeadWithOwner): boolean {
   const state = getWhatsAppWindowState(lead.last_activity_at)
   return state?.zone === 'warning' || state?.zone === 'critical'
+}
+
+/**
+ * Conversa com o time: alguém respondeu à mão (pelo CRM ou pelo celular) ou o
+ * lead respondeu a mensagem automática — é quando o funil passa pro humano.
+ * Antes era só "a última mensagem foi nossa", e a conversa saía da aba assim
+ * que o lead respondia. `last_message_sender_type` fica como reserva enquanto a
+ * lista não chegou com o campo calculado.
+ */
+function isHumano(lead: LeadWithOwner): boolean {
+  if (lead.is_group) return false
+  return !!lead.em_atendimento_humano || lead.last_message_sender_type === 'human'
 }
 
 interface LeadListProps {
@@ -106,6 +119,15 @@ export default function LeadList({
   // Filtro por etiqueta — multi-seleção, combina com a aba ativa (ex: "Não lidas" +
   // etiqueta "VIP" ao mesmo tempo) em vez de ser mais uma aba.
   const { allTags } = useTags(organizationId)
+
+  // Abas por pessoa: o time fixo sempre; os demais só enquanto atendem alguém.
+  const { members } = useOrganizationMembers(organizationId || '')
+  const atendentes = useMemo(() => montarAtendentes(members), [members])
+  const atendentePorId = useMemo(() => {
+    const mapa: Record<string, Atendente> = {}
+    for (const a of atendentes) mapa[a.id] = a
+    return mapa
+  }, [atendentes])
   const [tagFilterOpen, setTagFilterOpen] = useState(false)
   const [selectedTagIds, setSelectedTagIds] = useState<string[]>([])
   const tagFilterRef = useRef<HTMLDivElement>(null)
@@ -309,17 +331,25 @@ export default function LeadList({
     ? semArquivados
     : semArquivados.filter((hit) => ehConversaVisivel(hit.lead))
 
-  const tabCounts: Record<ChatTab, number> = { all: nonArchivedHits.length, human: 0, urgent: 0 }
+  const tabCounts: Record<string, number> = { all: nonArchivedHits.length, human: 0, urgent: 0 }
   for (const hit of nonArchivedHits) {
-    if (hit.lead.last_message_sender_type === 'human') tabCounts.human++
+    if (isHumano(hit.lead)) tabCounts.human++
     if (isUrgent(hit.lead)) tabCounts.urgent++
+    const atendente = hit.lead.atendente_member_id
+    if (atendente) tabCounts[`atendente:${atendente}`] = (tabCounts[`atendente:${atendente}`] ?? 0) + 1
   }
+
+  const abasDeAtendente = atendentes.filter((a) =>
+    a.fixo || (tabCounts[`atendente:${a.id}`] ?? 0) > 0 || activeTab === `atendente:${a.id}`
+  )
 
   const tabFilteredHitsBeforeTags = activeTab === 'all'
     ? nonArchivedHits
     : activeTab === 'human'
-      ? nonArchivedHits.filter((hit) => hit.lead.last_message_sender_type === 'human')
-      : nonArchivedHits.filter((hit) => isUrgent(hit.lead))
+      ? nonArchivedHits.filter((hit) => isHumano(hit.lead))
+      : activeTab === 'urgent'
+        ? nonArchivedHits.filter((hit) => isUrgent(hit.lead))
+        : nonArchivedHits.filter((hit) => `atendente:${hit.lead.atendente_member_id}` === activeTab)
 
   // Etiqueta é um filtro à parte, combinado com a aba ativa — não substitui, só
   // restringe mais. Mantém quem tem pelo menos uma das etiquetas marcadas.
@@ -412,7 +442,7 @@ export default function LeadList({
         </div>
       </div>
 
-      <ChatFilterTabs activeTab={activeTab} onChange={setActiveTab} counts={tabCounts} />
+      <ChatFilterTabs activeTab={activeTab} onChange={setActiveTab} counts={tabCounts} atendentes={abasDeAtendente} />
 
       {/* Leads List */}
       <div ref={scrollContainerRef} className="flex-1 overflow-y-auto overflow-x-hidden chat-dark-scroll">
@@ -452,6 +482,7 @@ export default function LeadList({
                   hit={hit}
                   query={search}
                   hideReplyHighlight={hideReplyHighlight}
+                  atendente={lead.atendente_member_id ? atendentePorId[lead.atendente_member_id] : undefined}
                 />
               )
             })}
