@@ -1,10 +1,15 @@
 /**
- * Converte áudio gravado no navegador (webm/opus ou mp4/aac) pro formato que a Meta
- * exige nas suas APIs oficiais (WhatsApp Cloud API e Instagram Direct): Ogg com codec
- * Opus puro, sem parâmetros extras no Content-Type. O navegador grava em audio/webm
- * (Chrome/Edge) ou audio/mp4 (Safari) — a Meta rejeita o webm com "Unsupported MIME
- * type" (erro 131053 documentado). A Evolution API (WhatsApp Nº2) já faz essa
- * conversão no próprio servidor dela, então isso só é chamado pros canais da Meta.
+ * Converte áudio gravado no navegador (webm/opus ou mp4/aac) pra Ogg com codec Opus
+ * puro — o único formato que toca como nota de voz de verdade (bolha com onda sonora,
+ * tocável) em vez de aparecer como anexo genérico ou simplesmente não tocar. O
+ * navegador grava em audio/webm (Chrome/Edge) ou audio/mp4 (Safari); nenhum WhatsApp
+ * aceita esses formatos como voice note.
+ *
+ * Chamado pelos canais da Meta (WhatsApp Cloud API e Instagram Direct: a Meta rejeita
+ * o webm de cara com "Unsupported MIME type", erro 131053 documentado) e pela Z-API
+ * (ela aceita o webm sem reclamar, mas manda pro destinatário um arquivo que não
+ * toca — sem erro nenhum pro nosso lado, só reclamação de quem recebeu). A Evolution
+ * API (WhatsApp Nº2) é a única que já faz essa conversão no próprio servidor dela.
  */
 import { spawn } from 'node:child_process'
 import { writeFile, readFile, unlink } from 'node:fs/promises'
@@ -30,7 +35,7 @@ function runFfmpeg(args: string[]): Promise<void> {
   })
 }
 
-export async function convertAudioForMeta(sourceUrl: string): Promise<string> {
+export async function convertAudioToVoiceNote(sourceUrl: string): Promise<string> {
   const res = await fetch(sourceUrl)
   if (!res.ok) throw new Error(`Falha ao baixar áudio original (HTTP ${res.status})`)
   const inputBuffer = Buffer.from(await res.arrayBuffer())

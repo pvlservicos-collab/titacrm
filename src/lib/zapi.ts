@@ -21,6 +21,7 @@ import { db } from './db'
 import { integrations, integrationSecrets } from './schema'
 import { eq, and, isNull } from 'drizzle-orm'
 import { telefoneVariantes } from './leadSources'
+import { convertAudioToVoiceNote } from './audioConvert'
 
 export const ZAPI_INTEGRATION_TYPE = 'whatsapp_zapi'
 export const ZAPI_INTEGRATION_NAME = 'WhatsApp Z-API'
@@ -239,6 +240,13 @@ export async function sendZapiMedia(
 ): Promise<EnvioZapi> {
   const creds = await getZapiCredentials(organizationId)
 
+  // A Z-API aceita o webm que o navegador grava sem reclamar (200 OK), mas quem
+  // recebe fica com um arquivo que não toca — ela não faz o remux que a Evolution
+  // faz sozinha. Mesma conversão pra Ogg/Opus que os canais da Meta já usam (ver
+  // src/lib/audioConvert.ts). Convertido uma vez aqui fora, antes do retry de
+  // número — repetir a conversão a cada tentativa seria trabalho em dobro à toa.
+  const effectiveMediaUrl = mediaType === 'audio' ? await convertAudioToVoiceNote(mediaUrl) : mediaUrl
+
   return comCorrecaoDeNumero(phone, (numero) => {
     const to = destinatario(numero)
 
@@ -256,7 +264,7 @@ export async function sendZapiMedia(
 
     if (mediaType === 'audio') {
       return chamar(creds, 'send-audio', {
-        body: { phone: to, audio: mediaUrl },
+        body: { phone: to, audio: effectiveMediaUrl },
       }, 'Falha ao enviar áudio pela Z-API')
     }
 

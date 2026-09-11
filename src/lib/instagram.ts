@@ -1,7 +1,7 @@
 import { db } from '@/lib/db'
 import { integrations, integrationSecrets } from '@/lib/schema'
 import { eq, and, isNull } from 'drizzle-orm'
-import { convertAudioForMeta } from '@/lib/audioConvert'
+import { convertAudioToVoiceNote } from '@/lib/audioConvert'
 
 /**
  * Uma organização pode ter várias contas do Instagram conectadas — por isso
@@ -115,7 +115,7 @@ export async function sendInstagramMedia(
 
   // Mesma restrição de formato da Meta que afeta o WhatsApp Cloud API — o navegador
   // grava em webm, que não é aceito; remuxa pra Ogg/Opus antes de enviar.
-  const effectiveMediaUrl = mediaType === 'audio' ? await convertAudioForMeta(mediaUrl) : mediaUrl
+  const effectiveMediaUrl = mediaType === 'audio' ? await convertAudioToVoiceNote(mediaUrl) : mediaUrl
 
   const res = await fetch(`https://graph.instagram.com/${apiVersion}/${igUserId}/messages`, {
     method: 'POST',
