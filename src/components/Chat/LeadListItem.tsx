@@ -1,6 +1,6 @@
 'use client'
 
-import { memo } from 'react'
+import { memo, useRef } from 'react'
 import { LeadWithOwner, SearchHit } from '@/lib/types'
 import { Robot, PushPin } from '@phosphor-icons/react'
 import { getInitials, formatPhone, renderSnippet } from '@/lib/utils'
@@ -63,10 +63,34 @@ const LeadListItem = ({ lead, isSelected, onClick, onContextMenu, timeStr, hit, 
             ? 'linear-gradient(to right, rgba(255,255,255,0.07), transparent 80%)'
             : undefined)
 
+    /*
+     * Com mouse, a conversa abre ao APERTAR o botão, não ao soltar.
+     *
+     * A lista se reordena sozinha quando entra mensagem. Um clique é apertar +
+     * soltar, e se a lista andar entre os dois (um grupo ativo recebe mensagem o
+     * tempo todo), o "soltar" cai na linha que passou a ocupar aquele lugar — e
+     * abria a conversa de baixo. Apertando, vale a linha que a pessoa viu e mirou.
+     *
+     * Só botão esquerdo e só mouse: o direito é o menu de contexto, e no toque o
+     * apertar também começa uma rolagem — lá continua valendo o clique normal,
+     * assim como no teclado (Enter).
+     */
+    const abertoAoApertar = useRef(false)
+
     return (
         <div className="w-full flex-shrink-0 relative">
             <button
-                onClick={() => onClick(lead)}
+                onPointerDown={(e) => {
+                    abertoAoApertar.current = e.pointerType === 'mouse' && e.button === 0
+                    if (abertoAoApertar.current) onClick(lead)
+                }}
+                onClick={() => {
+                    if (abertoAoApertar.current) {
+                        abertoAoApertar.current = false
+                        return
+                    }
+                    onClick(lead)
+                }}
                 onContextMenu={(e) => onContextMenu(e, lead)}
                 className={`w-full text-left px-4 py-3 border-b border-[var(--chat-border)] transition-colors ${isSelected
                     ? 'bg-white/[0.07] border-l-[3px] border-l-[var(--chat-accent)]'

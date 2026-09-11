@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback, useEffect } from 'react'
+import { useState, useCallback, useEffect, useRef } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { useAuth, useStageHistory, useLeadPipelineStages, usePipeline } from '@/hooks'
 import { useLeadsContext } from '@/contexts/LeadsContext'
@@ -36,21 +36,51 @@ export default function ChatEvolutionPage() {
 
   const [selectedLead, setSelectedLead] = useState<LeadWithOwner | null>(null)
 
+  /*
+   * O `?leadId=` do endereço é aplicado UMA vez — quando ele muda —, e não a
+   * cada renderização.
+   *
+   * Antes a regra rodava sempre que a lista ou a seleção mudavam, e reimpunha a
+   * conversa do link: você chegava pelo link do aviso no grupo (ou pelo "Ver
+   * conversa" do Pipeline), clicava em outra conversa, e a tela voltava pra do
+   * link. Com a lista se atualizando sozinha a cada poucos segundos, isso virou
+   * "clico no grupo e ele abre outro chat".
+   */
+  const leadIdAplicadoDaUrl = useRef<string | null>(null)
+
   useEffect(() => {
     if (!leadIdFromUrl) return
-    if (selectedLead?.id === leadIdFromUrl) return
+    if (leadIdAplicadoDaUrl.current === leadIdFromUrl) return
+    if (selectedLead?.id === leadIdFromUrl) { leadIdAplicadoDaUrl.current = leadIdFromUrl; return }
     const fromMemory = globalLeads.find(l => l.id === leadIdFromUrl)
-    if (fromMemory) { setSelectedLead(fromMemory); return }
+    if (fromMemory) { leadIdAplicadoDaUrl.current = leadIdFromUrl; setSelectedLead(fromMemory); return }
     let cancelled = false
     ;(async () => {
       const res = await fetch(`/api/leads/${leadIdFromUrl}`)
       if (res.ok) {
         const { data } = await res.json()
-        if (!cancelled && data) setSelectedLead(data as LeadWithOwner)
+        if (!cancelled && data) {
+          leadIdAplicadoDaUrl.current = leadIdFromUrl
+          setSelectedLead(data as LeadWithOwner)
+        }
       }
     })()
     return () => { cancelled = true }
   }, [leadIdFromUrl, globalLeads, selectedLead?.id])
+
+  const handleSelectLead = useCallback((lead: LeadWithOwner) => {
+    // O endereço acompanha a conversa escolhida. Assim o link nunca contradiz o
+    // que está na tela — e recarregar a página reabre a conversa certa, não a
+    // do link por onde a pessoa entrou horas antes. replaceState (e não
+    // router.replace) pra não custar uma ida ao servidor a cada clique.
+    leadIdAplicadoDaUrl.current = lead.id
+    if (typeof window !== 'undefined') {
+      const url = new URL(window.location.href)
+      url.searchParams.set('leadId', lead.id)
+      window.history.replaceState(window.history.state, '', url.toString())
+    }
+    setSelectedLead(lead)
+  }, [])
 
   const displayedLeadId = selectedLead?.id || (allLeads.length > 0 ? allLeads[0].id : null)
   const displayedLead = allLeads.find(l => l.id === displayedLeadId) || selectedLead
@@ -191,7 +221,7 @@ export default function ChatEvolutionPage() {
         <LeadList
           leads={allLeads}
           selectedLeadId={displayedLead?.id}
-          onSelectLead={setSelectedLead}
+          onSelectLead={handleSelectLead}
           onUpdateLead={handleUpdateLead}
           loading={false}
           organizationId={organizationId}
