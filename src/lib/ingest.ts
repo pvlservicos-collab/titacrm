@@ -315,15 +315,22 @@ async function upsertCrmLead(
    * leads": sem dono, o agente cadastraria a indicação e ela sumiria da tela
    * dele no mesmo instante.
    */
-  ownerMemberId?: string | null
-): Promise<{ id: string; created: boolean } | null> {
+  ownerMemberId?: string | null,
+  /** Ressincronização em massa da Agenda — ver o uso mais abaixo. */
+  ehResync = false
+): Promise<{ id: string; created: boolean; promovido: boolean } | null> {
   if (normalized.phone) {
     // Pelas DUAS formas do celular (com e sem o nono dígito). Uma conversa
     // importada do WhatsApp pode estar gravada na forma antiga, e comparar só a
     // forma exata criaria um lead novo pra quem já tem conversa aberta aqui —
     // o atendimento acabaria falando com a pessoa em dois lugares.
     const [existing] = await db
-      .select({ id: leads.id })
+      .select({
+        id: leads.id,
+        title: leads.title,
+        stageId: leads.stageId,
+        customAttributes: leads.customAttributes,
+      })
       .from(leads)
       .where(and(
         eq(leads.organizationId, organizationId),
@@ -331,7 +338,54 @@ async function upsertCrmLead(
         isNull(leads.deletedAt)
       ))
       .limit(1)
-    if (existing) return { id: existing.id, created: false }
+
+    if (existing) {
+      /*
+       * O telefone já estava aqui, mas só como CONVERSA (importada do WhatsApp,
+       * ou uma planilha antiga) — nunca como lead de aquisição. Agora ele
+       * preencheu o formulário: é lead novo pra todos os efeitos, e precisa
+       * entrar no funil.
+       *
+       * Sem isto o "já existe" mandava parar por aqui: o Arthur preencheu a
+       * Agenda, o CRM reconheceu o número de uma conversa importada e ele ficou
+       * sem fonte, sem card no Pipeline, sem mensagem automática e ainda com o
+       * nome antigo (que era o próprio número).
+       *
+       * `lead_source` é o que separa os dois mundos: quem já tem fonte é lead de
+       * aquisição de verdade, e aí o reenvio do mesmo formulário continua não
+       * disparando mensagem nenhuma.
+       */
+      const atributos = (existing.customAttributes ?? {}) as Record<string, unknown>
+      const ehSoConversa = !atributos.lead_source
+      if (!ehSoConversa) return { id: existing.id, created: false, promovido: false }
+
+      // Nome: o da conversa importada costuma ser o próprio número. Só troca
+      // quando o que está lá não tem letra nenhuma — assim não se perde um nome
+      // bom ("Eduardo de Andrade Ref Patriota") por um apelido curto do formulário.
+      const tituloTemLetra = /\p{L}/u.test(existing.title || '')
+      const mudancas: Record<string, unknown> = {
+        customAttributes: { ...atributos, lead_source: source, ...normalized.fields },
+        lastActivityAt: new Date(),
+      }
+      if (!tituloTemLetra && normalized.name) mudancas.title = normalized.name
+      if (normalized.email) mudancas.email = normalized.email
+
+      // Entra no Kanban na primeira etapa, como qualquer lead novo. Na
+      // ressincronização em massa não: seria despejar a base antiga inteira no
+      // Pipeline de uma vez.
+      if (!existing.stageId && !ehResync) {
+        const [primeiraEtapa] = await db
+          .select({ id: pipelineStages.id })
+          .from(pipelineStages)
+          .where(and(eq(pipelineStages.organizationId, organizationId), isNull(pipelineStages.deletedAt)))
+          .orderBy(asc(pipelineStages.rank))
+          .limit(1)
+        if (primeiraEtapa) mudancas.stageId = primeiraEtapa.id
+      }
+
+      await db.update(leads).set(mudancas).where(eq(leads.id, existing.id))
+      return { id: existing.id, created: false, promovido: !ehResync }
+    }
   }
 
   const [firstStage] = await db
@@ -358,7 +412,7 @@ async function upsertCrmLead(
         lastActivityAt: new Date(),
       })
       .returning({ id: leads.id })
-    return lead ? { id: lead.id, created: true } : null
+    return lead ? { id: lead.id, created: true, promovido: false } : null
   } catch (err) {
     // leads_org_phone_unique: outra requisição criou o mesmo telefone entre o
     // SELECT acima e este INSERT. Busca de novo em vez de estourar.
@@ -372,7 +426,7 @@ async function upsertCrmLead(
         isNull(leads.deletedAt)
       ))
       .limit(1)
-    return raceLead ? { id: raceLead.id, created: false } : null
+    return raceLead ? { id: raceLead.id, created: false, promovido: false } : null
   }
 }
 
@@ -565,9 +619,11 @@ export async function handleIngest(req: NextRequest, sourceFromPath?: string) {
     let leadCreated = false
     if (!leadId) {
       try {
-        const lead = await upsertCrmLead(auth.organizationId, sourceDef.key, normalized, auth.memberId)
+        const lead = await upsertCrmLead(auth.organizationId, sourceDef.key, normalized, auth.memberId, ehResync)
         leadId = lead?.id ?? null
-        leadCreated = lead?.created ?? false
+        // Promovido (era só conversa e virou lead de aquisição) conta como novo:
+        // toca o "plin", entra no funil e recebe a mensagem automática.
+        leadCreated = (lead?.created || lead?.promovido) ?? false
         if (leadId && submission) {
           await db.update(leadSourceSubmissions)
             .set({ leadId })
