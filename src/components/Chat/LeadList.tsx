@@ -83,18 +83,21 @@ interface ContextMenuState {
  * Esta conversa aparece na lista?
  *
  * Três casos, nesta ordem:
- *   1. Sem `last_activity_type` — contato que nunca foi conversa (a planilha de
- *      644 importada por CSV). Nunca aparece; a busca acha.
- *   2. Com mensagem registrada aqui — sempre aparece, por mais antiga que seja.
+ *   1. Com mensagem registrada aqui — sempre aparece, por mais antiga que seja.
  *      É conversa de verdade e não some nunca.
+ *   2. Sem mensagem e sem `last_activity_type` — contato que nunca foi conversa
+ *      (a planilha de 644 importada por CSV). Nunca aparece; a busca acha.
  *   3. Importada do WhatsApp e ainda sem mensagem aqui — aparece enquanto for
  *      recente. É o catálogo antigo do aparelho, que não pode enterrar o resto.
  */
 function ehConversaVisivel(lead: LeadWithOwner): boolean {
-  if (!lead.last_activity_type) return false
-
+  // Ter mensagem basta, com marcador de atividade ou sem: leads que só
+  // receberam a mensagem do funil ficaram sem o marcador (bug corrigido na
+  // origem) e sumiam do chat até a pessoa responder.
   const temMensagemAqui = !!lead.last_message_content || !!lead.last_message_sender_type
   if (temMensagemAqui) return true
+
+  if (!lead.last_activity_type) return false
 
   if (!lead.last_activity_at) return false
   const limite = Date.now() - DIAS_CONVERSA_IMPORTADA * 24 * 60 * 60 * 1000

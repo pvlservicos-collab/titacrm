@@ -200,6 +200,10 @@ async function sendMessageBlock(execution: { id: string; funnelId: string; organ
     lastMessageContent: content,
     lastMessageSenderType: 'automated',
     lastActivityAt: new Date(),
+    // Sem isto a conversa não aparecia na lista do Chat: quem manda pelo CRM
+    // grava `last_activity_type`, o funil não gravava, e a lista usa esse
+    // marcador. O lead novo só surgia no chat quando ELE respondia.
+    lastActivityType: 'whatsapp',
     isUnread: true,
   }).where(eq(leads.id, lead.id))
 

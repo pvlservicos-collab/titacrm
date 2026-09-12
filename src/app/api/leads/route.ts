@@ -56,12 +56,14 @@ export async function GET(req: NextRequest) {
       // Conversa é quem já teve atividade. Dentro disso: mensagem registrada
       // aqui aparece pra sempre; conversa importada sem mensagem só enquanto for
       // recente; arquivada vem sempre, senão a aba "Arquivados" fica vazia.
-      conditions.push(sql`${leads.lastActivityType} IS NOT NULL`)
       conditions.push(sql`(
         ${leads.lastMessageContent} IS NOT NULL
         OR ${leads.lastMessageSenderType} IS NOT NULL
         OR ${leads.isArchived} IS TRUE
-        OR ${leads.lastActivityAt} > now() - (${DIAS_CONVERSA_IMPORTADA} || ' days')::interval
+        OR (
+          ${leads.lastActivityType} IS NOT NULL
+          AND ${leads.lastActivityAt} > now() - (${DIAS_CONVERSA_IMPORTADA} || ' days')::interval
+        )
       )`)
     }
 
