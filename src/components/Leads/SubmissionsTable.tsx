@@ -14,7 +14,7 @@
 
 import { memo } from 'react'
 import Link from 'next/link'
-import { ChatCircleDots, Check } from '@phosphor-icons/react'
+import { ChatCircleDots, Check, Kanban } from '@phosphor-icons/react'
 import { formatPhone } from '@/lib/utils'
 import type { LeadSourceColumn } from '@/lib/leadSources'
 import type { Submission } from './types'
@@ -194,14 +194,69 @@ function BotaoMensagem({
   )
 }
 
+/**
+ * Botão "Ao pipeline" — põe o lead no Kanban sem mandar nada.
+ *
+ * Abre a mesma tabela do cadastro manual, já preenchida com este lead, pra
+ * escolher de quem ele é e em que momento está. Some quando o lead já está
+ * numa etapa (não há o que adicionar) e fica apagado quando nem lead existe.
+ */
+function BotaoPipeline({
+  row,
+  onAdicionar,
+}: {
+  row: Submission
+  onAdicionar: (row: Submission, ancora: DOMRect) => void
+}) {
+  if (row.stage_id) {
+    return (
+      <span
+        className="btn btn-sm !px-2 whitespace-nowrap cursor-default !bg-transparent !border-transparent !text-muted/50 !shadow-none"
+        title={`Já está no pipeline, em ${row.stage_name ?? 'uma etapa'}`}
+      >
+        <Check size={13} weight="bold" />
+        No pipeline
+      </span>
+    )
+  }
+
+  if (!row.lead_id) {
+    return (
+      <span
+        className="btn btn-sm btn-ghost !px-2 opacity-40 cursor-not-allowed whitespace-nowrap"
+        title="Lead ainda não criado no CRM"
+      >
+        <Kanban size={13} weight="bold" />
+        Ao pipeline
+      </span>
+    )
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={(e) => {
+        pararPropagacao(e)
+        onAdicionar(row, e.currentTarget.getBoundingClientRect())
+      }}
+      className="btn btn-sm btn-outline !px-2 whitespace-nowrap"
+      title="Adicionar ao pipeline, em Em aguardo — não envia mensagem"
+    >
+      <Kanban size={13} weight="bold" />
+      Ao pipeline
+    </button>
+  )
+}
+
 interface SubmissionsTableProps {
   columns: LeadSourceColumn[]
   rows: Submission[]
   onSelect: (row: Submission) => void
   onContatar: (row: Submission) => void
+  onAdicionarAoPipeline: (row: Submission, ancora: DOMRect) => void
 }
 
-function SubmissionsTable({ columns, rows, onSelect, onContatar }: SubmissionsTableProps) {
+function SubmissionsTable({ columns, rows, onSelect, onContatar, onAdicionarAoPipeline }: SubmissionsTableProps) {
   return (
     // overflow-x no wrapper (não no body da página): planilha larga rola dentro
     // do próprio card, a página nunca escorrega na horizontal.
@@ -214,7 +269,7 @@ function SubmissionsTable({ columns, rows, onSelect, onContatar }: SubmissionsTa
                   e é a primeira porque a pessoa varre a lista pra agir, não
                   pra ler o ID. */}
               <th
-                style={{ minWidth: 168 }}
+                style={{ minWidth: 290 }}
                 className="sticky top-0 left-0 z-20 text-left font-semibold text-muted uppercase tracking-wider text-[10px] px-3.5 py-2.5 whitespace-nowrap surface-raised"
               >
                 Ação
@@ -244,7 +299,10 @@ function SubmissionsTable({ columns, rows, onSelect, onContatar }: SubmissionsTa
                 className="cursor-pointer border-t border-white/[0.06] hover:bg-white/[0.04] transition-colors"
               >
                 <td className="px-3.5 py-2 align-middle whitespace-nowrap">
-                  <BotaoMensagem row={row} onContatar={onContatar} />
+                  <div className="flex items-center gap-1.5">
+                    <BotaoMensagem row={row} onContatar={onContatar} />
+                    <BotaoPipeline row={row} onAdicionar={onAdicionarAoPipeline} />
+                  </div>
                 </td>
                 <td className="px-3.5 py-2.5 align-middle whitespace-nowrap">
                   {row.stage_name ? (

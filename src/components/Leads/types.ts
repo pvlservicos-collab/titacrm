@@ -39,3 +39,9 @@ export interface EtapaFiltro {
   color: string | null
   total: number
 }
+
+/** Contagem por momento da jornada, pros chips de filtro (ver src/lib/momentos.ts). */
+export interface MomentoFiltro {
+  key: string
+  total: number
+}

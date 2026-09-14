@@ -18,6 +18,10 @@
  *   - Os padrões ficam no topo e valem para as linhas NOVAS; cada linha pode
  *     ser mudada depois, e "aplicar a todas" reescreve as que já estão lá.
  *
+ * Serve também de "Adicionar ao pipeline" na aba Leads (modo `pipeline`): aí o
+ * lead JÁ existe, e a tabela só pergunta de quem ele é e em que momento está —
+ * sem interruptor de disparo, porque ali nada é enviado, nunca.
+ *
  * Grava pela mesma porta das fontes externas (POST /api/ingest/leads/<fonte>),
  * uma linha por vez: é o que garante o mesmo dedupe, a mesma normalização de
  * telefone e o mesmo registro em lead_source_submissions. Linha que falha fica
@@ -38,6 +42,8 @@ const AVISO_IMPORTACAO = 'Mande para o pedro primeiro para ele preparar a integr
 
 interface Linha {
   id: number
+  /** Lead que já existe (modo `pipeline`); vazio quando é cadastro novo. */
+  leadId?: string
   nome: string
   whatsapp: string
   momento: string
@@ -79,30 +85,63 @@ interface Props {
   /** Retângulo do botão que abriu, pra tabela nascer colada nele. */
   ancora: DOMRect
   onClose: () => void
-  /** Chamado depois de gravar, pra lista do Kanban recarregar. */
+  /** Chamado depois de gravar, pra lista recarregar. */
   onCreated: () => void
   /** Abre o formulário completo de um lead só (Instagram, e-mail, observação). */
-  onCadastroCompleto: () => void
+  onCadastroCompleto?: () => void
+  /**
+   * `cadastro` (padrão) cria leads novos pela fonte.
+   * `pipeline` põe no quadro leads que já existem — nada é enviado.
+   */
+  modo?: 'cadastro' | 'pipeline'
+  /** Linhas já preenchidas (o lead clicado na aba Leads). */
+  linhasIniciais?: { nome: string; whatsapp: string; momento?: string | null; leadId?: string }[]
 }
 
-export default function TabelaCadastroManual({ source, ancora, onClose, onCreated, onCadastroCompleto }: Props) {
+export default function TabelaCadastroManual({
+  source,
+  ancora,
+  onClose,
+  onCreated,
+  onCadastroCompleto,
+  modo = 'cadastro',
+  linhasIniciais,
+}: Props) {
   const { profileName } = useAuth()
   const fonte = LEAD_SOURCES[source]
-  const ehIndicacao = source === 'indicacao'
-  const temMomento = source === 'agenda_ascensao'
-  const temAutomacao = FONTES_COM_AUTOMACAO.includes(source)
+  const ehPipeline = modo === 'pipeline'
+  const ehIndicacao = source === 'indicacao' && !ehPipeline
+  // No modo pipeline o momento vale pra qualquer fonte: é a informação que a
+  // aba Leads mostra, e quem adiciona ao quadro quer confirmar ou corrigir.
+  const temMomento = ehPipeline || source === 'agenda_ascensao'
+  // Nada é enviado ao pôr no quadro — o interruptor nem aparece.
+  const temAutomacao = !ehPipeline && FONTES_COM_AUTOMACAO.includes(source)
 
   const [padroes, setPadroes] = useState<Padroes>({
     momento: MOMENTO_PADRAO,
     disparar: false,
     responsavel: RESPONSAVEL_PADRAO,
   })
-  const padroesIniciais: Padroes = { momento: MOMENTO_PADRAO, disparar: false, responsavel: RESPONSAVEL_PADRAO }
-  const [linhas, setLinhas] = useState<Linha[]>(() => [
-    novaLinha(padroesIniciais),
-    novaLinha(padroesIniciais),
-    novaLinha(padroesIniciais),
-  ])
+  const padroesIniciais: Padroes = {
+    // Vindo da aba Leads, o momento comeca com o que o lead ja tem — inclusive
+    // "nao definido". Inventar "so se cadastrou" pra quem veio do site seria
+    // gravar um dado que ninguem informou.
+    momento: modo === 'pipeline' ? '' : MOMENTO_PADRAO,
+    disparar: false,
+    responsavel: RESPONSAVEL_PADRAO,
+  }
+  const [linhas, setLinhas] = useState<Linha[]>(() => {
+    if (linhasIniciais?.length) {
+      return linhasIniciais.map((l) => ({
+        ...novaLinha(padroesIniciais),
+        nome: l.nome,
+        whatsapp: l.whatsapp,
+        momento: l.momento || '',
+        leadId: l.leadId,
+      }))
+    }
+    return [novaLinha(padroesIniciais), novaLinha(padroesIniciais), novaLinha(padroesIniciais)]
+  })
   const [salvando, setSalvando] = useState(false)
   const [resumo, setResumo] = useState<string | null>(null)
   const primeiraCelulaRef = useRef<HTMLInputElement>(null)
@@ -166,6 +205,24 @@ export default function TabelaCadastroManual({ source, ancora, onClose, onCreate
     for (const linha of prontas) {
       setLinhas((atual) => atual.map((l) => (l.id === linha.id ? { ...l, estado: 'enviando' } : l)))
       try {
+        // Lead que já existe: só entra no quadro e recebe as marcações. Não
+        // passa pela ingestão, que criaria/reenviaria o que já está gravado.
+        if (ehPipeline && linha.leadId) {
+          const res = await fetch(`/api/leads/${linha.leadId}/pipeline`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              whatsapp_responsavel: linha.responsavel,
+              ...(linha.momento ? { momento: linha.momento } : {}),
+            }),
+          })
+          const retorno = await res.json().catch(() => ({}))
+          if (!res.ok) throw new Error(retorno?.error || `Erro ${res.status}`)
+          gravados++
+          setLinhas((atual) => atual.map((l) => (l.id === linha.id ? { ...l, estado: 'ok' } : l)))
+          continue
+        }
+
         const digitos = soDigitos(linha.whatsapp)
         const corpo: Record<string, unknown> = {
           nome: linha.nome.trim(),
@@ -177,7 +234,7 @@ export default function TabelaCadastroManual({ source, ancora, onClose, onCreate
           // mesma pessoa de novo atualiza em vez de duplicar. O momento vai no
           // mesmo lugar que a Agenda usa (agenda.phase).
           ...(source === 'agenda_ascensao'
-            ? { id: `manual-${digitos}`, agenda: { phase: linha.momento } }
+            ? { id: `manual-${digitos}`, ...(linha.momento ? { agenda: { phase: linha.momento } } : {}) }
             : {}),
           ...(ehIndicacao && linha.indicadoPor.trim() ? { indicado_por: linha.indicadoPor.trim() } : {}),
           // A ingestão só pula o funil quando mandam pular (src/lib/ingest.ts).
@@ -205,11 +262,18 @@ export default function TabelaCadastroManual({ source, ancora, onClose, onCreate
     const falhas = prontas.length - gravados
     setResumo(
       falhas === 0
-        ? `${gravados} ${gravados === 1 ? 'lead cadastrado' : 'leads cadastrados'}.`
+        ? ehPipeline
+          ? `${gravados} ${gravados === 1 ? 'lead adicionado' : 'leads adicionados'} ao pipeline.`
+          : `${gravados} ${gravados === 1 ? 'lead cadastrado' : 'leads cadastrados'}.`
         : `${gravados} cadastrados, ${falhas} com erro — corrija e mande de novo.`
     )
     // Some quem deu certo; quem falhou fica pra corrigir.
     if (falhas === 0) {
+      // Vindo da aba Leads é uma ação pontual: fecha e volta pra lista.
+      if (ehPipeline) {
+        onClose()
+        return
+      }
       setLinhas([novaLinha(padroes), novaLinha(padroes), novaLinha(padroes)])
     } else {
       setLinhas((atual) => atual.filter((l) => l.estado !== 'ok'))
@@ -235,9 +299,13 @@ export default function TabelaCadastroManual({ source, ancora, onClose, onCreate
         <div className="flex items-center gap-2.5 px-4 py-3 border-b border-white/[0.07] flex-shrink-0">
           <Table size={16} weight="bold" className="text-accent-2 flex-shrink-0" />
           <div className="min-w-0 flex-1">
-            <h2 className="text-[13.5px] font-bold text-ink truncate">Cadastrar leads — {fonte.label}</h2>
+            <h2 className="text-[13.5px] font-bold text-ink truncate">
+              {ehPipeline ? 'Adicionar ao pipeline' : `Cadastrar leads — ${fonte.label}`}
+            </h2>
             <p className="text-[10.5px] text-muted">
-              Uma linha por pessoa. Entram no Kanban na primeira etapa, com você como responsável.
+              {ehPipeline
+                ? 'Entra em "Em aguardo". Nenhuma mensagem é enviada.'
+                : 'Uma linha por pessoa. Entram no Kanban na primeira etapa, com você como responsável.'}
             </p>
           </div>
           <button type="button" onClick={onClose} className="btn-icon w-8 h-8 flex-shrink-0" aria-label="Fechar">
@@ -272,12 +340,17 @@ export default function TabelaCadastroManual({ source, ancora, onClose, onCreate
           {temMomento && (
             <label className="flex items-center gap-1.5">
               <span className="text-[11.5px] text-muted">Momento:</span>
-              <SelectMomento valor={padroes.momento} onChange={(v) => setPadroes((p) => ({ ...p, momento: v }))} />
+              <SelectMomento
+                valor={padroes.momento}
+                onChange={(v) => setPadroes((p) => ({ ...p, momento: v }))}
+                permitirVazio={ehPipeline}
+              />
             </label>
           )}
 
           <button
             type="button"
+            hidden={linhas.length < 2}
             onClick={aplicarPadroesEmTodas}
             className="btn btn-outline btn-sm !py-1 !text-[11px] ml-auto"
             title="Reescreve momento, disparo e WhatsApp de todas as linhas"
@@ -369,6 +442,7 @@ export default function TabelaCadastroManual({ source, ancora, onClose, onCreate
                           valor={linha.momento}
                           onChange={(v) => mudar(linha.id, { momento: v })}
                           largura="w-full"
+                          permitirVazio={ehPipeline}
                         />
                       </td>
                     )}
@@ -420,14 +494,16 @@ export default function TabelaCadastroManual({ source, ancora, onClose, onCreate
             </tbody>
           </table>
 
-          <button
-            type="button"
-            onClick={acrescentar}
-            className="w-full flex items-center justify-center gap-1.5 px-3 py-2 border-t border-white/[0.05] text-[11px] font-semibold text-muted hover:text-ink hover:bg-white/[0.04] transition-colors"
-          >
-            <Plus size={12} weight="bold" />
-            Adicionar linha
-          </button>
+          {!ehPipeline && (
+            <button
+              type="button"
+              onClick={acrescentar}
+              className="w-full flex items-center justify-center gap-1.5 px-3 py-2 border-t border-white/[0.05] text-[11px] font-semibold text-muted hover:text-ink hover:bg-white/[0.04] transition-colors"
+            >
+              <Plus size={12} weight="bold" />
+              Adicionar linha
+            </button>
+          )}
         </div>
 
         {/* Rodapé */}
@@ -435,21 +511,25 @@ export default function TabelaCadastroManual({ source, ancora, onClose, onCreate
           {/* Importação em massa: desligada até a integração existir. Botão
               desabilitado não dispara eventos de mouse, então o aviso do
               title precisa ficar no elemento em volta pra aparecer. */}
-          <span title={AVISO_IMPORTACAO} className="cursor-not-allowed flex-shrink-0">
-            <button type="button" disabled className="btn btn-outline btn-sm !py-1 !text-[11px] opacity-40 pointer-events-none">
-              <UploadSimple size={12} weight="bold" />
-              Adicionar em massa (CSV)
-            </button>
-          </span>
+          {!ehPipeline && (
+            <span title={AVISO_IMPORTACAO} className="cursor-not-allowed flex-shrink-0">
+              <button type="button" disabled className="btn btn-outline btn-sm !py-1 !text-[11px] opacity-40 pointer-events-none">
+                <UploadSimple size={12} weight="bold" />
+                Adicionar em massa (CSV)
+              </button>
+            </span>
+          )}
 
-          <button
-            type="button"
-            onClick={onCadastroCompleto}
-            className="text-[11px] font-semibold text-accent-2 hover:underline flex-shrink-0"
-            title="Um lead só, com Instagram, e-mail, observação e campos extras"
-          >
-            Cadastro completo
-          </button>
+          {!ehPipeline && onCadastroCompleto && (
+            <button
+              type="button"
+              onClick={onCadastroCompleto}
+              className="text-[11px] font-semibold text-accent-2 hover:underline flex-shrink-0"
+              title="Um lead só, com Instagram, e-mail, observação e campos extras"
+            >
+              Cadastro completo
+            </button>
+          )}
 
           <div className="min-w-0 flex-1 text-[11px]">
             {resumo ? (
@@ -474,7 +554,15 @@ export default function TabelaCadastroManual({ source, ancora, onClose, onCreate
             disabled={prontas.length === 0 || salvando}
             className="btn btn-primary btn-sm !py-1.5 disabled:opacity-40 flex-shrink-0"
           >
-            {salvando ? 'Cadastrando…' : prontas.length > 0 ? `Cadastrar ${prontas.length}` : 'Cadastrar'}
+            {salvando
+              ? ehPipeline
+                ? 'Adicionando…'
+                : 'Cadastrando…'
+              : ehPipeline
+                ? 'Adicionar ao pipeline'
+                : prontas.length > 0
+                  ? `Cadastrar ${prontas.length}`
+                  : 'Cadastrar'}
           </button>
         </div>
       </div>
@@ -486,10 +574,13 @@ function SelectMomento({
   valor,
   onChange,
   largura = 'w-[150px]',
+  permitirVazio = false,
 }: {
   valor: string
   onChange: (v: string) => void
   largura?: string
+  /** Deixa escolher "não definido" — lead que nunca passou pela Agenda. */
+  permitirVazio?: boolean
 }) {
   const atual = MOMENTOS.find((m) => m.key === valor)
   return (
@@ -500,6 +591,7 @@ function SelectMomento({
       className={`${largura} bg-transparent border border-white/[0.08] rounded-md text-[11.5px] px-1.5 py-1 outline-none focus:border-accent/50`}
       style={{ color: atual?.cor }}
     >
+      {permitirVazio && <option value="">Não definido</option>}
       {MOMENTOS.map((m) => (
         <option key={m.key} value={m.key} title={m.descricao}>
           {m.label}

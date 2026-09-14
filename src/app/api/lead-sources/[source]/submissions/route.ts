@@ -20,6 +20,8 @@ const MAX_LIMIT = 500
 
 /** Valor de `stage` que pede só as linhas sem etapa (sem lead no CRM). */
 const SEM_ETAPA = 'sem_etapa'
+/** Chip "Sem momento": lead que ainda não tem essa informação. */
+const SEM_MOMENTO = 'sem_momento'
 
 export async function GET(
   req: NextRequest,
@@ -50,15 +52,45 @@ export async function GET(
     const filtros = [...base]
     if (q) {
       const like = `%${q}%`
-      const match = or(
-        ilike(leadSourceSubmissions.name, like),
+      /*
+       * Busca que ignora acento e formatação do telefone.
+       *
+       * Antes era ILIKE puro: procurar "João" não achava "Joao" (e vice-versa),
+       * e "(11) 91234-5678" não achava 5511912345678 — os dois casos acontecem
+       * o tempo todo, porque o nome vem digitado pela pessoa e o telefone é
+       * guardado só com dígitos. `translate` resolve sem depender da extensão
+       * unaccent, que não está instalada neste banco.
+       */
+      const semAcento = (coluna: any) => sql`translate(lower(${coluna}),
+        'áàâãäéèêëíìîïóòôõöúùûüçñÁÀÂÃÄÉÈÊËÍÌÎÏÓÒÔÕÖÚÙÛÜÇÑ',
+        'aaaaaeeeeiiiiooooouuuucnAAAAAEEEEIIIIOOOOOUUUUCN')`
+      const alvo = sql`${semAcento(sql`${q}`)}`
+      const digitos = q.replace(/\D/g, '')
+
+      const condicoes = [
+        sql`${semAcento(leadSourceSubmissions.name)} LIKE '%' || ${alvo} || '%'`,
         ilike(leadSourceSubmissions.email, like),
         ilike(leadSourceSubmissions.phone, like),
         ilike(leadSourceSubmissions.instagram, like),
-        ilike(leadSourceSubmissions.externalId, like)
-      )
+        ilike(leadSourceSubmissions.externalId, like),
+      ]
+      if (digitos.length >= 4) {
+        condicoes.push(sql`regexp_replace(coalesce(${leadSourceSubmissions.phone}, ''), '\D', '', 'g') LIKE ${'%' + digitos + '%'}`)
+      }
+      const match = or(...condicoes)
       if (match) filtros.push(match)
     }
+    /*
+     * Momento da jornada (src/lib/momentos.ts) — "só se cadastrou", "gerou a
+     * agenda", os dois da mentoria. Sai do lead, e não do payload da submissão,
+     * porque é lá que ele fica atualizado: a Agenda reenvia o mesmo lead quando
+     * o quiz avança, e o cadastro manual do Pipeline também escreve ali.
+     */
+    const momentoDoLead = sql`coalesce(${leads.customAttributes}->>'phase', ${leads.customAttributes}->>'fase')`
+    const momento = url.searchParams.get('momento')?.trim()
+    if (momento === SEM_MOMENTO) filtros.push(sql`${momentoDoLead} IS NULL`)
+    else if (momento) filtros.push(sql`${momentoDoLead} = ${momento}`)
+
     if (stage === SEM_ETAPA) filtros.push(isNull(leads.stageId))
     else if (stage) filtros.push(eq(leads.stageId, stage))
     if (contatados === 'nao') filtros.push(isNull(leadSourceSubmissions.contactedAt))
@@ -116,6 +148,15 @@ export async function GET(
         .orderBy(pipelineStages.rank),
     ])
 
+    // Contagem por momento — como a das etapas, sem aplicar o próprio filtro,
+    // senão o chip escolhido zeraria os outros e não daria pra trocar.
+    const porMomento = await db
+      .select({ momento: momentoDoLead, total: sql<number>`count(*)::int` })
+      .from(leadSourceSubmissions)
+      .leftJoin(leads, eq(leads.id, leadSourceSubmissions.leadId))
+      .where(and(...base))
+      .groupBy(momentoDoLead)
+
     const [contagens] = await db
       .select({
         contatados: sql<number>`count(*) filter (where ${leadSourceSubmissions.contactedAt} is not null)::int`,
@@ -135,6 +176,7 @@ export async function GET(
         color: e.stage_color ?? null,
         total: e.total,
       })),
+      momentos: porMomento.map((m) => ({ key: m.momento ?? SEM_MOMENTO, total: m.total })),
       contato: contagens ?? { contatados: 0, pendentes: 0 },
     })
   } catch (err: any) {

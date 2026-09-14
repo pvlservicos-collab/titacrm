@@ -18,11 +18,25 @@ import LoadingSpinner from '@/components/Shared/LoadingSpinner'
 import SubmissionsTable from '@/components/Leads/SubmissionsTable'
 import SubmissionDetail from '@/components/Leads/SubmissionDetail'
 import ApiPanel from '@/components/Leads/ApiPanel'
-import type { EtapaFiltro, LeadSourceTab, Submission } from '@/components/Leads/types'
+import TabelaCadastroManual from '@/components/Pipeline/TabelaCadastroManual'
+import { MOMENTOS } from '@/lib/momentos'
+import type { LeadSourceKey } from '@/lib/leadSources'
+import type { EtapaFiltro, LeadSourceTab, MomentoFiltro, Submission } from '@/components/Leads/types'
 
 const PAGE_SIZE = 200
 
 type FiltroContato = 'todos' | 'nao' | 'sim'
+
+/** Chip "Sem momento" — o mesmo valor que a API usa. */
+const SEM_MOMENTO = 'sem_momento'
+
+/** Nome do momento pros chips: os quatro do vocabulário, mais "sem momento". */
+function rotuloMomento(chave: string): { label: string; cor: string | null; descricao?: string } {
+  const conhecido = MOMENTOS.find((m) => m.key === chave)
+  if (conhecido) return { label: conhecido.label, cor: conhecido.cor, descricao: conhecido.descricao }
+  if (chave === SEM_MOMENTO) return { label: 'Sem momento', cor: null }
+  return { label: chave, cor: null }
+}
 
 export default function LeadsPage() {
   const [sources, setSources] = useState<LeadSourceTab[]>([])
@@ -33,6 +47,11 @@ export default function LeadsPage() {
   const [total, setTotal] = useState(0)
   const [search, setSearch] = useState('')
   const [etapaFiltro, setEtapaFiltro] = useState<string | null>(null)
+  const [momentos, setMomentos] = useState<MomentoFiltro[]>([])
+  const [momentoFiltro, setMomentoFiltro] = useState<string | null>(null)
+  // Lead que vai entrar no pipeline + o retângulo do botão clicado, pra tabela
+  // abrir colada nele.
+  const [aoPipeline, setAoPipeline] = useState<{ row: Submission; ancora: DOMRect } | null>(null)
   const [contatoFiltro, setContatoFiltro] = useState<FiltroContato>('todos')
   const [loadingSources, setLoadingSources] = useState(true)
   const [loadingRows, setLoadingRows] = useState(false)
@@ -60,13 +79,14 @@ export default function LeadsPage() {
   }, [])
 
   const loadRows = useCallback(
-    async (source: string, q: string, etapa: string | null, cont: FiltroContato) => {
+    async (source: string, q: string, etapa: string | null, cont: FiltroContato, momento: string | null) => {
       setLoadingRows(true)
       setError(null)
       try {
         const params = new URLSearchParams({ limit: String(PAGE_SIZE) })
         if (q) params.set('q', q)
         if (etapa) params.set('stage', etapa)
+        if (momento) params.set('momento', momento)
         if (cont !== 'todos') params.set('contatados', cont)
         const res = await fetch(`/api/lead-sources/${source}/submissions?${params}`)
         const json = await res.json()
@@ -74,6 +94,7 @@ export default function LeadsPage() {
         setRows(json.data || [])
         setTotal(json.total ?? 0)
         setEtapas(json.etapas || [])
+        setMomentos(json.momentos || [])
         setContato(json.contato || { contatados: 0, pendentes: 0 })
       } catch (err: any) {
         setError(err.message || 'Falha ao carregar os leads.')
@@ -90,11 +111,11 @@ export default function LeadsPage() {
   useEffect(() => {
     if (!activeSource) return
     const timer = setTimeout(
-      () => { loadRows(activeSource, search.trim(), etapaFiltro, contatoFiltro) },
+      () => { loadRows(activeSource, search.trim(), etapaFiltro, contatoFiltro, momentoFiltro) },
       search ? 300 : 0
     )
     return () => clearTimeout(timer)
-  }, [activeSource, search, etapaFiltro, contatoFiltro, loadRows])
+  }, [activeSource, search, etapaFiltro, contatoFiltro, momentoFiltro, loadRows])
 
   const activeDef = useMemo(
     () => sources.find((s) => s.key === activeSource) ?? null,
@@ -133,8 +154,13 @@ export default function LeadsPage() {
     setActiveSource(key)
     setSearch('')
     setEtapaFiltro(null)
+    setMomentoFiltro(null)
     setContatoFiltro('todos')
   }
+
+  const recarregar = useCallback(() => {
+    if (activeSource) loadRows(activeSource, search.trim(), etapaFiltro, contatoFiltro, momentoFiltro)
+  }, [activeSource, search, etapaFiltro, contatoFiltro, momentoFiltro, loadRows])
 
   if (loadingSources) {
     return (
@@ -231,6 +257,43 @@ export default function LeadsPage() {
             </div>
           )}
 
+          {/* Momento da jornada — de onde a pessoa parou na Agenda (ver
+              src/lib/momentos.ts). Só aparece quando a fonte tem essa
+              informação; o site, por exemplo, não tem. */}
+          {momentos.some((m) => m.key !== SEM_MOMENTO) && (
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-muted mr-1">
+                Momento
+              </span>
+              <button
+                onClick={() => setMomentoFiltro(null)}
+                className={`pill !py-1 ${momentoFiltro === null ? 'pill-active' : ''}`}
+              >
+                Todos
+                <span className="ml-1 px-1.5 rounded-full bg-white/10 text-[10px] font-bold">
+                  {momentos.reduce((a, m) => a + m.total, 0)}
+                </span>
+              </button>
+              {momentos.map((m) => {
+                const info = rotuloMomento(m.key)
+                return (
+                  <button
+                    key={m.key}
+                    onClick={() => setMomentoFiltro(momentoFiltro === m.key ? null : m.key)}
+                    className={`pill !py-1 ${momentoFiltro === m.key ? 'pill-active' : ''}`}
+                    title={info.descricao}
+                  >
+                    {info.cor && (
+                      <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: info.cor }} />
+                    )}
+                    {info.label}
+                    <span className="ml-1 px-1.5 rounded-full bg-white/10 text-[10px] font-bold">{m.total}</span>
+                  </button>
+                )
+              })}
+            </div>
+          )}
+
           {/* Contato + busca */}
           <div className="flex flex-wrap items-center gap-2">
             <span className="text-[10px] font-bold uppercase tracking-wider text-muted mr-1">
@@ -265,7 +328,7 @@ export default function LeadsPage() {
               />
             </div>
             <button
-              onClick={() => activeSource && loadRows(activeSource, search.trim(), etapaFiltro, contatoFiltro)}
+              onClick={recarregar}
               className="btn-icon w-8 h-8"
               title="Atualizar"
             >
@@ -298,11 +361,11 @@ export default function LeadsPage() {
         ) : rows.length === 0 ? (
           <div className="glass rounded-2xl px-6 py-16 text-center">
             <p className="text-sm font-semibold text-ink">
-              {search || etapaFiltro || contatoFiltro !== 'todos'
+              {search || etapaFiltro || momentoFiltro || contatoFiltro !== 'todos'
                 ? 'Nenhum lead com esses filtros.'
                 : 'Nenhum lead recebido ainda.'}
             </p>
-            {!search && !etapaFiltro && contatoFiltro === 'todos' && (
+            {!search && !etapaFiltro && !momentoFiltro && contatoFiltro === 'todos' && (
               <p className="text-xs text-muted mt-1.5">
                 Assim que a fonte começar a enviar, os leads aparecem aqui.{' '}
                 <button
@@ -322,6 +385,7 @@ export default function LeadsPage() {
                 rows={rows}
                 onSelect={setSelected}
                 onContatar={marcarContato}
+                onAdicionarAoPipeline={(row, ancora) => setAoPipeline({ row, ancora })}
               />
             )}
             <p className="text-[11px] text-muted text-center">
@@ -332,6 +396,24 @@ export default function LeadsPage() {
         )}
       </div>
 
+      {aoPipeline && activeSource && (
+        <TabelaCadastroManual
+          source={activeSource as LeadSourceKey}
+          modo="pipeline"
+          ancora={aoPipeline.ancora}
+          linhasIniciais={[
+            {
+              nome: aoPipeline.row.name ?? '',
+              whatsapp: aoPipeline.row.phone ?? '',
+              momento: momentoDaLinha(aoPipeline.row),
+              leadId: aoPipeline.row.lead_id ?? undefined,
+            },
+          ]}
+          onClose={() => setAoPipeline(null)}
+          onCreated={recarregar}
+        />
+      )}
+
       {selected && activeSource && (
         <SubmissionDetail
           submission={selected}
@@ -341,4 +423,17 @@ export default function LeadsPage() {
       )}
     </>
   )
+}
+
+/**
+ * Momento que a lista já conhece daquele lead.
+ *
+ * Vem do payload da própria submissão (é o que a tela mostra); a Agenda manda
+ * em `agenda.phase`, a planilha antiga em `fase`.
+ */
+function momentoDaLinha(row: Submission): string | null {
+  const payload = (row.payload ?? {}) as Record<string, any>
+  const agenda = (payload.agenda ?? {}) as Record<string, any>
+  const valor = agenda.phase ?? payload.fase ?? payload.phase
+  return typeof valor === 'string' && valor ? valor : null
 }
