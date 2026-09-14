@@ -49,9 +49,8 @@ export default function LeadsPage() {
   const [etapaFiltro, setEtapaFiltro] = useState<string | null>(null)
   const [momentos, setMomentos] = useState<MomentoFiltro[]>([])
   const [momentoFiltro, setMomentoFiltro] = useState<string | null>(null)
-  // Lead que vai entrar no pipeline + o retângulo do botão clicado, pra tabela
-  // abrir colada nele.
-  const [aoPipeline, setAoPipeline] = useState<{ row: Submission; ancora: DOMRect } | null>(null)
+  /** Lead que vai entrar no pipeline — abre a tabela centralizada. */
+  const [aoPipeline, setAoPipeline] = useState<Submission | null>(null)
   const [contatoFiltro, setContatoFiltro] = useState<FiltroContato>('todos')
   const [loadingSources, setLoadingSources] = useState(true)
   const [loadingRows, setLoadingRows] = useState(false)
@@ -385,7 +384,7 @@ export default function LeadsPage() {
                 rows={rows}
                 onSelect={setSelected}
                 onContatar={marcarContato}
-                onAdicionarAoPipeline={(row, ancora) => setAoPipeline({ row, ancora })}
+                onAdicionarAoPipeline={setAoPipeline}
               />
             )}
             <p className="text-[11px] text-muted text-center">
@@ -400,13 +399,12 @@ export default function LeadsPage() {
         <TabelaCadastroManual
           source={activeSource as LeadSourceKey}
           modo="pipeline"
-          ancora={aoPipeline.ancora}
           linhasIniciais={[
             {
-              nome: aoPipeline.row.name ?? '',
-              whatsapp: aoPipeline.row.phone ?? '',
-              momento: momentoDaLinha(aoPipeline.row),
-              leadId: aoPipeline.row.lead_id ?? undefined,
+              nome: aoPipeline.name ?? '',
+              whatsapp: aoPipeline.phone ?? '',
+              momento: momentoDaLinha(aoPipeline),
+              leadId: aoPipeline.lead_id ?? undefined,
             },
           ]}
           onClose={() => setAoPipeline(null)}

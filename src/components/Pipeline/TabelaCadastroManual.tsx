@@ -1,7 +1,7 @@
 'use client'
 
 /**
- * Cadastro manual de leads em tabela — abre colado no rodapé do card da fonte.
+ * Cadastro manual de leads em tabela — diálogo centralizado na tela.
  *
  * Por que tabela e não um formulário por lead: quem cadastra à mão quase nunca
  * tem um lead só. São os nomes que chegaram por mensagem, a lista que alguém
@@ -28,7 +28,7 @@
  * na tabela com o erro do lado, para corrigir e mandar de novo — nada se perde.
  */
 
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { X, Plus, Trash, UploadSimple, CheckCircle, WarningCircle, Table } from '@phosphor-icons/react'
 import { useAuth } from '@/hooks'
 import { LEAD_SOURCES, type LeadSourceKey } from '@/lib/leadSources'
@@ -82,8 +82,6 @@ const estaEmBranco = (l: Linha) => !l.nome.trim() && !soDigitos(l.whatsapp)
 
 interface Props {
   source: LeadSourceKey
-  /** Retângulo do botão que abriu, pra tabela nascer colada nele. */
-  ancora: DOMRect
   onClose: () => void
   /** Chamado depois de gravar, pra lista recarregar. */
   onCreated: () => void
@@ -100,7 +98,6 @@ interface Props {
 
 export default function TabelaCadastroManual({
   source,
-  ancora,
   onClose,
   onCreated,
   onCadastroCompleto,
@@ -159,14 +156,6 @@ export default function TabelaCadastroManual({
     document.addEventListener('keydown', aoTeclar)
     return () => document.removeEventListener('keydown', aoTeclar)
   }, [onClose])
-
-  const posicao = useMemo(() => {
-    const margem = 12
-    const larguraTela = typeof window === 'undefined' ? 1280 : document.documentElement.clientWidth
-    const largura = Math.min(780, larguraTela - margem * 2)
-    const left = Math.min(Math.max(margem, ancora.left), Math.max(margem, larguraTela - largura - margem))
-    return { top: ancora.bottom + 6, left, width: largura }
-  }, [ancora])
 
   const preenchidas = linhas.filter((l) => !estaEmBranco(l))
   const prontas = preenchidas.filter(estaPronta)
@@ -284,17 +273,24 @@ export default function TabelaCadastroManual({
     'w-full bg-transparent border-0 outline-none text-[12.5px] text-ink placeholder-muted/50 px-2 py-1.5 rounded focus:bg-white/[0.06]'
 
   return (
-    <>
-      {/* Escurece o resto pra deixar claro onde está a atenção. Clicar aqui
-          fecha; dentro da tabela, nada fecha sem querer. */}
-      <div className="fixed inset-0 z-[80] bg-black/40" onClick={onClose} />
+    /*
+     * Centralizado, e não colado no botão que abriu.
+     *
+     * Colado ficava ruim em tela estreita e em tela cheia: perto do rodapé
+     * sobrava pouca altura, e no celular a tabela nascia espremida num canto.
+     * Centralizado, a mesma caixa serve pros dois — ela cresce até 860px,
+     * respeita as bordas (p-3) e rola por dentro.
+     */
+    <div
+      className="fixed inset-0 z-[80] flex items-center justify-center p-3 sm:p-6"
+      role="dialog"
+      aria-modal="true"
+    >
+      {/* Escurece o resto. Clicar aqui fecha; dentro da tabela, nada fecha
+          sem querer — são dados digitados à mão. */}
+      <div className="absolute inset-0 bg-black/55 backdrop-blur-sm" onClick={onClose} />
 
-      <div
-        className="fixed z-[81] panel rounded-2xl shadow-2xl shadow-black/50 flex flex-col overflow-hidden"
-        style={{ top: posicao.top, left: posicao.left, width: posicao.width, maxHeight: 'min(70vh, 560px)' }}
-        role="dialog"
-        aria-modal="true"
-      >
+      <div className="panel relative z-10 w-full max-w-[860px] max-h-[88vh] rounded-2xl shadow-2xl shadow-black/50 flex flex-col overflow-hidden">
         {/* Cabeçalho */}
         <div className="flex items-center gap-2.5 px-4 py-3 border-b border-white/[0.07] flex-shrink-0">
           <Table size={16} weight="bold" className="text-accent-2 flex-shrink-0" />
@@ -361,7 +357,7 @@ export default function TabelaCadastroManual({
 
         {/* Tabela */}
         <div className="flex-1 min-h-0 overflow-auto">
-          <table className="w-full border-collapse">
+          <table className="w-full min-w-[580px] border-collapse">
             <thead className="sticky top-0 z-10 bg-[var(--panel)]">
               <tr className="text-[10px] font-bold uppercase tracking-wider text-muted">
                 <th className="w-8 px-2 py-2 text-left font-bold">#</th>
@@ -507,7 +503,7 @@ export default function TabelaCadastroManual({
         </div>
 
         {/* Rodapé */}
-        <div className="flex items-center gap-3 px-4 py-2.5 border-t border-white/[0.07] flex-shrink-0">
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-2 px-4 py-2.5 border-t border-white/[0.07] flex-shrink-0">
           {/* Importação em massa: desligada até a integração existir. Botão
               desabilitado não dispara eventos de mouse, então o aviso do
               title precisa ficar no elemento em volta pra aparecer. */}
@@ -531,7 +527,7 @@ export default function TabelaCadastroManual({
             </button>
           )}
 
-          <div className="min-w-0 flex-1 text-[11px]">
+          <div className="min-w-0 flex-1 basis-full sm:basis-auto order-last sm:order-none text-[11px]">
             {resumo ? (
               <span className={resumo.includes('erro') ? 'text-amber-300' : 'text-emerald-300'}>{resumo}</span>
             ) : incompletas.length > 0 ? (
@@ -566,7 +562,7 @@ export default function TabelaCadastroManual({
           </button>
         </div>
       </div>
-    </>
+    </div>
   )
 }
 

@@ -162,8 +162,8 @@ function SourceCard({
   stageColorById: Record<string, string>
   highlightedLeadId: string | null
   onHighlightLead: (leadId: string) => void
-  /** Abre a tabela de cadastro manual, colada no rodapé deste card. */
-  onAdd?: (ancora: DOMRect) => void
+  /** Abre a tabela de cadastro manual desta fonte. */
+  onAdd?: () => void
 }) {
   const def = LEAD_SOURCES[sourceKey]
   const color = SOURCE_COLORS[sourceKey]
@@ -255,7 +255,7 @@ function SourceCard({
           {onAdd && (
             <button
               type="button"
-              onClick={(e) => onAdd(e.currentTarget.getBoundingClientRect())}
+              onClick={onAdd}
               className="w-full flex items-center justify-center gap-1.5 px-3 py-2 border-t border-white/[0.07] bg-white/[0.02] hover:bg-white/[0.06] transition-colors text-[11.5px] font-bold uppercase tracking-wide"
               style={{ color }}
               title={`Cadastrar lead em ${def.label}`}
@@ -291,7 +291,7 @@ export default function SourceRail({
   onHighlightLead,
 }: SourceRailProps) {
   const { refetch } = useLeadsContext()
-  const [cadastrando, setCadastrando] = useState<{ source: LeadSourceKey; ancora: DOMRect } | null>(null)
+  const [cadastrando, setCadastrando] = useState<LeadSourceKey | null>(null)
   // Cadastro completo de UM lead (com Instagram, e-mail, observação e o
   // "adicionar campo"): a tabela cobre o dia a dia, este cobre o caso raro.
   const [cadastroCompleto, setCadastroCompleto] = useState<LeadSourceKey | null>(null)
@@ -338,19 +338,18 @@ export default function SourceRail({
             stageColorById={stageColorById}
             highlightedLeadId={highlightedLeadId}
             onHighlightLead={onHighlightLead}
-            onAdd={FONTES_MANUAIS.includes(key) ? (ancora) => setCadastrando({ source: key, ancora }) : undefined}
+            onAdd={FONTES_MANUAIS.includes(key) ? () => setCadastrando(key) : undefined}
           />
         ))}
       </div>
 
       {cadastrando && (
         <TabelaCadastroManual
-          source={cadastrando.source}
-          ancora={cadastrando.ancora}
+          source={cadastrando}
           onClose={() => setCadastrando(null)}
           onCreated={refetch}
           onCadastroCompleto={() => {
-            setCadastroCompleto(cadastrando.source)
+            setCadastroCompleto(cadastrando)
             setCadastrando(null)
           }}
         />

@@ -206,7 +206,7 @@ function BotaoPipeline({
   onAdicionar,
 }: {
   row: Submission
-  onAdicionar: (row: Submission, ancora: DOMRect) => void
+  onAdicionar: (row: Submission) => void
 }) {
   if (row.stage_id) {
     return (
@@ -237,7 +237,7 @@ function BotaoPipeline({
       type="button"
       onClick={(e) => {
         pararPropagacao(e)
-        onAdicionar(row, e.currentTarget.getBoundingClientRect())
+        onAdicionar(row)
       }}
       className="btn btn-sm btn-outline !px-2 whitespace-nowrap"
       title="Adicionar ao pipeline, em Em aguardo — não envia mensagem"
@@ -253,7 +253,7 @@ interface SubmissionsTableProps {
   rows: Submission[]
   onSelect: (row: Submission) => void
   onContatar: (row: Submission) => void
-  onAdicionarAoPipeline: (row: Submission, ancora: DOMRect) => void
+  onAdicionarAoPipeline: (row: Submission) => void
 }
 
 function SubmissionsTable({ columns, rows, onSelect, onContatar, onAdicionarAoPipeline }: SubmissionsTableProps) {
