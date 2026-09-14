@@ -24,7 +24,7 @@ import { LeadWithOwner } from '@/lib/types'
 import { formatPhone } from '@/lib/utils'
 import { LEAD_SOURCES, ACQUISITION_SOURCE_ORDER, type LeadSourceKey } from '@/lib/leadSources'
 import { useLeadsContext } from '@/contexts/LeadsContext'
-import NovaIndicacaoModal from './NovaIndicacaoModal'
+import NovoLeadManualModal from './NovoLeadManualModal'
 
 /**
  * Cor de identificação de cada fonte — só na coluna Fonte, pra distinguir os
@@ -126,7 +126,7 @@ function SourceCard({
   stageColorById: Record<string, string>
   highlightedLeadId: string | null
   onHighlightLead: (leadId: string) => void
-  /** Só a fonte manual recebe: abre o formulário de cadastro. */
+  /** Abre o formulário de cadastro manual desta fonte. */
   onAdd?: () => void
 }) {
   const def = LEAD_SOURCES[sourceKey]
@@ -156,16 +156,6 @@ function SourceCard({
             {leads.length} {leads.length === 1 ? 'lead' : 'leads'}
           </p>
         </div>
-        {onAdd && (
-          <button
-            type="button"
-            onClick={onAdd}
-            className="btn-icon w-7 h-7 flex-shrink-0 !text-accent-2"
-            title="Cadastrar lead indicado"
-          >
-            <Plus size={13} weight="bold" />
-          </button>
-        )}
         <button
           type="button"
           onClick={() => { setSearchOpen((v) => !v); if (searchOpen) setSearch('') }}
@@ -207,12 +197,6 @@ function SourceCard({
                 <p className="text-[11px] text-muted">
                   {search ? 'Nada encontrado.' : 'Nenhum lead ainda.'}
                 </p>
-                {!search && onAdd && (
-                  <button type="button" onClick={onAdd} className="btn btn-outline btn-sm mt-2">
-                    <Plus size={12} weight="bold" />
-                    Cadastrar indicação
-                  </button>
-                )}
               </div>
             ) : (
               visible.map((lead) => (
@@ -227,14 +211,41 @@ function SourceCard({
               ))
             )}
           </div>
+
+          {/* Bloco de cadastro colado na borda de baixo do card, FORA da lista.
+              A lista rola por dentro e pode ter 50 leads; o botão não pode
+              depender de rolar até o fim pra aparecer. Fica sempre à vista, no
+              rodapé, na cor da fonte. */}
+          {onAdd && (
+            <button
+              type="button"
+              onClick={onAdd}
+              className="w-full flex items-center justify-center gap-1.5 px-3 py-2 border-t border-white/[0.07] bg-white/[0.02] hover:bg-white/[0.06] transition-colors text-[11.5px] font-bold uppercase tracking-wide"
+              style={{ color }}
+              title={`Cadastrar lead em ${def.label}`}
+            >
+              <Plus size={12} weight="bold" />
+              Adicionar lead
+            </button>
+          )}
         </>
       )}
     </div>
   )
 }
 
-/** A única fonte preenchida à mão — é ela que ganha o botão de cadastro. */
-const FONTE_MANUAL: LeadSourceKey = 'indicacao'
+/**
+ * Fontes que aceitam cadastro à mão pelo Pipeline.
+ *
+ * Indicação só existe assim. Agenda e site normalmente chegam por formulário,
+ * mas o time precisa registrar quem mandou os dados por mensagem ou cujo
+ * formulário falhou — e aí a mensagem automática é opcional, decidida no
+ * próprio formulário de cadastro.
+ *
+ * Fora da lista fica a planilha histórica (agenda_antigos): ela é importação,
+ * não um canal por onde o lead entra hoje.
+ */
+const FONTES_MANUAIS: LeadSourceKey[] = ['agenda_ascensao', 'site_evento', 'indicacao']
 
 export default function SourceRail({
   leads,
@@ -244,7 +255,7 @@ export default function SourceRail({
   onHighlightLead,
 }: SourceRailProps) {
   const { refetch } = useLeadsContext()
-  const [cadastrando, setCadastrando] = useState(false)
+  const [cadastrando, setCadastrando] = useState<LeadSourceKey | null>(null)
   // Agrupa por fonte, mais recente em cima dentro de cada uma.
   const bySource = useMemo(() => {
     const groups: Record<string, LeadWithOwner[]> = {}
@@ -288,13 +299,17 @@ export default function SourceRail({
             stageColorById={stageColorById}
             highlightedLeadId={highlightedLeadId}
             onHighlightLead={onHighlightLead}
-            onAdd={key === FONTE_MANUAL ? () => setCadastrando(true) : undefined}
+            onAdd={FONTES_MANUAIS.includes(key) ? () => setCadastrando(key) : undefined}
           />
         ))}
       </div>
 
       {cadastrando && (
-        <NovaIndicacaoModal onClose={() => setCadastrando(false)} onCreated={refetch} />
+        <NovoLeadManualModal
+          source={cadastrando}
+          onClose={() => setCadastrando(null)}
+          onCreated={refetch}
+        />
       )}
     </div>
   )

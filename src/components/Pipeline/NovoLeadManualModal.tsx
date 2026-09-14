@@ -1,14 +1,17 @@
 'use client'
 
 /**
- * Cadastro manual de lead — a fonte "Indicação" do Pipeline.
+ * Cadastro manual de lead — serve as três fontes do Pipeline.
  *
- * É o único jeito de um lead entrar no CRM digitado por gente: as outras fontes
- * são a Agenda, o site e a planilha histórica, todas por sistema. Quem atende
- * recebe uma indicação por mensagem ou no corredor e precisa registrar na hora,
- * sem sair do Kanban.
+ * É o jeito de um lead entrar no CRM digitado por gente. Nasceu pra "Indicação",
+ * mas Agenda e site também precisam: a pessoa manda os dados por mensagem, ou o
+ * formulário dela falhou, e alguém do time registra na hora sem sair do Kanban.
  *
- * Manda pra POST /api/ingest/leads/indicacao — a MESMA porta de entrada das
+ * A fonte muda o rótulo, um campo ou outro e — o que mais importa — se a
+ * mensagem automática daquela fonte sai ou não (Agenda e site têm funil;
+ * Indicação não tem). Quem cadastra decide na hora, no interruptor do rodapé.
+ *
+ * Manda pra POST /api/ingest/leads/<fonte> — a MESMA porta de entrada das
  * fontes externas, e não um endpoint próprio. Assim o lead digitado passa pela
  * mesma normalização de telefone (o DDI 55 que a Cloud API exige), o mesmo
  * dedupe e o mesmo registro em lead_source_submissions que os outros. Um
@@ -20,16 +23,28 @@
 import { useMemo, useState } from 'react'
 import { X, UserPlus, Plus, Trash } from '@phosphor-icons/react'
 import { useAuth } from '@/hooks'
-import { camposAdicionaveis } from '@/lib/leadSources'
+import { camposAdicionaveis, LEAD_SOURCES, type LeadSourceKey } from '@/lib/leadSources'
+
+/** Fontes com funil de atendimento — só nelas a mensagem automática existe. */
+const FONTES_COM_AUTOMACAO: LeadSourceKey[] = ['agenda_ascensao', 'site_evento']
 
 interface Props {
+  /** Em qual fonte o lead entra: muda o rótulo, os campos e o funil. */
+  source: LeadSourceKey
   onClose: () => void
   /** Chamado depois de gravar, pra lista do Kanban recarregar. */
   onCreated: () => void
 }
 
-export default function NovaIndicacaoModal({ onClose, onCreated }: Props) {
+export default function NovoLeadManualModal({ source, onClose, onCreated }: Props) {
   const { profileName } = useAuth()
+  const fonte = LEAD_SOURCES[source]
+  const ehIndicacao = source === 'indicacao'
+  const temAutomacao = FONTES_COM_AUTOMACAO.includes(source)
+  // Ligado por padrão: cadastrar um lead de Agenda/site à mão é registrar quem
+  // acabou de se inscrever, e o normal é ele receber a mesma mensagem de quem
+  // entrou pelo formulário. Quem está só arrumando um cadastro antigo desliga.
+  const [enviarAutomacao, setEnviarAutomacao] = useState(true)
   const [form, setForm] = useState({
     nome: '',
     whatsapp: '',
@@ -76,10 +91,22 @@ export default function NovaIndicacaoModal({ onClose, onCreated }: Props) {
       const camposExtras = Object.fromEntries(
         extras.filter((c) => c.valor.trim()).map((c) => [c.key, c.valor.trim()])
       )
-      const res = await fetch('/api/ingest/leads/indicacao', {
+      const res = await fetch(`/api/ingest/leads/${source}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...form, ...camposExtras, cadastrado_por: profileName || null }),
+        body: JSON.stringify({
+          ...form,
+          ...camposExtras,
+          // A Agenda identifica o lead pelo id que o site dela gera, e exige um.
+          // O cadastro manual não tem esse id, então cria o seu, preso ao
+          // telefone: registrar a mesma pessoa de novo atualiza o cadastro em
+          // vez de criar outro, e o prefixo deixa claro que não veio do site.
+          ...(source === 'agenda_ascensao' ? { id: `manual-${digitos}` } : {}),
+          cadastrado_por: profileName || null,
+          // A ingestão só pula o funil quando mandam pular — ver `semAutomacao`
+          // em src/lib/ingest.ts.
+          ...(temAutomacao && !enviarAutomacao ? { sem_automacao: true } : {}),
+        }),
       })
       const corpo = await res.json().catch(() => ({}))
       if (!res.ok) throw new Error(corpo?.error || `Erro ${res.status}`)
@@ -104,7 +131,7 @@ export default function NovaIndicacaoModal({ onClose, onCreated }: Props) {
           <div className="min-w-0">
             <h2 className="text-base font-bold text-ink flex items-center gap-2">
               <UserPlus size={18} weight="bold" className="text-accent-2" />
-              Nova indicação
+              {ehIndicacao ? 'Nova indicação' : `Novo lead — ${fonte.label}`}
             </h2>
             <p className="text-xs text-muted mt-0.5">
               Entra no Kanban na primeira etapa, com você como responsável.
@@ -122,7 +149,7 @@ export default function NovaIndicacaoModal({ onClose, onCreated }: Props) {
               autoFocus
               value={form.nome}
               onChange={set('nome')}
-              placeholder="Nome de quem foi indicado"
+              placeholder={ehIndicacao ? 'Nome de quem foi indicado' : 'Nome do lead'}
               className="field"
             />
           </Campo>
@@ -145,16 +172,18 @@ export default function NovaIndicacaoModal({ onClose, onCreated }: Props) {
             <input value={form.email} onChange={set('email')} type="email" placeholder="opcional" className="field" />
           </Campo>
 
-          <Campo label="Indicado por" dica="Quem trouxe essa pessoa.">
-            <input value={form.indicado_por} onChange={set('indicado_por')} placeholder="Nome de quem indicou" className="field" />
-          </Campo>
+          {ehIndicacao && (
+            <Campo label="Indicado por" dica="Quem trouxe essa pessoa.">
+              <input value={form.indicado_por} onChange={set('indicado_por')} placeholder="Nome de quem indicou" className="field" />
+            </Campo>
+          )}
 
           <Campo label="Observação" dica="Contexto que ajuda no primeiro contato.">
             <textarea
               value={form.observacao}
               onChange={set('observacao')}
               rows={3}
-              placeholder="Ex.: sócio do André, quer montar rotina de treino"
+              placeholder={ehIndicacao ? 'Ex.: sócio do André, quer montar rotina de treino' : 'Ex.: mandou os dados por mensagem, formulário não enviou'}
               className="field resize-none"
             />
           </Campo>
@@ -222,6 +251,24 @@ export default function NovaIndicacaoModal({ onClose, onCreated }: Props) {
               </>
             )}
           </div>
+
+          {temAutomacao && (
+            <label className="flex items-start gap-2.5 rounded-xl border border-white/[0.08] bg-white/[0.03] px-3 py-2.5 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={enviarAutomacao}
+                onChange={(e) => setEnviarAutomacao(e.target.checked)}
+                className="mt-0.5 w-4 h-4 accent-[var(--blue)] flex-shrink-0"
+              />
+              <span className="min-w-0">
+                <span className="block text-xs font-semibold text-ink">Enviar a mensagem automática</span>
+                <span className="block text-[10px] text-muted leading-snug">
+                  A mesma que sai para quem preenche o formulário de {fonte.label}, dois minutos
+                  depois. Desmarque para cadastrar sem mandar nada no WhatsApp.
+                </span>
+              </span>
+            </label>
+          )}
 
           {erro && (
             <p className="text-xs text-red-400 bg-red-500/10 border border-red-500/25 rounded-lg px-3 py-2">

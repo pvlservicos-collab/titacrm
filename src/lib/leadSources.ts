@@ -239,7 +239,7 @@ const siteEvento: LeadSourceDef = {
     // visível no detalhe do lead, em vez de sumir.
     const extras: Record<string, unknown> = {}
     for (const [chave, valor] of Object.entries(body)) {
-      if (['source', 'nome', 'email', 'whatsapp', 'instagram', 'key', 'token', 'resync'].includes(chave)) continue
+      if (['source', 'nome', 'email', 'whatsapp', 'instagram', 'key', 'token', 'resync', 'sem_automacao'].includes(chave)) continue
       extras[chave] = valor
     }
 
@@ -515,7 +515,7 @@ const indicacao: LeadSourceDef = {
 
 /** Campos que já viram coluna ou já são tratados por nome — não vão pro resto. */
 const CAMPOS_PROPRIOS_INDICACAO = new Set([
-  'source', 'key', 'token', 'resync', 'id',
+  'source', 'key', 'token', 'resync', 'sem_automacao', 'id',
   'nome', 'whatsapp', 'email', 'instagram',
   'indicado_por', 'observacao', 'cadastrado_por',
 ])

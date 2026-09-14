@@ -363,8 +363,14 @@ async function upsertCrmLead(
       // quando o que está lá não tem letra nenhuma — assim não se perde um nome
       // bom ("Eduardo de Andrade Ref Patriota") por um apelido curto do formulário.
       const tituloTemLetra = /\p{L}/u.test(existing.title || '')
+      // Campo vazio da fonte vem como null (a Agenda manda `aumento: null` quando
+      // a pessoa não respondeu). Se entrasse no merge, apagaria o que já estava
+      // gravado — atualizar um cadastro nunca pode subtrair.
+      const camposPreenchidos = Object.fromEntries(
+        Object.entries(normalized.fields).filter(([, valor]) => valor !== null && valor !== undefined && valor !== '')
+      )
       const mudancas: Record<string, unknown> = {
-        customAttributes: { ...atributos, lead_source: source, ...normalized.fields },
+        customAttributes: { ...atributos, lead_source: source, ...camposPreenchidos },
         lastActivityAt: new Date(),
       }
       if (!tituloTemLetra && normalized.name) mudancas.title = normalized.name
@@ -566,6 +572,20 @@ export async function handleIngest(req: NextRequest, sourceFromPath?: string) {
       String(body.resync ?? '').toLowerCase() === 'true' ||
       req.nextUrl.searchParams.get('resync') === '1'
 
+    /*
+     * "Cadastre, mas não mande mensagem nenhuma."
+     *
+     * Quem pede é o cadastro manual do Pipeline: registrar na Agenda ou no site
+     * um lead que já foi atendido, ou arrumar um cadastro antigo, não pode
+     * disparar a mensagem de boas-vindas no WhatsApp da pessoa. É decisão de
+     * quem cadastra, no interruptor do formulário — por isso vem na requisição
+     * e não numa configuração fixa.
+     */
+    const semAutomacao =
+      body.sem_automacao === true ||
+      String(body.sem_automacao ?? '').toLowerCase() === 'true' ||
+      req.nextUrl.searchParams.get('automacao') === '0'
+
     const normalized = sourceDef.normalize(body)
     const dedupeKey = dedupeKeyFor(sourceDef.key, normalized)
 
@@ -651,7 +671,7 @@ export async function handleIngest(req: NextRequest, sourceFromPath?: string) {
     // quem já estava cadastrado. Sem essa saída, rodar a ressincronização
     // mandaria a mensagem de boas-vindas pra todo lead antigo que ainda não
     // tivesse linha no CRM — de uma vez só, meses depois de ele ter se cadastrado.
-    if (leadId && leadCreated && !ehResync) {
+    if (leadId && leadCreated && !ehResync && !semAutomacao) {
       try {
         await startFunnelForSource(auth.organizationId, sourceDef.key, leadId)
       } catch (err) {
@@ -668,7 +688,7 @@ export async function handleIngest(req: NextRequest, sourceFromPath?: string) {
     await logAttempt(req, {
       resultado: 'ok',
       source: sourceDef.key,
-      detalhe: ehResync ? 'resync' : null,
+      detalhe: ehResync ? 'resync' : semAutomacao ? 'sem_automacao' : null,
       camposRecebidos: Object.keys(rawBody),
       organizationId: auth.organizationId,
       submissionId: submission?.id ?? null,
