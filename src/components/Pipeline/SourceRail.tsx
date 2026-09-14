@@ -25,6 +25,9 @@ import { formatPhone } from '@/lib/utils'
 import { LEAD_SOURCES, ACQUISITION_SOURCE_ORDER, type LeadSourceKey } from '@/lib/leadSources'
 import { useLeadsContext } from '@/contexts/LeadsContext'
 import NovoLeadManualModal from './NovoLeadManualModal'
+import TabelaCadastroManual from './TabelaCadastroManual'
+import { momentoPorChave } from '@/lib/momentos'
+import { EQUIPE_ATENDIMENTO } from '@/lib/atendentes'
 
 /**
  * Cor de identificação de cada fonte — só na coluna Fonte, pra distinguir os
@@ -79,6 +82,13 @@ function MiniCard({
   isHighlighted: boolean
   onClick: () => void
 }) {
+  const atributos = (lead.custom_attributes ?? {}) as Record<string, unknown>
+  // "Qual WhatsApp" do cadastro manual: marcação de quem é o lead, sem efeito
+  // no envio (a mensagem sai sempre do número do CRM).
+  const responsavel = typeof atributos.whatsapp_responsavel === 'string' ? atributos.whatsapp_responsavel : null
+  const corDoResponsavel = EQUIPE_ATENDIMENTO.find((p) => p.nome === responsavel)?.cor
+  const momento = momentoPorChave(atributos.phase ?? atributos.fase)
+
   return (
     <button
       type="button"
@@ -107,6 +117,32 @@ function MiniCard({
           </span>
         )}
       </div>
+
+      {(momento || responsavel) && (
+        <div className="flex items-center gap-1 mt-1 flex-wrap">
+          {momento && (
+            <span
+              className="text-[9px] font-semibold px-1.5 py-0.5 rounded-full"
+              style={{ color: momento.cor, backgroundColor: `${momento.cor}1f` }}
+              title={momento.descricao}
+            >
+              {momento.label}
+            </span>
+          )}
+          {responsavel && responsavel !== 'CRM' && (
+            <span
+              className="text-[9px] font-semibold px-1.5 py-0.5 rounded-full"
+              style={{
+                color: corDoResponsavel ?? 'var(--muted)',
+                backgroundColor: `${corDoResponsavel ?? '#9a9a94'}1f`,
+              }}
+              title={`Lead da ${responsavel}`}
+            >
+              {responsavel}
+            </span>
+          )}
+        </div>
+      )}
     </button>
   )
 }
@@ -126,8 +162,8 @@ function SourceCard({
   stageColorById: Record<string, string>
   highlightedLeadId: string | null
   onHighlightLead: (leadId: string) => void
-  /** Abre o formulário de cadastro manual desta fonte. */
-  onAdd?: () => void
+  /** Abre a tabela de cadastro manual, colada no rodapé deste card. */
+  onAdd?: (ancora: DOMRect) => void
 }) {
   const def = LEAD_SOURCES[sourceKey]
   const color = SOURCE_COLORS[sourceKey]
@@ -219,13 +255,13 @@ function SourceCard({
           {onAdd && (
             <button
               type="button"
-              onClick={onAdd}
+              onClick={(e) => onAdd(e.currentTarget.getBoundingClientRect())}
               className="w-full flex items-center justify-center gap-1.5 px-3 py-2 border-t border-white/[0.07] bg-white/[0.02] hover:bg-white/[0.06] transition-colors text-[11.5px] font-bold uppercase tracking-wide"
               style={{ color }}
               title={`Cadastrar lead em ${def.label}`}
             >
               <Plus size={12} weight="bold" />
-              Adicionar lead
+              Cadastrar leads
             </button>
           )}
         </>
@@ -255,7 +291,10 @@ export default function SourceRail({
   onHighlightLead,
 }: SourceRailProps) {
   const { refetch } = useLeadsContext()
-  const [cadastrando, setCadastrando] = useState<LeadSourceKey | null>(null)
+  const [cadastrando, setCadastrando] = useState<{ source: LeadSourceKey; ancora: DOMRect } | null>(null)
+  // Cadastro completo de UM lead (com Instagram, e-mail, observação e o
+  // "adicionar campo"): a tabela cobre o dia a dia, este cobre o caso raro.
+  const [cadastroCompleto, setCadastroCompleto] = useState<LeadSourceKey | null>(null)
   // Agrupa por fonte, mais recente em cima dentro de cada uma.
   const bySource = useMemo(() => {
     const groups: Record<string, LeadWithOwner[]> = {}
@@ -299,15 +338,28 @@ export default function SourceRail({
             stageColorById={stageColorById}
             highlightedLeadId={highlightedLeadId}
             onHighlightLead={onHighlightLead}
-            onAdd={FONTES_MANUAIS.includes(key) ? () => setCadastrando(key) : undefined}
+            onAdd={FONTES_MANUAIS.includes(key) ? (ancora) => setCadastrando({ source: key, ancora }) : undefined}
           />
         ))}
       </div>
 
       {cadastrando && (
-        <NovoLeadManualModal
-          source={cadastrando}
+        <TabelaCadastroManual
+          source={cadastrando.source}
+          ancora={cadastrando.ancora}
           onClose={() => setCadastrando(null)}
+          onCreated={refetch}
+          onCadastroCompleto={() => {
+            setCadastroCompleto(cadastrando.source)
+            setCadastrando(null)
+          }}
+        />
+      )}
+
+      {cadastroCompleto && (
+        <NovoLeadManualModal
+          source={cadastroCompleto}
+          onClose={() => setCadastroCompleto(null)}
           onCreated={refetch}
         />
       )}

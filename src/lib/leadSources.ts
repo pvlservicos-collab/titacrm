@@ -383,6 +383,7 @@ const agendaAscensao: LeadSourceDef = {
       instagram,
       fields: {
         ...perfil,
+        ...camposDoCadastroManual(body),
         criado_em: trimmed(body.criado_em),
         phase,
         uid: agenda.uid ?? null,
@@ -519,6 +520,25 @@ const CAMPOS_PROPRIOS_INDICACAO = new Set([
   'nome', 'whatsapp', 'email', 'instagram',
   'indicado_por', 'observacao', 'cadastrado_por',
 ])
+
+/**
+ * Campos que só o cadastro manual do Pipeline preenche.
+ *
+ * Valem para qualquer fonte, por isso ficam aqui e não na normalização de uma
+ * delas: a Agenda tem lista fixa de campos e, sem isto, o "Qual WhatsApp"
+ * escolhido na tabela era simplesmente descartado ao gravar.
+ *
+ * `whatsapp_responsavel` é marcação, não ação: diz de quem é aquele lead na
+ * hora de falar com ele. A mensagem continua saindo do número do CRM.
+ */
+function camposDoCadastroManual(body: Record<string, any>): Record<string, unknown> {
+  const campos: Record<string, unknown> = {}
+  for (const chave of ['whatsapp_responsavel', 'cadastrado_por', 'observacao']) {
+    const valor = trimmed(body[chave])
+    if (valor) campos[chave] = valor
+  }
+  return campos
+}
 
 function camposExtras(body: Record<string, any>): Record<string, unknown> {
   const extras: Record<string, unknown> = {}

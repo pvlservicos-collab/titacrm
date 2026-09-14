@@ -30,6 +30,20 @@ const EQUIPE: { prefixo: string; nome: string; cor: string }[] = [
   { prefixo: 'cau', nome: 'Cau', cor: '#60A5FA' },         // azul
 ]
 
+/**
+ * O time, para escolher em formulários ("Qual WhatsApp?" no cadastro manual).
+ *
+ * Sai da mesma lista das etiquetas do chat de propósito: a cor da Michele é a
+ * mesma no cadastro e na conversa, e incluir alguém novo continua sendo mexer
+ * num lugar só.
+ */
+export const EQUIPE_ATENDIMENTO: { nome: string; cor: string }[] = EQUIPE.map(
+  ({ nome, cor }) => ({ nome, cor })
+)
+
+/** Escolha padrão do "Qual WhatsApp": o número do CRM, que é quem envia. */
+export const RESPONSAVEL_PADRAO = 'CRM'
+
 function semAcento(texto: string): string {
   return texto.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim()
 }
