@@ -25,7 +25,8 @@ export interface ReplyContext {
 }
 
 export default function ChatWindow({ lead, organizationId, onMessageSent }: ChatWindowProps) {
-  const { activities, loading, sendHumanMessage, sendMediaMessage, deleteMessage } = useLeadActivities(organizationId, lead.id)
+  const { activities, loading, error: erroDasMensagens, refresh: recarregarMensagens, sendHumanMessage, sendMediaMessage, deleteMessage } =
+    useLeadActivities(organizationId, lead.id)
   const { pinned, pinnedActivityIds, togglePin } = usePinnedMessages(lead.id)
   const { currentOrganization } = useAuth()
   const { settings: chatButtonSettings, fireWebhook } = useChatButtonSettings()
@@ -255,6 +256,21 @@ export default function ChatWindow({ lead, organizationId, onMessageSent }: Chat
 
       {/* Pinned Messages */}
       <PinnedMessagesBar pinned={pinned} onUnpin={handleUnpin} />
+
+      {/* Falha ao carregar as mensagens: avisa e deixa tentar de novo. Antes a
+          conversa abria em branco, calada — quem atende não tinha como saber se
+          a pessoa nunca escreveu ou se a busca falhou. */}
+      {erroDasMensagens && activities.length === 0 && !loading && (
+        <div className="mx-4 mt-2 px-4 py-2.5 bg-amber-500/10 border border-amber-500/30 rounded-xl flex items-center justify-between gap-3">
+          <span className="text-sm text-amber-300">Não consegui carregar as mensagens desta conversa.</span>
+          <button
+            onClick={() => recarregarMensagens(true)}
+            className="btn btn-outline btn-sm !py-1 !text-[11px] flex-shrink-0"
+          >
+            Tentar de novo
+          </button>
+        </div>
+      )}
 
       {/* Timeline */}
       <ActivityTimeline

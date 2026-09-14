@@ -187,8 +187,8 @@ export default function LeadList({
    * cai em OUTRA linha — só quem enxerga todas sabe qual foi a tocada.
    */
   const leadsNaTela = useRef<Record<string, LeadWithOwner>>({})
-  const linhaTocada = useRef<string | null>(null)
-  const abertoPeloMouse = useRef(false)
+  /** Linha apertada e quando — o clique seguinte abre ESTA, não a que estiver lá. */
+  const linhaApertada = useRef<{ id: string; em: number } | null>(null)
 
   const INITIAL_DISPLAY = 20
   const DISPLAY_INCREMENT = 15
@@ -225,9 +225,15 @@ export default function LeadList({
     }
   }, [contextMenu.visible])
 
+  // Ids já marcados nesta tela. Com a segunda via do clique (linha + lista), o
+  // mesmo lead chega aqui duas vezes no mesmo instante; sem isto sairiam dois
+  // PATCH iguais pra rede.
+  const jaMarcados = useRef<Set<string>>(new Set())
+
   const markLeadAsRead = useCallback((leadId: string) => {
     const lead = leads.find(l => l.id === leadId)
-    if (lead?.is_unread) {
+    if (lead?.is_unread && !jaMarcados.current.has(leadId)) {
+      jaMarcados.current.add(leadId)
       // Optimistic Update immediately to prevent duplicate network requests
       if (onUpdateLead) {
         onUpdateLead(lead.id, { is_unread: false })
@@ -391,30 +397,35 @@ export default function LeadList({
 
   const aoApertar = (e: React.PointerEvent) => {
     const lead = leadDaLinha(e.target)
-    abertoPeloMouse.current = false
-    linhaTocada.current = null
+    linhaApertada.current = null
     if (!lead) return
-    if (e.pointerType === 'mouse') {
-      if (e.button !== 0) return // direito é o menu da conversa
-      abertoPeloMouse.current = true
-      handleLeadClick(lead)
-      return
-    }
-    linhaTocada.current = lead.id
+    if (e.pointerType === 'mouse' && e.button !== 0) return // direito é o menu
+    linhaApertada.current = { id: lead.id, em: Date.now() }
+    // Mouse abre já no apertar; toque espera virar clique (senão rolar a lista
+    // abriria conversa a cada arrasto).
+    if (e.pointerType === 'mouse') handleLeadClick(lead)
   }
 
+  /*
+   * Clique: SEMPRE abre alguma conversa, nunca engole.
+   *
+   * A versão anterior tinha um estado de "já abri no apertar" que suprimia o
+   * clique. Quando esse estado ficava preso (o apertar terminou fora da lista,
+   * por exemplo), o clique seguinte era descartado e nada abria. Agora não há
+   * supressão: vale a linha APERTADA se o apertar foi agora há pouco, senão a
+   * linha onde o clique caiu. Abrir a mesma conversa duas vezes não faz mal.
+   */
   const aoClicar = (e: React.MouseEvent) => {
-    if (abertoPeloMouse.current) {
-      abertoPeloMouse.current = false // já abriu ao apertar
-      return
+    const apertada = linhaApertada.current
+    linhaApertada.current = null
+    if (apertada && Date.now() - apertada.em < 1500) {
+      const lead = leadsNaTela.current[apertada.id]
+      if (lead) {
+        handleLeadClick(lead)
+        return
+      }
     }
-    if (linhaTocada.current) {
-      const lead = leadsNaTela.current[linhaTocada.current]
-      linhaTocada.current = null
-      if (lead) handleLeadClick(lead)
-      return
-    }
-    const lead = leadDaLinha(e.target) // teclado
+    const lead = leadDaLinha(e.target) // teclado, ou linha que saiu da tela
     if (lead) handleLeadClick(lead)
   }
 
@@ -524,7 +535,7 @@ export default function LeadList({
           <div
             className="flex flex-col min-h-full"
             onPointerDown={aoApertar}
-            onPointerCancel={() => { linhaTocada.current = null }}
+            onPointerCancel={() => { linhaApertada.current = null }}
             onClick={aoClicar}
           >
             {visibleHits.map((hit) => {
@@ -539,6 +550,7 @@ export default function LeadList({
                   lead={lead}
                   isSelected={isSelected}
                   timeStr={timeStr}
+                  onClick={handleLeadClick}
                   onContextMenu={handleContextMenu}
                   hit={hit}
                   query={search}

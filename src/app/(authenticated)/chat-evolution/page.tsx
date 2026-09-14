@@ -69,17 +69,29 @@ export default function ChatEvolutionPage() {
   }, [leadIdFromUrl, globalLeads, selectedLead?.id])
 
   const handleSelectLead = useCallback((lead: LeadWithOwner) => {
-    // O endereço acompanha a conversa escolhida. Assim o link nunca contradiz o
-    // que está na tela — e recarregar a página reabre a conversa certa, não a
-    // do link por onde a pessoa entrou horas antes. replaceState (e não
-    // router.replace) pra não custar uma ida ao servidor a cada clique.
+    /*
+     * ORDEM IMPORTA: abre a conversa primeiro, mexe no endereço depois.
+     *
+     * Era o contrário, e o endereço virou um ponto único de falha: qualquer
+     * erro no replaceState (extensão de navegador, bloqueio de histórico,
+     * limite do Safari) matava a linha seguinte e a conversa simplesmente não
+     * abria — "clico e não aparece". Abrir não pode depender de nada além de
+     * guardar qual lead foi escolhido.
+     *
+     * O endereço acompanhar a escolha continua valendo (recarregar reabre a
+     * conversa certa, o link do aviso não reimpõe a antiga), mas agora é um
+     * extra que pode falhar sem levar o clique junto.
+     */
     leadIdAplicadoDaUrl.current = lead.id
-    if (typeof window !== 'undefined') {
+    setSelectedLead(lead)
+  
+    try {
       const url = new URL(window.location.href)
       url.searchParams.set('leadId', lead.id)
       window.history.replaceState(window.history.state, '', url.toString())
+    } catch {
+      // Endereço não acompanhou; a conversa já está aberta, que é o que importa.
     }
-    setSelectedLead(lead)
   }, [])
 
   // Sem clique ainda, abre a conversa do topo — mas a que estava no topo na

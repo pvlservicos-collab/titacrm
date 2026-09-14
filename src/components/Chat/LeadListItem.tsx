@@ -17,6 +17,15 @@ interface LeadListItemProps {
     hit?: SearchHit
     query?: string
     hideReplyHighlight?: boolean
+    /**
+     * Segunda via do clique.
+     *
+     * Quem decide normalmente é a lista (delegação em LeadList, que sabe qual
+     * linha foi apertada mesmo se a lista se reordenar no meio). Este onClick é
+     * rede de segurança: se o evento não chegar lá por qualquer motivo, a
+     * conversa abre do mesmo jeito. Abrir duas vezes a mesma não faz mal.
+     */
+    onClick: (lead: LeadWithOwner) => void
     /** Quem está atendendo — etiqueta colorida com o nome, controle interno. */
     atendente?: Atendente
 }
@@ -32,7 +41,7 @@ const PAYMENT_STATUS_TAGS: Record<string, { label: string; style: React.CSSPrope
     Object.entries(PAYMENT_STATUS_META).map(([value, meta]) => [value, { label: meta.label, style: TONE_STYLES[meta.tone] }])
 )
 
-const LeadListItem = ({ lead, isSelected, onContextMenu, timeStr, hit, query, hideReplyHighlight, atendente }: LeadListItemProps) => {
+const LeadListItem = ({ lead, isSelected, onClick, onContextMenu, timeStr, hit, query, hideReplyHighlight, atendente }: LeadListItemProps) => {
     // Conversa importada não tem prévia (a Z-API não traz mensagem antiga).
     // "Ver conversa" prometia um histórico que não existe; dizer de onde ela veio
     // prepara pra tela vazia em vez de surpreender.
@@ -73,6 +82,7 @@ const LeadListItem = ({ lead, isSelected, onContextMenu, timeStr, hit, query, hi
             <button
                 type="button"
                 data-lead-id={lead.id}
+                onClick={() => onClick(lead)}
                 onContextMenu={(e) => onContextMenu(e, lead)}
                 className={`w-full text-left px-4 py-3 border-b border-[var(--chat-border)] transition-colors ${isSelected
                     ? 'bg-white/[0.07] border-l-[3px] border-l-[var(--chat-accent)]'

@@ -81,6 +81,7 @@ export function useLeadActivities(organizationId: string, leadId: string) {
         return true
       })
       guardarConversa(alvo, filtered)
+      setError(null) // deu certo agora: some o aviso de falha anterior
       // Mensagem otimista (a que acabou de ser digitada e ainda está a caminho do
       // servidor) fica na tela até o envio terminar — a busca periódica pode
       // chegar no meio e, sem isto, a mensagem piscaria: some e volta.
