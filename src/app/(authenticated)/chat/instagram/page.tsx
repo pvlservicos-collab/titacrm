@@ -35,16 +35,21 @@ export default function ChatInstagramPage() {
   const [showMobileDetails, setShowMobileDetails] = useState(false)
 
   /*
-   * O `?leadId=` do endereço é aplicado UMA vez — quando ele muda —, e não a
-   * cada renderização.
+   * O `?leadId=` do endereço só manda quando ele MUDA. Valor repetido é ignorado.
    *
-   * Antes a regra rodava sempre que a lista ou a seleção mudavam, e reimpunha a
-   * conversa do link: você chegava pelo link do aviso no grupo (ou pelo "Ver
-   * conversa" do Pipeline), clicava em outra conversa, e a tela voltava pra do
-   * link. Com a lista se atualizando sozinha a cada poucos segundos, isso virou
-   * "clico no grupo e ele abre outro chat".
+   * Sem isso o chat congelava na conversa aberta: `searchParams` chega uma
+   * renderização atrasado, então logo depois de clicar em B existia um quadro
+   * com seleção = B e endereço = A. O efeito lia isso como "o link foi
+   * contrariado" e devolvia a tela pra A — em TODO clique. Só recarregar a
+   * página saía do laço.
+   *
+   * Agora a regra é de borda: guarda o último valor visto e só age quando o
+   * endereço vira outro de verdade (link do aviso no grupo, "Ver conversa" do
+   * Pipeline, busca global). Clique manual manda sempre.
    */
-  const leadIdAplicadoDaUrl = useRef<string | null>(null)
+  const ultimaUrlVista = useRef<string | null>(null)
+  /** Conversa escolhida clicando aqui — o endereço nunca desfaz isso. */
+  const escolhidaAqui = useRef<string | null>(null)
 
   const handleSelectLead = useCallback((lead: LeadWithOwner) => {
     /*
@@ -60,7 +65,7 @@ export default function ChatInstagramPage() {
      * conversa certa, o link do aviso não reimpõe a antiga), mas agora é um
      * extra que pode falhar sem levar o clique junto.
      */
-    leadIdAplicadoDaUrl.current = lead.id
+    escolhidaAqui.current = lead.id
     setSelectedLead(lead)
     setMobileView('conversation')
   
@@ -68,6 +73,9 @@ export default function ChatInstagramPage() {
       const url = new URL(window.location.href)
       url.searchParams.set('leadId', lead.id)
       window.history.replaceState(window.history.state, '', url.toString())
+      // NÃO marca este valor como "endereço visto": quem vê o endereço é o
+      // efeito, e ele precisa comparar com o que REALMENTE chegou nele. Marcar
+      // aqui fazia o valor atrasado parecer novo — era isso que congelava.
     } catch {
       // Endereço não acompanhou; a conversa já está aberta, que é o que importa.
     }
@@ -80,15 +88,13 @@ export default function ChatInstagramPage() {
   // with full data.
   useEffect(() => {
     if (!leadIdFromUrl) return
-    if (leadIdAplicadoDaUrl.current === leadIdFromUrl) return
-    if (selectedLead?.id === leadIdFromUrl) {
-      leadIdAplicadoDaUrl.current = leadIdFromUrl
-      return
-    }
+    if (leadIdFromUrl === ultimaUrlVista.current) return
+    ultimaUrlVista.current = leadIdFromUrl
+    if (leadIdFromUrl === escolhidaAqui.current) return
+    if (selectedLead?.id === leadIdFromUrl) return
 
     const fromMemory = globalLeads.find(l => l.id === leadIdFromUrl)
     if (fromMemory) {
-      leadIdAplicadoDaUrl.current = leadIdFromUrl
       setSelectedLead(fromMemory)
       setMobileView('conversation')
       return
@@ -100,7 +106,6 @@ export default function ChatInstagramPage() {
       if (res.ok) {
         const { data } = await res.json()
         if (!cancelled && data) {
-          leadIdAplicadoDaUrl.current = leadIdFromUrl
           setSelectedLead(data as LeadWithOwner)
           setMobileView('conversation')
         }
