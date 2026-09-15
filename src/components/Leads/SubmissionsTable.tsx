@@ -15,6 +15,7 @@
 import { memo } from 'react'
 import Link from 'next/link'
 import { ChatCircleDots, Check, Kanban } from '@phosphor-icons/react'
+import { linkDaConversa } from '@/lib/links'
 import { formatPhone } from '@/lib/utils'
 import type { LeadSourceColumn } from '@/lib/leadSources'
 import type { Submission } from './types'
@@ -180,7 +181,7 @@ function BotaoMensagem({
 
   return (
     <Link
-      href={`/chat?leadId=${row.lead_id}`}
+      href={linkDaConversa(row.lead_id)}
       onClick={(e) => {
         pararPropagacao(e)
         onContatar(row)

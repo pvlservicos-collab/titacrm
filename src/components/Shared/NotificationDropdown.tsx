@@ -5,6 +5,7 @@ import { Bell, Circle, CheckCircle, BellSlash } from '@phosphor-icons/react'
 import { useNotifications } from '@/hooks/useNotifications'
 import { Notification } from '@/lib/types'
 import { useRouter } from 'next/navigation'
+import { comMarcaDeAbertura } from '@/lib/links'
 
 function formatRelativeTime(dateString: string): string {
     const now = new Date()
@@ -128,7 +129,9 @@ export default function NotificationDropdown() {
             markAsRead(notification.id)
         }
         if (notification.link_url) {
-            router.push(notification.link_url)
+            // Marca de abertura: clicar na mesma notificação duas vezes precisa
+            // reabrir a conversa, e sem isso o endereço seria o mesmo de antes.
+            router.push(comMarcaDeAbertura(notification.link_url))
             setOpen(false)
         }
     }

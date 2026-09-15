@@ -33,3 +33,33 @@ Falhas de envio (WhatsApp/Instagram) ficam em `lead_activities.metadata` (`send_
 for reescrita, mantenha esse log. Pra investigar um caso específico, é mais rápido
 consultar o Neon direto (banco local = produção, ver memória do projeto) do que confiar
 só nos logs da Vercel.
+
+## Conversa aberta no chat (`?leadId=` x clique na lista)
+
+Quem manda na conversa aberta é **o clique**, e só ele. O endereço é entrada:
+serve pra chegar no chat por um link (aviso do grupo, "Ver conversa" do
+Pipeline, busca global, notificação) e nada mais — `handleSelectLead` **não**
+escreve no endereço, de propósito.
+
+Esse acoplamento já produziu três bugs diferentes (abrir a conversa errada,
+congelar na anterior, não abrir nada), todos pela mesma corrida: `useSearchParams`
+chega uma renderização depois da navegação, e às vezes não chega. Enquanto os
+dois lados escreviam, sempre existia um quadro em que seleção e endereço
+discordavam.
+
+Regras que sustentam isso:
+
+- o efeito do endereço só age quando chega um **pedido novo** (`leadId` + a marca
+  `abrir=` de `src/lib/links.ts`), nunca com valor repetido;
+- todo link interno pro chat sai de `linkDaConversa()` / `comMarcaDeAbertura()`,
+  senão abrir duas vezes o mesmo link não reabre a conversa;
+- a última conversa aberta fica no `localStorage`, não no endereço.
+
+Antes de subir qualquer mudança nesse efeito ou em `handleSelectLead`:
+
+```
+npm run verificar:chat
+```
+
+Ele roda os cenários que quebraram na prática (com e sem link, endereço
+acompanhando ou não, link repetido). Nada disso aparece em `tsc` nem no build.

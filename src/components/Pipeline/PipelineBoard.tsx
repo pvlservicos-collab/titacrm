@@ -28,6 +28,7 @@ import LeadCard from './LeadCard'
 import LoadingSpinner from '@/components/Shared/LoadingSpinner'
 import { LeadDetailsSidebar } from '@/components/Chat'
 import { X } from '@phosphor-icons/react'
+import { linkDaConversa } from '@/lib/links'
 
 // A coluna "Fonte:" não é uma etapa, então no celular ela precisa de um id
 // próprio pra virar uma aba junto com as etapas de verdade. Prefixo improvável de
@@ -585,7 +586,7 @@ export default function PipelineBoard({ organizationId, filters }: PipelineBoard
               onClose={() => setDetailLead(null)}
               onGoToConversation={() => {
                 setDetailLead(null)
-                router.push(`/chat?leadId=${detailLead.id}`)
+                router.push(linkDaConversa(detailLead.id))
               }}
             />
           </div>

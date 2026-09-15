@@ -12,6 +12,9 @@ import NotAuthorized from '@/components/Shared/NotAuthorized'
 import LoadingSpinner from '@/components/Shared/LoadingSpinner'
 import { CaretLeft, Info } from '@phosphor-icons/react'
 
+/** Última conversa aberta nesta tela, pra reabrir no próximo acesso. */
+const CHAVE_ULTIMA_CONVERSA = 'crm:ultima-conversa:instagram'
+
 export default function ChatInstagramPage() {
   const { organizationId, loading, permissions, isMaster, roleName, currentOrganization, user, profileName } = useAuth()
 
@@ -19,6 +22,12 @@ export default function ChatInstagramPage() {
 
   const searchParams = useSearchParams()
   const leadIdFromUrl = searchParams.get('leadId')
+  /*
+   * Chave do pedido vindo do endereço: a conversa MAIS a marca de abertura que
+   * os links internos carregam (ver src/lib/links.ts). Sem a marca, clicar duas
+   * vezes no mesmo link seria o mesmo valor e a segunda vez não abriria nada.
+   */
+  const pedidoDaUrl = leadIdFromUrl ? `${leadIdFromUrl}|${searchParams.get('abrir') ?? ''}` : null
 
   // Aba DM Instagram — WhatsApp fica em /chat
   const allLeads = globalLeads.filter(l => {
@@ -35,50 +44,31 @@ export default function ChatInstagramPage() {
   const [showMobileDetails, setShowMobileDetails] = useState(false)
 
   /*
-   * O `?leadId=` do endereço só manda quando ele MUDA. Valor repetido é ignorado.
+   * UMA fonte de verdade para a conversa aberta: o que a pessoa escolheu.
    *
-   * Sem isso o chat congelava na conversa aberta: `searchParams` chega uma
-   * renderização atrasado, então logo depois de clicar em B existia um quadro
-   * com seleção = B e endereço = A. O efeito lia isso como "o link foi
-   * contrariado" e devolvia a tela pra A — em TODO clique. Só recarregar a
-   * página saía do laço.
+   * O endereço (`?leadId=`) é só ENTRADA — serve pra chegar aqui pelo link do
+   * aviso no grupo, pelo "Ver conversa" do Pipeline ou pela busca. Clicar numa
+   * conversa não escreve mais no endereço, e é isso que mata de vez uma família
+   * inteira de bugs: enquanto os dois lados escreviam, existia sempre um quadro
+   * em que a seleção dizia uma coisa e o endereço ainda dizia outra, e alguém
+   * tinha que ceder — foi assim que a tela ora abria a conversa errada, ora
+   * congelava na anterior, ora não abria nada.
    *
-   * Agora a regra é de borda: guarda o último valor visto e só age quando o
-   * endereço vira outro de verdade (link do aviso no grupo, "Ver conversa" do
-   * Pipeline, busca global). Clique manual manda sempre.
+   * Recarregar a página continua reabrindo a última conversa, agora pelo
+   * navegador (localStorage) em vez do endereço. Guardar isso não pode
+   * atrapalhar nada: se falhar, a tela só abre na conversa do topo.
    */
+  /** Último pedido do endereço que este efeito viu — só pedido NOVO manda. */
   const ultimaUrlVista = useRef<string | null>(null)
-  /** Conversa escolhida clicando aqui — o endereço nunca desfaz isso. */
-  const escolhidaAqui = useRef<string | null>(null)
 
   const handleSelectLead = useCallback((lead: LeadWithOwner) => {
-    /*
-     * ORDEM IMPORTA: abre a conversa primeiro, mexe no endereço depois.
-     *
-     * Era o contrário, e o endereço virou um ponto único de falha: qualquer
-     * erro no replaceState (extensão de navegador, bloqueio de histórico,
-     * limite do Safari) matava a linha seguinte e a conversa simplesmente não
-     * abria — "clico e não aparece". Abrir não pode depender de nada além de
-     * guardar qual lead foi escolhido.
-     *
-     * O endereço acompanhar a escolha continua valendo (recarregar reabre a
-     * conversa certa, o link do aviso não reimpõe a antiga), mas agora é um
-     * extra que pode falhar sem levar o clique junto.
-     */
-    escolhidaAqui.current = lead.id
     setSelectedLead(lead)
     setMobileView('conversation')
-  
+    // Pra reabrir aqui no próximo acesso. Best-effort: navegador anônimo ou
+    // armazenamento bloqueado não pode impedir a conversa de abrir.
     try {
-      const url = new URL(window.location.href)
-      url.searchParams.set('leadId', lead.id)
-      window.history.replaceState(window.history.state, '', url.toString())
-      // NÃO marca este valor como "endereço visto": quem vê o endereço é o
-      // efeito, e ele precisa comparar com o que REALMENTE chegou nele. Marcar
-      // aqui fazia o valor atrasado parecer novo — era isso que congelava.
-    } catch {
-      // Endereço não acompanhou; a conversa já está aberta, que é o que importa.
-    }
+      localStorage.setItem(CHAVE_ULTIMA_CONVERSA, lead.id)
+    } catch {}
   }, [])
 
   // Sync `?leadId=` from URL (pushed by GlobalSearch and notification links)
@@ -88,9 +78,8 @@ export default function ChatInstagramPage() {
   // with full data.
   useEffect(() => {
     if (!leadIdFromUrl) return
-    if (leadIdFromUrl === ultimaUrlVista.current) return
-    ultimaUrlVista.current = leadIdFromUrl
-    if (leadIdFromUrl === escolhidaAqui.current) return
+    if (pedidoDaUrl === ultimaUrlVista.current) return
+    ultimaUrlVista.current = pedidoDaUrl
     if (selectedLead?.id === leadIdFromUrl) return
 
     const fromMemory = globalLeads.find(l => l.id === leadIdFromUrl)
@@ -112,7 +101,7 @@ export default function ChatInstagramPage() {
       }
     })()
     return () => { cancelled = true }
-  }, [leadIdFromUrl, globalLeads, selectedLead?.id])
+  }, [leadIdFromUrl, pedidoDaUrl, globalLeads, selectedLead?.id])
 
   // Resolve the displayed lead: prefer the freshest version from context; fall back
   // to the clicked `selectedLead` when the lead isn't in memory (search hits can
@@ -121,7 +110,15 @@ export default function ChatInstagramPage() {
   // hora de abrir a tela, e fica nela. Antes era "a do topo agora": com a lista
   // se reordenando sozinha, a conversa na tela trocava sem ninguém clicar.
   const conversaInicial = useRef<string | null>(null)
-  if (!conversaInicial.current && allLeads.length > 0) conversaInicial.current = allLeads[0].id
+  if (!conversaInicial.current && allLeads.length > 0) {
+    // A última que esta pessoa abriu, se ainda estiver na lista; senão a do topo.
+    let guardada: string | null = null
+    try {
+      guardada = localStorage.getItem(CHAVE_ULTIMA_CONVERSA)
+    } catch {}
+    conversaInicial.current =
+      guardada && allLeads.some((l) => l.id === guardada) ? guardada : allLeads[0].id
+  }
   const displayedLeadId = selectedLead?.id || conversaInicial.current
   const displayedLead = allLeads.find(l => l.id === displayedLeadId) || selectedLead
   // Pass the lead's stage_id directly — the hook resolves the pipeline internally

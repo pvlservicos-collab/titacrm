@@ -12,7 +12,8 @@
     "db:migrate": "drizzle-kit migrate",
     "db:push": "drizzle-kit push",
     "db:studio": "drizzle-kit studio",
-    "icons": "node scripts/gerar-icones.mjs"
+    "icons": "node scripts/gerar-icones.mjs",
+    "verificar:chat": "node scripts/simular-selecao-chat.mjs"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",

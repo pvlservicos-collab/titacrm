@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { MagnifyingGlass, Phone, ChatText, User, SpinnerGap, X } from '@phosphor-icons/react'
+import { linkDaConversa } from '@/lib/links'
 import { useAuth, useIsMobile } from '@/hooks'
 import { useRouter } from 'next/navigation'
 
@@ -78,7 +79,7 @@ export default function GlobalSearch() {
     setResults([])
     setOpen(false)
     setMobileOpen(false)
-    router.push(`/chat?leadId=${result.leadId}`)
+    router.push(linkDaConversa(result.leadId))
   }
 
   const leadResults = results.filter(r => r.type === 'lead')

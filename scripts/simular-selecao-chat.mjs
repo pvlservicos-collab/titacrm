@@ -1,96 +1,163 @@
 /**
- * Simulação da troca de conversa no chat — `node scripts/simular-selecao-chat.mjs`.
+ * Simulação da conversa aberta no chat — `node scripts/simular-selecao-chat.mjs`.
  *
  * Existe porque o mesmo bug voltou três vezes: clicar numa conversa e a tela
- * ficar na anterior. A causa é sempre a mesma corrida entre a seleção (estado
- * do React) e o `?leadId=` do endereço, e ela NÃO aparece em teste de tipo nem
- * no build — só clicando, e nem sempre.
+ * abrir outra, ou congelar na anterior, ou não abrir nada. A causa era sempre a
+ * mesma família de corrida entre a seleção (estado do React) e o `?leadId=` do
+ * endereço — e ela NÃO aparece em checagem de tipo nem no build. Só clicando, e
+ * nem sempre.
  *
- * Aqui os dois lados são modelados sem navegador: a regra que o chat usa
- * (src/app/(authenticated)/chat/page.tsx) roda contra os quatro cenários que
- * importam. Mexeu naquele efeito? Rode isto antes de subir.
+ * O desenho atual (src/app/(authenticated)/chat/page.tsx) tem UMA fonte de
+ * verdade: o que a pessoa escolheu. O endereço é só entrada, e o clique não
+ * escreve nele. Este arquivo modela exatamente isso e passa os cenários que
+ * quebraram na prática, inclusive os dois defeitos do navegador que tornavam
+ * tudo pior:
  *
- * Reproduz as duas coisas que quebravam na tela de verdade:
- *   1. `searchParams` chega uma renderização DEPOIS do replaceState;
- *   2. em alguns casos ele nunca chega (o endereço muda na barra, mas o
- *      componente continua lendo o valor antigo).
+ *   - `searchParams` chega uma renderização DEPOIS da navegação;
+ *   - às vezes não chega nunca (o endereço muda na barra e o componente segue
+ *     lendo o valor antigo).
  *
- * Cenário: a pessoa abre o chat (com ou sem ?leadId= no link) e depois clica em
- * outras conversas. O esperado é óbvio — a tela mostra o que ela clicou.
+ * Mexeu no efeito do `?leadId=` ou em `handleSelectLead`? Rode isto antes de
+ * subir. Se a regra voltar a depender do endereço pra saber o que está aberto,
+ * algum cenário aqui quebra.
  */
-function rodar({ versao, cliques, urlInicial, enderecoSincroniza }) {
+
+/** A tela, modelada: refs, estado e o efeito do endereço. */
+function criarTela({ urlInicial, enderecoSincroniza, leadsEmMemoria }) {
   let selecionado = null
-  let urlReal = urlInicial
-  let urlVistaPeloReact = urlInicial
-  const refs = { aplicado: null, ultimaUrlVista: null, escolhidaAqui: null }
-  const leadsEmMemoria = new Set(['A', 'B', 'C'])
+  // O endereço é sempre um PEDIDO: conversa + marca de abertura (src/lib/links.ts).
+  let urlReal = urlInicial ? { lead: urlInicial, marca: 'inicial' } : null
+  let urlVistaPeloReact = urlReal
+  const refs = { ultimaUrlVista: null }
+  let proximaMarca = 0
 
-  const efeito = () => {
-    const url = urlVistaPeloReact
-    if (!url) return
-
-    if (versao === 'antiga') {
-      if (refs.aplicado === url) return
-      if (selecionado === url) { refs.aplicado = url; return }
-      if (leadsEmMemoria.has(url)) { refs.aplicado = url; selecionado = url }
-      return
-    }
-
-    // nova: regra de borda — só age quando o endereço vira outro de verdade
-    if (url === refs.ultimaUrlVista) return
-    refs.ultimaUrlVista = url
-    if (url === refs.escolhidaAqui) return
-    if (selecionado === url) return
-    if (leadsEmMemoria.has(url)) selecionado = url
+  // Espelho do efeito de verdade.
+  const efeitoDoEndereco = () => {
+    const pedido = urlVistaPeloReact
+    if (!pedido) return
+    const chave = `${pedido.lead}|${pedido.marca}`
+    if (chave === refs.ultimaUrlVista) return // pedido repetido/atrasado não manda
+    refs.ultimaUrlVista = chave
+    if (selecionado === pedido.lead) return
+    if (leadsEmMemoria.has(pedido.lead)) selecionado = pedido.lead
   }
 
   const renderizar = () => {
-    efeito()
+    efeitoDoEndereco()
     if (enderecoSincroniza) urlVistaPeloReact = urlReal
   }
 
-  renderizar() // abertura da página
+  // Abertura da página: dois quadros, que é o que o React faz na montagem.
+  renderizar()
   renderizar()
 
-  const historico = []
-  for (const lead of cliques) {
-    if (versao === 'antiga') refs.aplicado = lead
-    else refs.escolhidaAqui = lead
-    selecionado = lead
-    urlReal = lead
-    renderizar() // quadro logo após o clique: seleção nova, endereço ainda velho
-    renderizar() // quadro seguinte
-    historico.push({ clicou: lead, tela: selecionado })
+  return {
+    ver: () => selecionado,
+    /** A pessoa clica numa conversa da lista. O endereço NÃO é tocado. */
+    clicar(lead) {
+      selecionado = lead
+      renderizar()
+      renderizar()
+    },
+    /** Link do aviso no grupo, "Ver conversa" do Pipeline, busca global. */
+    navegarPorLink(lead) {
+      // Todo link interno carrega uma marca nova — é o que faz "abrir a mesma
+      // conversa de novo" ser um pedido diferente do anterior.
+      urlReal = { lead, marca: `m${proximaMarca++}` }
+      if (!enderecoSincroniza) urlVistaPeloReact = urlReal // navegação de verdade sempre chega
+      renderizar()
+      renderizar()
+    },
+    /** Lista se atualizando sozinha, mensagem chegando, etc. */
+    passarTempo(quadros = 5) {
+      for (let i = 0; i < quadros; i++) renderizar()
+    },
   }
-  return historico
 }
 
+const LEADS = new Set(['A', 'B', 'C'])
+
 const CENARIOS = [
-  { nome: 'abriu por link (?leadId=A), endereço acompanha', urlInicial: 'A', enderecoSincroniza: true },
-  { nome: 'abriu por link (?leadId=A), endereço NÃO acompanha', urlInicial: 'A', enderecoSincroniza: false },
-  { nome: 'abriu sem link, endereço acompanha', urlInicial: null, enderecoSincroniza: true },
-  { nome: 'abriu sem link, endereço NÃO acompanha', urlInicial: null, enderecoSincroniza: false },
+  {
+    nome: 'abriu por link e clicou em outras conversas',
+    urlInicial: 'A',
+    passos: [
+      ['abertura', null, 'A'],
+      ['clicar', 'B', 'B'],
+      ['clicar', 'C', 'C'],
+      ['tempo', null, 'C'],
+      ['clicar', 'A', 'A'],
+    ],
+  },
+  {
+    nome: 'abriu sem link e clicou',
+    urlInicial: null,
+    passos: [
+      ['clicar', 'B', 'B'],
+      ['tempo', null, 'B'],
+      ['clicar', 'C', 'C'],
+    ],
+  },
+  {
+    nome: 'clicou, chegou link de outra conversa, clicou de novo',
+    urlInicial: 'A',
+    passos: [
+      ['clicar', 'B', 'B'],
+      ['link', 'C', 'C'],
+      ['clicar', 'B', 'B'],
+      ['tempo', null, 'B'],
+    ],
+  },
+  {
+    nome: 'clicou na mesma conversa duas vezes',
+    urlInicial: 'A',
+    passos: [
+      ['clicar', 'B', 'B'],
+      ['clicar', 'B', 'B'],
+      ['tempo', null, 'B'],
+    ],
+  },
+  {
+    nome: 'link repetido pra conversa que já está aberta',
+    urlInicial: 'A',
+    passos: [
+      ['clicar', 'B', 'B'],
+      ['link', 'A', 'A'],
+      ['link', 'A', 'A'],
+      ['clicar', 'C', 'C'],
+    ],
+  },
 ]
 
-const cliques = ['B', 'C', 'B', 'A']
-let falhouNaNova = false
+let falhas = 0
 
-for (const cenario of CENARIOS) {
-  console.log(`\n### ${cenario.nome}`)
-  for (const versao of ['antiga', 'nova']) {
-    const historico = rodar({ versao, cliques, ...cenario })
-    const erros = historico.filter((h) => h.clicou !== h.tela)
-    if (erros.length && versao === 'nova') falhouNaNova = true
-    console.log(
-      `  regra ${versao}: ${erros.length ? 'FALHA' : 'ok'}` +
-        (erros.length ? ` — ${erros.map((e) => `clicou ${e.clicou}, ficou em ${e.tela}`).join('; ')}` : '')
-    )
+for (const sincroniza of [true, false]) {
+  console.log(`\n### endereço ${sincroniza ? 'acompanha' : 'NÃO acompanha (defeito do navegador)'}`)
+  for (const cenario of CENARIOS) {
+    const tela = criarTela({
+      urlInicial: cenario.urlInicial,
+      enderecoSincroniza: sincroniza,
+      leadsEmMemoria: LEADS,
+    })
+    const erros = []
+    for (const [acao, alvo, esperado] of cenario.passos) {
+      if (acao === 'clicar') tela.clicar(alvo)
+      else if (acao === 'link') tela.navegarPorLink(alvo)
+      else if (acao === 'tempo') tela.passarTempo()
+      const visto = tela.ver()
+      if (visto !== esperado) {
+        erros.push(`${acao}${alvo ? ' ' + alvo : ''}: esperava ${esperado}, ficou em ${visto}`)
+      }
+    }
+    if (erros.length) falhas++
+    console.log(`  ${erros.length ? 'FALHA' : 'ok   '} — ${cenario.nome}`)
+    for (const erro of erros) console.log(`         ${erro}`)
   }
 }
 
 console.log(
-  falhouNaNova
-    ? '\nRESULTADO: a regra nova ainda falha.'
-    : '\nRESULTADO: a regra nova acerta em todos os cenários.'
+  falhas === 0
+    ? '\nTodos os cenários passaram: a conversa aberta é sempre a que a pessoa escolheu.'
+    : `\n${falhas} cenário(s) falharam.`
 )
-process.exit(falhouNaNova ? 1 : 0)
+process.exit(falhas === 0 ? 0 : 1)

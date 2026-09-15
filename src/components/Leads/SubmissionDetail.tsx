@@ -10,6 +10,7 @@
  */
 
 import { X, ArrowSquareOut } from '@phosphor-icons/react'
+import { linkDaConversa } from '@/lib/links'
 import Link from 'next/link'
 import {
   AGENDA_BLOCK_CATEGORIES,
@@ -75,7 +76,7 @@ export default function SubmissionDetail({
             </dl>
             {submission.lead_id && (
               <Link
-                href={`/chat?leadId=${submission.lead_id}`}
+                href={linkDaConversa(submission.lead_id)}
                 className="btn btn-outline btn-sm mt-3"
               >
                 Abrir lead no CRM
