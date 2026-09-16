@@ -19,6 +19,7 @@ export function middleware(req: NextRequest) {
     // public/formulario-aplicacao.html, que também precisa abrir sem sessão.
     '/api/public/',
     '/formulario-aplicacao.html',
+    '/codigo-do-formulario.html',
     // Cron da Vercel não manda cookie de sessão nem Authorization (CRON_SECRET não está
     // configurado no projeto) — sem isso na lista, toda chamada do cron caía no redirect
     // de login e a reconciliação nunca rodou de verdade desde que foi criada (13/07).

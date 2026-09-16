@@ -1,38 +1,27 @@
 <!--
-  Formulário de aplicação — Ascensão Titã
-  ======================================
+  Formulário de aplicação — Ascensão Titã (bloco pra colar no WordPress)
+  =====================================================================
 
-  Bloco pra colar no WordPress, na página /preencha-o-formulario/, no lugar do
-  formulário atual: copie TUDO daqui e cole num bloco "HTML personalizado"
-  (Gutenberg) ou num widget "HTML" (Elementor). Não depende de plugin,
-  biblioteca nem fonte externa, e entra no meio da página como qualquer outro
-  bloco — sem fundo próprio e sem tomar a tela.
+  Cole no lugar do formulário atual, na página /preencha-o-formulario/, num
+  bloco "HTML personalizado" (Gutenberg) ou widget "HTML" (Elementor). Sem
+  plugin, sem biblioteca, sem fonte externa.
 
-  COMO ELE SE LIGA AO LEAD QUE JÁ EXISTE
-  --------------------------------------
-  O popup da página anterior já mandou nome, e-mail e WhatsApp pro CRM. Este
-  formulário manda as RESPOSTAS junto do mesmo WhatsApp, e o CRM identifica a
-  pessoa pelo telefone — vira atualização do mesmo lead, não um lead novo.
+  SÓ AS PERGUNTAS. Nome, e-mail e WhatsApp já foram capturados pelo popup da
+  página anterior e são lidos por trás, do endereço — ninguém digita nada
+  de novo aqui.
 
-  Pra ele saber quem é a pessoa sem perguntar de novo, o popup precisa passar os
-  dados no endereço do redirecionamento. No Elementor, em "Ações após enviar" →
-  "Redirecionar", use:
+  PRA ISSO FUNCIONAR, o popup precisa passar os dados no redirecionamento.
+  No Elementor: "Ações após enviar" → "Redirecionar" → URL:
 
       https://ascensaotita.com/preencha-o-formulario/?nome=[field id="name"]&email=[field id="email"]&whatsapp=[field id="tel"]
 
-  (troque os `id` pelos ids reais dos campos do seu formulário).
+  (troque os `id` pelos ids reais dos campos do popup)
 
-  Se por algum motivo o endereço vier sem esses dados, o formulário pergunta
-  nome e WhatsApp numa primeira tela — ninguém fica de fora.
-
-  PERGUNTAS
-  ---------
-  Estão na lista PERGUNTAS, logo no começo do <script>. Pra acrescentar,
-  remover ou reordenar, mexa só ali: cada item tem `chave` (o nome do campo no
-  CRM), `titulo` e `opcoes`.
+  PERGUNTAS: estão na lista PERGUNTAS, no começo do <script>. Cada item tem
+  `chave` (o nome do campo no CRM), `titulo` e `opcoes`.
 -->
 
-<div id="aplicacao-titan" class="aplic">
+<div id="aplicacao-titan">
   <div class="aplic__cartao" role="form" aria-labelledby="aplic-titulo">
     <div class="aplic__barra"><span class="aplic__barra-progresso" id="aplic-progresso"></span></div>
 
@@ -56,28 +45,20 @@
   #aplicacao-titan {
     --ouro: #c9a227;
     --ouro-claro: #e8c85a;
-    --fundo: #0d0f12;
     --cartao: #14171c;
     --linha: rgba(255, 255, 255, 0.10);
     --texto: #f2f2f0;
     --texto-fraco: #a7a7a2;
     --erro: #e5675c;
 
-    /*
-     * EMBED: entra dentro da página, não toma a tela.
-     *
-     * Sem fundo próprio e sem altura de tela cheia — o fundo é o da página do
-     * WordPress, e o bloco ocupa só o espaço que precisa, no lugar onde for
-     * colado. Se a sua página for clara, troque --cartao, --texto e --linha
-     * logo acima.
-     */
+    /* Embed: fundo é o da página, largura é a do container onde for colado. */
     background: transparent;
     color: var(--texto);
     font-family: "Inter", "Helvetica Neue", Arial, sans-serif;
     display: flex;
     justify-content: center;
-    padding: 0;
     width: 100%;
+    padding: 0;
     box-sizing: border-box;
   }
   #aplicacao-titan *,
@@ -123,7 +104,7 @@
     padding: 18px 22px 6px;
     /* Altura mínima: sem isso o bloco encolhe e cresce a cada pergunta, e a
        página inteira dá um pulo embaixo dele a cada resposta. */
-    min-height: 330px;
+    min-height: 320px;
   }
 
   #aplicacao-titan .aplic__pergunta {
@@ -131,11 +112,10 @@
     font-size: clamp(20px, 3.4vw, 26px);
     line-height: 1.32;
     font-weight: 400;
-    margin: 6px 0 4px;
+    margin: 6px 0 18px;
   }
-  #aplicacao-titan .aplic__ajuda { font-size: 13px; color: var(--texto-fraco); margin: 0 0 18px; line-height: 1.5; }
 
-  #aplicacao-titan .aplic__opcoes { display: grid; gap: 10px; margin: 0 0 6px; }
+  #aplicacao-titan .aplic__opcoes { display: grid; gap: 10px; }
   @media (min-width: 620px) {
     #aplicacao-titan .aplic__opcoes--duas { grid-template-columns: 1fr 1fr; }
   }
@@ -191,37 +171,6 @@
   }
   @media (max-width: 619px) { #aplicacao-titan .aplic__tecla { display: none; } }
 
-  #aplicacao-titan .aplic__campo { display: block; margin-bottom: 14px; }
-  #aplicacao-titan .aplic__rotulo {
-    display: block;
-    font-size: 11px;
-    letter-spacing: 0.14em;
-    text-transform: uppercase;
-    color: var(--texto-fraco);
-    margin-bottom: 6px;
-  }
-  #aplicacao-titan .aplic__entrada {
-    width: 100%;
-    padding: 13px 15px;
-    background: rgba(255, 255, 255, 0.04);
-    border: 1px solid var(--linha);
-    border-radius: 11px;
-    color: var(--texto);
-    font: inherit;
-    font-size: 16px; /* 16px evita o zoom automático do iOS ao focar */
-  }
-  #aplicacao-titan .aplic__entrada:focus { outline: none; border-color: var(--ouro); background: rgba(255, 255, 255, 0.06); }
-  #aplicacao-titan .aplic__entrada::placeholder { color: rgba(255, 255, 255, 0.28); }
-
-  /* Armadilha pra robô: fora da tela, sem display:none (robô ignora escondido). */
-  #aplicacao-titan .aplic__armadilha {
-    position: absolute;
-    left: -9999px;
-    width: 1px;
-    height: 1px;
-    opacity: 0;
-  }
-
   #aplicacao-titan .aplic__rodape {
     display: flex;
     align-items: center;
@@ -275,26 +224,12 @@
     font-size: 24px;
     margin: 0 0 10px;
   }
-  #aplicacao-titan .aplic__fim p { color: var(--texto-fraco); font-size: 14.5px; line-height: 1.6; margin: 0 auto; max-width: 420px; }
-
-  #aplicacao-titan .aplic__resumo {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: baseline;
-    gap: 6px;
-    font-size: 12.5px;
+  #aplicacao-titan .aplic__fim p {
     color: var(--texto-fraco);
-    padding: 0 22px 10px;
-  }
-  #aplicacao-titan .aplic__trocar {
-    background: none;
-    border: none;
-    color: var(--ouro);
-    font: inherit;
-    font-size: 12.5px;
-    cursor: pointer;
-    padding: 0;
-    text-decoration: underline;
+    font-size: 14.5px;
+    line-height: 1.6;
+    margin: 0 auto;
+    max-width: 420px;
   }
 </style>
 
@@ -302,7 +237,6 @@
 (function () {
   'use strict';
 
-  // ── Onde as respostas são gravadas ────────────────────────────────────────
   var ENDERECO_CRM = 'https://titacrm.vercel.app/api/public/aplicacao';
 
   // Pra onde mandar depois de concluir. Vazio = fica na tela de agradecimento.
@@ -310,10 +244,10 @@
 
   /*
    * As perguntas. `chave` é o nome do campo no CRM — mudar uma chave depois faz
-   * as respostas antigas e novas ficarem em campos diferentes, então só mude se
-   * for isso mesmo que você quer. `area`, `aumento` e `investimento` têm o mesmo
-   * nome das perguntas equivalentes da Agenda, de propósito: assim a resposta
-   * cai na mesma coluna, não importa por onde a pessoa entrou.
+   * as respostas antigas e novas ficarem em campos diferentes. `area`, `aumento`
+   * e `investimento` têm o mesmo nome das perguntas equivalentes da Agenda, de
+   * propósito: a resposta cai na mesma coluna, não importa por onde a pessoa
+   * entrou.
    */
   var PERGUNTAS = [
     {
@@ -324,7 +258,7 @@
     },
     {
       chave: 'aumento',
-      titulo: 'Em quanto irá AUMENTAR seu faturamento mensal nos próximos 6 meses se você alcançar maior eficiência e produtividade?',
+      titulo: 'Na sua opinião, em quanto irá AUMENTAR seu faturamento mensal nos próximos 6 meses se VOCÊ alcançar maior eficiência e produtividade na execução das suas atividades profissionais?',
       colunas: 2,
       opcoes: [
         'Mais de R$50.000/mês',
@@ -336,7 +270,7 @@
     },
     {
       chave: 'investimento',
-      titulo: 'Quanto você investiu em imersões, cursos, treinamentos, mentorias e outros programas de desenvolvimento no último ano?',
+      titulo: 'Quanto você investiu em imersões, cursos, treinamentos, mentorias e outros programas de desenvolvimento pessoal e profissional no último ano?',
       colunas: 2,
       opcoes: [
         'Mais de R$50.000',
@@ -364,7 +298,7 @@
       colunas: 1,
       opcoes: [
         'Relacionamentos - Quero ter mais tempo de qualidade para ficar com as pessoas que são importantes para mim',
-        'Saúde - Quero ter mais tempo para cuidar da minha saúde, praticar atividade física com consistência, cuidar mais da minha alimentação e ter maior qualidade de sono',
+        'Saúde - Quero ter mais tempo para cuidar da minha saúde, praticar atividade física com consistência, cuidar mais da minha alimentação e ter maior qualidade de sono, de modo que eu me sinta mais disposto e saudável',
         'Hobbies - Quero ter mais tempo para praticar hobbies, viajar, estudar áreas que tenho interesse e/ou tirar um projeto que está na gaveta há muito tempo',
         'Outro',
       ],
@@ -386,23 +320,23 @@
   var botaoAvancar = document.getElementById('aplic-avancar');
   var aviso = document.getElementById('aplic-aviso');
 
-  var estado = {
-    passo: 0,
-    identidade: { nome: '', email: '', whatsapp: '' },
-    respostas: {},
-    enviando: false,
-    concluido: false,
-  };
+  var estado = { passo: 0, respostas: {}, enviando: false, concluido: false };
 
-  // ── De onde vêm nome/e-mail/WhatsApp ─────────────────────────────────────
-  // 1) o endereço (o popup passa no redirecionamento);
-  // 2) o que ficou guardado numa visita anterior;
-  // 3) a própria pessoa, na primeira tela, se as duas de cima falharem.
+  /*
+   * Quem é a pessoa — lido por trás, sem perguntar nada.
+   *
+   * 1) o endereço, que o popup preenche no redirecionamento;
+   * 2) o que ficou guardado no navegador numa visita anterior.
+   *
+   * O popup já pediu esses dados; pedir de novo aqui seria fazer a pessoa
+   * digitar duas vezes a mesma coisa.
+   */
   function lerIdentidade() {
     var url = new URLSearchParams(window.location.search);
     var pega = function (nomes) {
       for (var i = 0; i < nomes.length; i++) {
         var valor = url.get(nomes[i]);
+        // "[field id=...]" é o atalho do Elementor que não foi substituído.
         if (valor && valor.trim() && valor.indexOf('[field') === -1) return valor.trim();
       }
       return '';
@@ -413,159 +347,53 @@
       whatsapp: pega(['whatsapp', 'tel', 'telefone', 'phone']),
     };
     var guardado = {};
-    try {
-      guardado = JSON.parse(localStorage.getItem(CHAVE_MEMORIA) || '{}');
-    } catch (e) {}
-    return {
+    try { guardado = JSON.parse(localStorage.getItem(CHAVE_MEMORIA) || '{}'); } catch (e) {}
+
+    var identidade = {
       nome: daUrl.nome || guardado.nome || '',
       email: daUrl.email || guardado.email || '',
       whatsapp: daUrl.whatsapp || guardado.whatsapp || '',
     };
+    // Guarda pra sobreviver a um F5, que limparia o endereço.
+    try {
+      localStorage.setItem(CHAVE_MEMORIA, JSON.stringify({
+        nome: identidade.nome, email: identidade.email, whatsapp: identidade.whatsapp,
+        respostas: guardado.respostas || {},
+      }));
+    } catch (e) {}
+    return identidade;
   }
 
-  function guardar() {
+  var identidade = lerIdentidade();
+
+  function guardarRespostas() {
     try {
-      localStorage.setItem(
-        CHAVE_MEMORIA,
-        JSON.stringify({
-          nome: estado.identidade.nome,
-          email: estado.identidade.email,
-          whatsapp: estado.identidade.whatsapp,
-          respostas: estado.respostas,
-        })
-      );
+      localStorage.setItem(CHAVE_MEMORIA, JSON.stringify({
+        nome: identidade.nome, email: identidade.email, whatsapp: identidade.whatsapp,
+        respostas: estado.respostas,
+      }));
     } catch (e) {}
   }
-
-  function soDigitos(texto) { return String(texto || '').replace(/\D/g, ''); }
-
-  function telefoneValido(texto) {
-    var n = soDigitos(texto).length;
-    return n >= 10 && n <= 15;
-  }
-
-  /** (11) 91234-5678 enquanto digita — só pra ficar legível. */
-  function formatarTelefone(texto) {
-    var d = soDigitos(texto).slice(0, 11);
-    if (d.length <= 2) return d;
-    if (d.length <= 6) return '(' + d.slice(0, 2) + ') ' + d.slice(2);
-    if (d.length <= 10) return '(' + d.slice(0, 2) + ') ' + d.slice(2, 6) + '-' + d.slice(6);
-    return '(' + d.slice(0, 2) + ') ' + d.slice(2, 7) + '-' + d.slice(7);
-  }
-
-  // A tela de identidade só existe quando falta nome ou WhatsApp.
-  function precisaPerguntarIdentidade() {
-    return !(estado.identidade.nome.trim().length > 1 && telefoneValido(estado.identidade.whatsapp));
-  }
-
-  function totalDePassos() { return PERGUNTAS.length + (precisaPerguntarIdentidade() ? 1 : 0); }
-
-  function perguntaDoPasso() {
-    var deslocamento = precisaPerguntarIdentidade() ? 1 : 0;
-    return PERGUNTAS[estado.passo - deslocamento] || null;
-  }
-
-  function mostrandoIdentidade() { return precisaPerguntarIdentidade() && estado.passo === 0; }
 
   // ── Desenho ──────────────────────────────────────────────────────────────
   function desenhar() {
     aviso.textContent = '';
     if (estado.concluido) return desenharFim();
 
-    var total = totalDePassos();
-    progresso.style.width = Math.round(((estado.passo) / total) * 100) + '%';
-    contador.textContent = 'Pergunta ' + (estado.passo + 1) + ' de ' + total;
+    progresso.style.width = Math.round((estado.passo / PERGUNTAS.length) * 100) + '%';
+    contador.textContent = (estado.passo + 1) + ' de ' + PERGUNTAS.length;
     botaoVoltar.style.visibility = estado.passo === 0 ? 'hidden' : 'visible';
-    botaoAvancar.textContent = estado.passo === total - 1 ? 'Enviar aplicação' : 'Continuar →';
+    botaoAvancar.textContent = estado.passo === PERGUNTAS.length - 1 ? 'Enviar aplicação' : 'Continuar →';
     botaoAvancar.disabled = false;
 
+    var pergunta = PERGUNTAS[estado.passo];
     palco.innerHTML = '';
-    if (mostrandoIdentidade()) return desenharIdentidade();
-    desenharPergunta(perguntaDoPasso());
-  }
-
-  function desenharIdentidade() {
-    var titulo = document.createElement('h2');
-    titulo.className = 'aplic__pergunta';
-    titulo.id = 'aplic-titulo';
-    titulo.textContent = 'Antes de começar, confirme seus dados';
-    var ajuda = document.createElement('p');
-    ajuda.className = 'aplic__ajuda';
-    ajuda.textContent = 'É por aqui que a nossa equipe fala com você sobre a imersão.';
-    palco.appendChild(titulo);
-    palco.appendChild(ajuda);
-
-    palco.appendChild(campoTexto('Seu nome', 'nome', 'text', 'Nome completo'));
-    palco.appendChild(campoTexto('Seu WhatsApp', 'whatsapp', 'tel', '(11) 91234-5678'));
-    palco.appendChild(campoTexto('Seu e-mail (opcional)', 'email', 'email', 'voce@email.com'));
-
-    var primeiro = palco.querySelector('input');
-    if (primeiro) primeiro.focus();
-  }
-
-  function campoTexto(rotulo, chave, tipo, exemplo) {
-    var caixa = document.createElement('label');
-    caixa.className = 'aplic__campo';
-    var titulo = document.createElement('span');
-    titulo.className = 'aplic__rotulo';
-    titulo.textContent = rotulo;
-    var entrada = document.createElement('input');
-    entrada.className = 'aplic__entrada';
-    entrada.type = tipo;
-    entrada.value = estado.identidade[chave] || '';
-    entrada.placeholder = exemplo;
-    if (chave === 'whatsapp') {
-      entrada.inputMode = 'tel';
-      entrada.value = formatarTelefone(entrada.value);
-    }
-    entrada.addEventListener('input', function () {
-      if (chave === 'whatsapp') entrada.value = formatarTelefone(entrada.value);
-      estado.identidade[chave] = entrada.value;
-      guardar();
-    });
-    entrada.addEventListener('keydown', function (e) {
-      if (e.key === 'Enter') { e.preventDefault(); avancar(); }
-    });
-    caixa.appendChild(titulo);
-    caixa.appendChild(entrada);
-    return caixa;
-  }
-
-  function desenharPergunta(pergunta) {
-    if (!pergunta) return;
-
-    if (estado.identidade.nome) {
-      var resumo = document.createElement('div');
-      resumo.className = 'aplic__resumo';
-      var quem = document.createElement('span');
-      quem.textContent = estado.identidade.nome.split(' ')[0] + ' · ' + formatarTelefone(estado.identidade.whatsapp);
-      var trocar = document.createElement('button');
-      trocar.type = 'button';
-      trocar.className = 'aplic__trocar';
-      trocar.textContent = 'não é você?';
-      trocar.addEventListener('click', function () {
-        estado.identidade = { nome: '', email: '', whatsapp: '' };
-        estado.passo = 0;
-        guardar();
-        desenhar();
-      });
-      resumo.appendChild(quem);
-      resumo.appendChild(trocar);
-      palco.appendChild(resumo);
-    }
 
     var titulo = document.createElement('h2');
     titulo.className = 'aplic__pergunta';
     titulo.id = 'aplic-titulo';
     titulo.textContent = pergunta.titulo;
     palco.appendChild(titulo);
-
-    if (pergunta.ajuda) {
-      var ajuda = document.createElement('p');
-      ajuda.className = 'aplic__ajuda';
-      ajuda.textContent = pergunta.ajuda;
-      palco.appendChild(ajuda);
-    }
 
     var lista = document.createElement('div');
     lista.className = 'aplic__opcoes' + (pergunta.colunas === 2 ? ' aplic__opcoes--duas' : '');
@@ -600,7 +428,6 @@
     contador.textContent = '';
     botaoVoltar.style.visibility = 'hidden';
     botaoAvancar.style.display = 'none';
-    aviso.textContent = '';
     palco.innerHTML =
       '<div class="aplic__fim">' +
       '<div class="aplic__selo">✓</div>' +
@@ -613,9 +440,8 @@
   // ── Navegação ────────────────────────────────────────────────────────────
   function escolher(chave, opcao) {
     estado.respostas[chave] = opcao;
-    guardar();
-    // Marca na hora e segue sozinho: uma resposta por tela, sem clique extra.
-    desenhar();
+    guardarRespostas();
+    desenhar(); // marca a escolha
     setTimeout(function () {
       if (!estado.enviando && !estado.concluido) avancar();
     }, 220);
@@ -623,19 +449,9 @@
 
   function avancar() {
     if (estado.enviando) return;
-
-    if (mostrandoIdentidade()) {
-      if (estado.identidade.nome.trim().length < 2) return reclamar('Escreva seu nome.');
-      if (!telefoneValido(estado.identidade.whatsapp)) return reclamar('WhatsApp com DDD, por favor.');
-      estado.passo++;
-      guardar();
-      return desenhar();
-    }
-
-    var pergunta = perguntaDoPasso();
-    if (pergunta && !estado.respostas[pergunta.chave]) return reclamar('Escolha uma opção para continuar.');
-
-    if (estado.passo === totalDePassos() - 1) return enviar();
+    var pergunta = PERGUNTAS[estado.passo];
+    if (!estado.respostas[pergunta.chave]) { aviso.textContent = 'Escolha uma opção para continuar.'; return; }
+    if (estado.passo === PERGUNTAS.length - 1) return enviar();
     estado.passo++;
     desenhar();
   }
@@ -646,10 +462,6 @@
     desenhar();
   }
 
-  function reclamar(mensagem) {
-    aviso.textContent = mensagem;
-  }
-
   // ── Envio ────────────────────────────────────────────────────────────────
   function enviar() {
     estado.enviando = true;
@@ -658,16 +470,14 @@
     aviso.textContent = '';
 
     var corpo = {
-      nome: estado.identidade.nome.trim(),
-      email: (estado.identidade.email || '').trim(),
-      whatsapp: estado.identidade.whatsapp,
+      nome: identidade.nome,
+      email: identidade.email,
+      whatsapp: identidade.whatsapp,
       origem_formulario: 'aplicacao-site',
       pagina: window.location.href,
       website: '', // armadilha: robô preenche, gente não
     };
-    Object.keys(estado.respostas).forEach(function (chave) {
-      corpo[chave] = estado.respostas[chave];
-    });
+    Object.keys(estado.respostas).forEach(function (chave) { corpo[chave] = estado.respostas[chave]; });
 
     fetch(ENDERECO_CRM, {
       method: 'POST',
@@ -682,27 +492,19 @@
         if (REDIRECIONAR_APOS) setTimeout(function () { window.location.href = REDIRECIONAR_APOS; }, 1200);
       })
       .catch(function () {
-        // A pessoa não pode ficar presa: mostra o erro e deixa tentar de novo,
-        // com as respostas ainda na tela.
         estado.enviando = false;
         botaoAvancar.disabled = false;
         botaoAvancar.textContent = 'Tentar de novo';
-        reclamar('Não consegui enviar agora. Toque em "Tentar de novo".');
+        aviso.textContent = 'Não consegui enviar agora. Toque em "Tentar de novo".';
       });
   }
 
-  // ── Teclado: 1..9 escolhe, Enter continua ────────────────────────────────
+  // Teclado: 1..9 escolhe, Enter avança.
   document.addEventListener('keydown', function (e) {
     if (estado.concluido) return;
-    var dentro = document.getElementById('aplicacao-titan');
-    if (!dentro) return;
-    if (e.key === 'Enter' && document.activeElement && document.activeElement.tagName !== 'INPUT') {
-      e.preventDefault();
-      return avancar();
-    }
-    if (mostrandoIdentidade()) return;
+    if (e.key === 'Enter') { e.preventDefault(); return avancar(); }
     var numero = parseInt(e.key, 10);
-    var pergunta = perguntaDoPasso();
+    var pergunta = PERGUNTAS[estado.passo];
     if (pergunta && numero >= 1 && numero <= pergunta.opcoes.length) {
       escolher(pergunta.chave, pergunta.opcoes[numero - 1]);
     }
@@ -711,8 +513,6 @@
   botaoAvancar.addEventListener('click', avancar);
   botaoVoltar.addEventListener('click', voltar);
 
-  // ── Começo ───────────────────────────────────────────────────────────────
-  estado.identidade = lerIdentidade();
   try {
     var memoria = JSON.parse(localStorage.getItem(CHAVE_MEMORIA) || '{}');
     if (memoria.respostas) estado.respostas = memoria.respostas;
