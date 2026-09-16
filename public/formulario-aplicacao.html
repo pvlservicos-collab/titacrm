@@ -127,6 +127,7 @@
     display: flex;
     align-items: flex-start;
     gap: 12px;
+    min-height: 52px; /* alvo de toque confortável no celular */
     width: 100%;
     text-align: left;
     padding: 14px 16px;
@@ -179,6 +180,30 @@
     align-items: center;
     gap: 12px;
     padding: 14px 0 0;
+  }
+  /* Celular: um botão embaixo do outro, cada um na largura toda. Lado a lado
+     eles ficavam espremidos, e "Continuar" é o alvo do dedo — vem primeiro. */
+  @media (max-width: 619px) {
+    #aplicacao-titan .aplic__rodape {
+      flex-direction: column;
+      align-items: stretch;
+      gap: 10px;
+    }
+    #aplicacao-titan .aplic__avancar {
+      order: 1;
+      margin-left: 0;
+      width: 100%;
+      padding: 15px 20px;
+      font-size: 15px;
+    }
+    #aplicacao-titan .aplic__voltar {
+      order: 2;
+      width: 100%;
+      padding: 12px;
+      border: 1px solid var(--linha);
+      border-radius: 10px;
+    }
+    #aplicacao-titan .aplic__aviso { order: 0; text-align: center; }
   }
   #aplicacao-titan .aplic__voltar,
   #aplicacao-titan .aplic__avancar {
@@ -493,13 +518,21 @@
       body: JSON.stringify(corpo),
     })
       .then(function (resposta) {
-        if (!resposta.ok) throw new Error('resposta ' + resposta.status);
+        if (!resposta.ok) {
+          // Guarda o motivo real: sem isso, "não consegui enviar" não diz nada
+          // pra quem for investigar (F12 → Console).
+          return resposta.text().then(function (texto) {
+            console.error('[aplicacao] envio recusado', resposta.status, texto);
+            throw new Error('resposta ' + resposta.status);
+          });
+        }
         estado.concluido = true;
         try { localStorage.removeItem(CHAVE_MEMORIA); } catch (e) {}
         desenhar();
         if (REDIRECIONAR_APOS) setTimeout(function () { window.location.href = REDIRECIONAR_APOS; }, 1200);
       })
-      .catch(function () {
+      .catch(function (erro) {
+        console.error('[aplicacao] falha no envio:', erro);
         estado.enviando = false;
         botaoAvancar.disabled = false;
         botaoAvancar.textContent = 'Tentar de novo';

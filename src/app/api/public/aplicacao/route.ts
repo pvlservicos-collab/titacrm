@@ -24,7 +24,7 @@
 import { NextRequest } from 'next/server'
 import { and, eq, isNull } from 'drizzle-orm'
 import { db } from '@/lib/db'
-import { organizations } from '@/lib/schema'
+import { leadSourceSubmissions, organizations } from '@/lib/schema'
 import { handleIngest } from '@/lib/ingest'
 
 /** De onde o formulário pode chamar, além do próprio CRM. */
@@ -92,14 +92,9 @@ export async function POST(req: NextRequest) {
 
     const nome = String((corpo as Record<string, unknown>).nome ?? '').trim()
     const whatsapp = String((corpo as Record<string, unknown>).whatsapp ?? '')
-    const digitos = whatsapp.replace(/\D/g, '')
-    if (nome.length < 2) {
-      return Response.json({ error: 'Informe seu nome.' }, { status: 400, headers })
-    }
     // 10 = fixo com DDD, 11 = celular, 12/13 = com o 55 na frente.
-    if (digitos.length < 10 || digitos.length > 15) {
-      return Response.json({ error: 'Informe um WhatsApp válido, com DDD.' }, { status: 400, headers })
-    }
+    const digitos = whatsapp.replace(/\D/g, '')
+    const temIdentidade = nome.length >= 2 && digitos.length >= 10 && digitos.length <= 15
 
     const ip = (req.headers.get('x-forwarded-for') || '').split(',')[0].trim() || 'sem-ip'
     const agora = Date.now()
@@ -127,6 +122,32 @@ export async function POST(req: NextRequest) {
     // Refaz a requisição pro caminho comum: corpo limpo, fonte fixa. `website`
     // (a armadilha) fica de fora pra não virar campo do lead.
     const { website: _armadilha, ...limpo } = corpo as Record<string, unknown>
+
+    /*
+     * Sem nome e telefone não dá pra dizer DE QUEM são as respostas — acontece
+     * quando o popup ainda não está passando os dados no redirecionamento.
+     *
+     * Mesmo assim o envio é aceito: quem está do outro lado respondeu tudo e não
+     * pode ver um erro por causa de configuração nossa. As respostas ficam
+     * guardadas como submissão sem dono (dá pra casar depois pelo horário), e
+     * NÃO viram lead — lead sem telefone é lead que ninguém consegue atender.
+     */
+    if (!temIdentidade) {
+      await db.insert(leadSourceSubmissions).values({
+        organizationId: org.id,
+        source: FONTE,
+        externalId: null,
+        name: nome || 'Sem identificação',
+        email: String((corpo as Record<string, unknown>).email ?? '').trim() || null,
+        phone: null,
+        payload: limpo,
+        receivedAt: new Date(),
+        updatedAt: new Date(),
+      })
+      console.warn('[aplicacao] respostas recebidas sem identidade — popup não está passando nome/whatsapp na URL')
+      return Response.json({ data: { ok: true, sem_identidade: true } }, { status: 200, headers })
+    }
+
     const interna = new NextRequest(new URL('/api/ingest/leads/site_evento', req.url), {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
