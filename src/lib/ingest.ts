@@ -650,7 +650,19 @@ export async function handleIngest(
               email: values.email,
               phone: values.phone,
               instagram: values.instagram,
-              payload: values.payload,
+              /*
+               * JUNTA com o que já estava gravado, não substitui.
+               *
+               * As duas etapas do site chegam separadas: o popup manda nome,
+               * e-mail, telefone e de onde a pessoa veio (UTM, página, anúncio);
+               * o formulário de aplicação manda as respostas. Substituindo, a
+               * segunda etapa apagava a origem da primeira — e origem de lead
+               * pago é justamente o que não pode sumir.
+               *
+               * `||` do jsonb: o da direita (o que acabou de chegar) vence nas
+               * chaves repetidas.
+               */
+              payload: sql`${leadSourceSubmissions.payload} || ${values.payload}::jsonb`,
               updatedAt: values.updatedAt,
             },
             // targetWhere (não setWhere): o índice único é parcial
@@ -667,6 +679,43 @@ export async function handleIngest(
     // requisição ainda responde 201 — o outro lado não deve reenviar por isso.
     let leadId = submission?.leadId ?? null
     let leadCreated = false
+
+    /*
+     * A submissão já conhecia o lead (é reenvio): atualiza o cadastro aqui
+     * mesmo. Sem isto as respostas da segunda etapa do site ficavam SÓ na
+     * tabela de submissões — o card do lead no chat e no Pipeline não via nada,
+     * porque `upsertCrmLead` só roda quando ainda não há lead ligado.
+     *
+     * Campo vazio não entra: atualizar cadastro nunca pode apagar o que já
+     * estava lá. Etapa, fonte e funil não se mexem — isso é atualização, não
+     * lead novo.
+     */
+    if (leadId) {
+      try {
+        const [atual] = await db
+          .select({ customAttributes: leads.customAttributes, title: leads.title, email: leads.email })
+          .from(leads)
+          .where(eq(leads.id, leadId))
+          .limit(1)
+        if (atual) {
+          const preenchidos = Object.fromEntries(
+            Object.entries(normalized.fields).filter(([, v]) => v !== null && v !== undefined && v !== '')
+          )
+          const atributos = (atual.customAttributes ?? {}) as Record<string, unknown>
+          await db
+            .update(leads)
+            .set({
+              customAttributes: { ...atributos, ...preenchidos },
+              ...(atual.email ? {} : normalized.email ? { email: normalized.email } : {}),
+              updatedAt: new Date(),
+            })
+            .where(eq(leads.id, leadId))
+        }
+      } catch (err) {
+        console.error('[ingest] não consegui atualizar o lead do reenvio:', err)
+      }
+    }
+
     if (!leadId) {
       try {
         const lead = await upsertCrmLead(auth.organizationId, sourceDef.key, normalized, auth.memberId, ehResync)
