@@ -23,8 +23,6 @@
 
 <div id="aplicacao-titan">
   <div class="aplic__cartao" role="form" aria-labelledby="aplic-titulo">
-    <div class="aplic__barra"><span class="aplic__barra-progresso" id="aplic-progresso"></span></div>
-
     <div class="aplic__topo">
       <span class="aplic__contador" id="aplic-contador"></span>
     </div>
@@ -36,6 +34,9 @@
       <span class="aplic__aviso" id="aplic-aviso"></span>
       <button type="button" class="aplic__avancar" id="aplic-avancar">Continuar →</button>
     </div>
+
+    <!-- Barra embaixo: enche conforme as respostas vão sendo dadas. -->
+    <div class="aplic__barra"><span class="aplic__barra-progresso" id="aplic-progresso"></span></div>
   </div>
 </div>
 
@@ -75,11 +76,18 @@
     box-shadow: none;
   }
 
-  #aplicacao-titan .aplic__barra { height: 3px; background: rgba(255, 255, 255, 0.07); }
+  #aplicacao-titan .aplic__barra {
+    height: 4px;
+    margin-top: 18px;
+    border-radius: 99px;
+    overflow: hidden;
+    background: rgba(255, 255, 255, 0.08);
+  }
   #aplicacao-titan .aplic__barra-progresso {
     display: block;
     height: 100%;
     width: 0%;
+    border-radius: 99px;
     background: linear-gradient(90deg, var(--ouro), var(--ouro-claro));
     transition: width 0.35s ease;
   }
@@ -376,7 +384,10 @@
     aviso.textContent = '';
     if (estado.concluido) return desenharFim();
 
-    progresso.style.width = Math.round((estado.passo / PERGUNTAS.length) * 100) + '%';
+    // A barra mede o que já foi RESPONDIDO, não em que tela a pessoa está:
+    // é isso que ela quer saber — quanto falta pra acabar.
+    var respondidas = PERGUNTAS.filter(function (p) { return estado.respostas[p.chave]; }).length;
+    progresso.style.width = Math.round((respondidas / PERGUNTAS.length) * 100) + '%';
     contador.textContent = (estado.passo + 1) + ' de ' + PERGUNTAS.length;
     botaoVoltar.style.visibility = estado.passo === 0 ? 'hidden' : 'visible';
     botaoAvancar.textContent = estado.passo === PERGUNTAS.length - 1 ? 'Enviar aplicação' : 'Continuar →';
@@ -388,7 +399,8 @@
     var titulo = document.createElement('h2');
     titulo.className = 'aplic__pergunta';
     titulo.id = 'aplic-titulo';
-    titulo.textContent = pergunta.titulo;
+    // Numerada, como no formulário antigo: "1.", "2.", "3."…
+    titulo.textContent = (estado.passo + 1) + '. ' + pergunta.titulo;
     palco.appendChild(titulo);
 
     var lista = document.createElement('div');
