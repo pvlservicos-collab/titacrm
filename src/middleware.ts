@@ -12,6 +12,13 @@ export function middleware(req: NextRequest) {
     // do ?key=, então sem esta linha o webhook do site caía no redirect de
     // login e o lead se perdia.
     '/api/ingest',
+    // Formulário de aplicação do site: roda no navegador de quem se inscreve,
+    // sem sessão e sem token nenhum (a rota valida origem, fonte e limite por
+    // IP sozinha). Sem esta linha o envio caía no redirect de login e a
+    // aplicação da pessoa se perdia. O arquivo dela é
+    // public/formulario-aplicacao.html, que também precisa abrir sem sessão.
+    '/api/public/',
+    '/formulario-aplicacao.html',
     // Cron da Vercel não manda cookie de sessão nem Authorization (CRON_SECRET não está
     // configurado no projeto) — sem isso na lista, toda chamada do cron caía no redirect
     // de login e a reconciliação nunca rodou de verdade desde que foi criada (13/07).
