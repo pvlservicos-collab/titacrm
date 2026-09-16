@@ -77,6 +77,55 @@ function fieldKey(value: string): string {
  * Só preenche o que ainda não existe no topo — se o corpo já trouxe `nome`
  * solto, ele ganha do `form_fields[nome]`.
  */
+/**
+ * Desempacota o formato CRU do Elementor Pro.
+ *
+ * O webhook do Elementor tem dois formatos, e um formulário novo costuma vir no
+ * segundo sem ninguém avisar:
+ *
+ *   1. achatado — "No Label name", "No Label tel" (era o do popup antigo);
+ *   2. cru — `fields[name][value]`, `fields[tel][value]`, `meta[date][value]`,
+ *      mais `fields[name][id]`, `[type]`, `[title]`, `[required]`…
+ *
+ * O leitor genérico de colchetes só entende UM nível, e no formato cru ele
+ * produzia lixo: `fields[name][value]` virava a chave `name][value`, e
+ * `form[name]` — que é o nome do FORMULÁRIO — virava `name` e acabava como
+ * nome do lead. Foi assim que um lead entrou chamado "New Form".
+ *
+ * Aqui cada `fields[x][value]` vira `x`, cada `meta[x][value]` vira `x`, e o
+ * resto (`id`, `type`, `title`, `required`, `form[...]`) é descartado: é
+ * descrição do formulário, não resposta de ninguém.
+ */
+export function desempacotarElementor(body: Record<string, any>): Record<string, any> {
+  const ehFormatoCru = Object.keys(body).some((k) => /^fields\[[^\]]+\]\[value\]$/.test(k))
+  if (!ehFormatoCru) return body
+
+  const out: Record<string, any> = {}
+  for (const [key, value] of Object.entries(body)) {
+    const campo = key.match(/^fields\[([^\]]+)\]\[(value|raw_value)\]$/)
+    if (campo) {
+      // `value` manda; `raw_value` só preenche o que ficou vazio (é o mesmo dado
+      // sem formatação, e alguns campos só trazem um dos dois).
+      const [, nome, tipo] = campo
+      const atual = out[nome]
+      if (tipo === 'value' || atual === undefined || String(atual).trim() === '') {
+        if (value !== undefined && value !== null && String(value).trim() !== '') out[nome] = value
+      }
+      continue
+    }
+    const meta = key.match(/^meta\[([^\]]+)\]\[value\]$/)
+    if (meta) {
+      out[meta[1]] = value
+      continue
+    }
+    // Estrutura do formulário (fields[x][id|type|title|required], form[id],
+    // form[name]) não é dado de lead: fica de fora.
+    if (/^(fields|meta|form)\[/.test(key)) continue
+    out[key] = value
+  }
+  return out
+}
+
 export function flattenBracketKeys(body: Record<string, any>): Record<string, any> {
   const out: Record<string, any> = { ...body }
   for (const [key, value] of Object.entries(body)) {
@@ -545,7 +594,7 @@ export async function handleIngest(
       await logAttempt(req, { resultado: 'corpo_ilegivel', organizationId: auth.organizationId })
       return apiError(400, 'Corpo inválido: envie JSON ou os campos do formulário (urlencoded / multipart).')
     }
-    const body = inferContactFields(applyAliases(flattenBracketKeys(rawBody)))
+    const body = inferContactFields(applyAliases(flattenBracketKeys(desempacotarElementor(rawBody))))
 
     const sourceDef = getLeadSource(sourceFromPath ?? body.source)
     if (!sourceDef) {
