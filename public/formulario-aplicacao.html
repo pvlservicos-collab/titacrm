@@ -26,7 +26,6 @@
     <div class="aplic__barra"><span class="aplic__barra-progresso" id="aplic-progresso"></span></div>
 
     <div class="aplic__topo">
-      <span class="aplic__marca">ASCENSÃO TITÃ</span>
       <span class="aplic__contador" id="aplic-contador"></span>
     </div>
 
@@ -65,15 +64,15 @@
   #aplicacao-titan *::before,
   #aplicacao-titan *::after { box-sizing: border-box; }
 
+  /* Só o formulário: sem caixa, sem borda, sem sombra. O que aparece é a
+     pergunta, as opções e os botões, direto na página. */
   #aplicacao-titan .aplic__cartao {
     width: 100%;
     max-width: 660px;
     margin: 0 auto;
-    background: var(--cartao);
-    border: 1px solid var(--linha);
-    border-radius: 18px;
-    overflow: hidden;
-    box-shadow: 0 30px 70px -40px rgba(0, 0, 0, 0.9);
+    background: transparent;
+    border: none;
+    box-shadow: none;
   }
 
   #aplicacao-titan .aplic__barra { height: 3px; background: rgba(255, 255, 255, 0.07); }
@@ -88,20 +87,13 @@
   #aplicacao-titan .aplic__topo {
     display: flex;
     align-items: center;
-    justify-content: space-between;
-    gap: 12px;
-    padding: 16px 22px 0;
-  }
-  #aplicacao-titan .aplic__marca {
-    font-size: 11px;
-    letter-spacing: 0.22em;
-    color: var(--ouro);
-    font-weight: 700;
+    justify-content: flex-end;
+    padding: 10px 0 0;
   }
   #aplicacao-titan .aplic__contador { font-size: 11px; color: var(--texto-fraco); letter-spacing: 0.08em; }
 
   #aplicacao-titan .aplic__palco {
-    padding: 18px 22px 6px;
+    padding: 14px 0 6px;
     /* Altura mínima: sem isso o bloco encolhe e cresce a cada pergunta, e a
        página inteira dá um pulo embaixo dele a cada resposta. */
     min-height: 320px;
@@ -113,6 +105,9 @@
     line-height: 1.32;
     font-weight: 400;
     margin: 6px 0 18px;
+    /* Branco explícito: sem isto o tema do WordPress pinta o h2 com a cor dele
+       e o título some no fundo escuro. */
+    color: #ffffff;
   }
 
   #aplicacao-titan .aplic__opcoes { display: grid; gap: 10px; }
@@ -175,7 +170,7 @@
     display: flex;
     align-items: center;
     gap: 12px;
-    padding: 14px 22px 20px;
+    padding: 14px 0 0;
   }
   #aplicacao-titan .aplic__voltar,
   #aplicacao-titan .aplic__avancar {
@@ -205,7 +200,7 @@
   #aplicacao-titan .aplic__avancar[disabled] { opacity: 0.45; cursor: default; filter: none; }
   #aplicacao-titan .aplic__aviso { font-size: 12.5px; color: var(--erro); }
 
-  #aplicacao-titan .aplic__fim { text-align: center; padding: 26px 6px 18px; }
+  #aplicacao-titan .aplic__fim { text-align: center; padding: 26px 0 18px; }
   #aplicacao-titan .aplic__selo {
     width: 54px;
     height: 54px;
@@ -223,6 +218,7 @@
     font-weight: 400;
     font-size: 24px;
     margin: 0 0 10px;
+    color: #ffffff;
   }
   #aplicacao-titan .aplic__fim p {
     color: var(--texto-fraco);

@@ -8,7 +8,8 @@
  * organização inteira.
  *
  * O que substitui o token:
- *   - só aceita requisição vinda do site (Origin na lista abaixo);
+ *   - só aceita requisição vinda do site (ou do próprio CRM, que serve a
+ *     página de teste);
  *   - só escreve na fonte "site_evento", nunca em outra;
  *   - exige nome e um WhatsApp plausível;
  *   - campo-armadilha invisível (`website`): robô preenche, gente não;
@@ -25,9 +26,8 @@ import { and, eq, isNull } from 'drizzle-orm'
 import { db } from '@/lib/db'
 import { organizations } from '@/lib/schema'
 import { handleIngest } from '@/lib/ingest'
-import { apiError } from '@/lib/api-auth'
 
-/** De onde o formulário pode chamar. Sem Origin (curl, teste) também passa. */
+/** De onde o formulário pode chamar, além do próprio CRM. */
 const ORIGENS_PERMITIDAS = [
   'https://ascensaotita.com',
   'https://www.ascensaotita.com',
@@ -39,10 +39,27 @@ const FONTE = 'site_evento'
 const ESPERA_ENTRE_ENVIOS_MS = 20_000
 const ultimoEnvioPorIp = new Map<string, number>()
 
-function corsHeaders(origin: string | null): Record<string, string> {
-  const permitida = origin && ORIGENS_PERMITIDAS.includes(origin)
+/**
+ * Origem autorizada?
+ *
+ * O site, e também o próprio CRM: a página de teste
+ * (/formulario-aplicacao.html) é servida aqui, e sem isto ela levava 403 —
+ * "não consegui enviar agora" ao testar, mesmo com tudo certo.
+ */
+function origemPermitida(origin: string | null, req: NextRequest): boolean {
+  if (!origin) return true // curl, teste, requisição sem Origin
+  if (ORIGENS_PERMITIDAS.includes(origin)) return true
+  try {
+    return new URL(origin).host === req.nextUrl.host
+  } catch {
+    return false
+  }
+}
+
+function corsHeaders(origin: string | null, req: NextRequest): Record<string, string> {
+  const permitida = origemPermitida(origin, req)
   return {
-    'Access-Control-Allow-Origin': permitida ? origin : ORIGENS_PERMITIDAS[0],
+    'Access-Control-Allow-Origin': permitida && origin ? origin : ORIGENS_PERMITIDAS[0],
     'Access-Control-Allow-Methods': 'POST, OPTIONS',
     'Access-Control-Allow-Headers': 'Content-Type',
     'Access-Control-Max-Age': '86400',
@@ -50,16 +67,16 @@ function corsHeaders(origin: string | null): Record<string, string> {
 }
 
 export async function OPTIONS(req: NextRequest) {
-  return new Response(null, { status: 204, headers: corsHeaders(req.headers.get('origin')) })
+  return new Response(null, { status: 204, headers: corsHeaders(req.headers.get('origin'), req) })
 }
 
 export async function POST(req: NextRequest) {
   const origin = req.headers.get('origin')
-  const headers = corsHeaders(origin)
+  const headers = corsHeaders(origin, req)
 
   try {
-    if (origin && !ORIGENS_PERMITIDAS.includes(origin)) {
-      return apiError(403, 'Origem não autorizada.')
+    if (!origemPermitida(origin, req)) {
+      return Response.json({ error: 'Origem não autorizada.' }, { status: 403, headers })
     }
 
     const corpo = await req.json().catch(() => null)
