@@ -357,8 +357,17 @@ async function upsertCrmLead(
        */
       const atributos = (existing.customAttributes ?? {}) as Record<string, unknown>
       const ehSoConversa = !atributos.lead_source
-      if (!ehSoConversa) return { id: existing.id, created: false, promovido: false }
 
+      /*
+       * Lead que JÁ é de aquisição e voltou (o quiz da Agenda que avançou, a
+       * segunda etapa do formulário do site): atualiza o que veio de novo e
+       * mantém o resto. Antes parava aqui sem gravar nada, e as respostas da
+       * segunda etapa só existiam na tabela de submissões — o card do lead
+       * ficava sem elas.
+       *
+       * Só isso: nada de mudar etapa nem de disparar funil, que é o que
+       * diferencia "atualizar cadastro" de "lead novo".
+       */
       // Nome: o da conversa importada costuma ser o próprio número. Só troca
       // quando o que está lá não tem letra nenhuma — assim não se perde um nome
       // bom ("Eduardo de Andrade Ref Patriota") por um apelido curto do formulário.
@@ -370,16 +379,23 @@ async function upsertCrmLead(
         Object.entries(normalized.fields).filter(([, valor]) => valor !== null && valor !== undefined && valor !== '')
       )
       const mudancas: Record<string, unknown> = {
-        customAttributes: { ...atributos, lead_source: source, ...camposPreenchidos },
+        customAttributes: {
+          ...atributos,
+          // A fonte é por onde a pessoa ENTROU, e isso não muda: quem veio da
+          // Agenda e depois preenche o formulário do site continua da Agenda,
+          // senão o card mudaria de coluna na "Fonte:" do Pipeline.
+          lead_source: ehSoConversa ? source : atributos.lead_source,
+          ...camposPreenchidos,
+        },
         lastActivityAt: new Date(),
       }
       if (!tituloTemLetra && normalized.name) mudancas.title = normalized.name
       if (normalized.email) mudancas.email = normalized.email
 
-      // Entra no Kanban na primeira etapa, como qualquer lead novo. Na
-      // ressincronização em massa não: seria despejar a base antiga inteira no
-      // Pipeline de uma vez.
-      if (!existing.stageId && !ehResync) {
+      // Entra no Kanban na primeira etapa só quem está VIRANDO lead agora. Quem
+      // já era lead de aquisição e voltou fica onde está — reenviar formulário
+      // não pode puxar de volta pra primeira coluna quem já avançou.
+      if (ehSoConversa && !existing.stageId && !ehResync) {
         const [primeiraEtapa] = await db
           .select({ id: pipelineStages.id })
           .from(pipelineStages)
@@ -390,7 +406,9 @@ async function upsertCrmLead(
       }
 
       await db.update(leads).set(mudancas).where(eq(leads.id, existing.id))
-      return { id: existing.id, created: false, promovido: !ehResync }
+      // Promovido (e portanto "novo" pro funil e pro plin) só quem era apenas
+      // conversa. Reenvio de lead que já era de aquisição é atualização e nada mais.
+      return { id: existing.id, created: false, promovido: ehSoConversa && !ehResync }
     }
   }
 
@@ -497,12 +515,24 @@ async function logAttempt(
  *
  * `sourceFromPath` vem preenchido quando a rota é /api/ingest/leads/{source};
  * nesse caso a URL manda e o corpo nem precisa trazer `source`.
+ *
+ * `autenticacaoInterna` é pra quem já sabe de qual organização é o lead e não
+ * tem credencial pra apresentar — hoje só o formulário público do site
+ * (/api/public/aplicacao), que roda no navegador de quem se inscreve e por isso
+ * NÃO pode carregar token de API nenhum. Quem chama assim já validou a origem;
+ * daqui pra baixo o caminho é exatamente o mesmo das fontes externas.
  */
-export async function handleIngest(req: NextRequest, sourceFromPath?: string) {
+export async function handleIngest(
+  req: NextRequest,
+  sourceFromPath?: string,
+  autenticacaoInterna?: { organizationId: string; memberId: string | null }
+) {
   try {
     let auth
     try {
-      auth = await authenticate(req)
+      auth = autenticacaoInterna
+        ? { ...autenticacaoInterna, userId: null, roleId: null }
+        : await authenticate(req)
     } catch (err: any) {
       // Registra a recusa por credencial ANTES de propagar — e o caso mais
       // comum de "o webhook nao entra" e o mais invisivel sem isto.

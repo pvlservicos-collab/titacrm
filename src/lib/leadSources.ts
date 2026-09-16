@@ -232,6 +232,16 @@ const siteEvento: LeadSourceDef = {
     { key: 'email', label: 'E-mail', format: 'email', width: 240 },
     { key: 'phone', label: 'WhatsApp', format: 'phone', width: 160 },
     { key: 'received_at', label: 'Recebido em', format: 'datetime', width: 170 },
+    // Respostas do formulário de aplicação (public/formulario-aplicacao.html).
+    // `area`, `aumento` e `investimento` usam a mesma chave das perguntas
+    // equivalentes da Agenda de propósito: a resposta cai na mesma coluna, não
+    // importa por onde a pessoa entrou.
+    { key: 'area', label: 'Área', width: 170 },
+    { key: 'aumento', label: 'Aumento esperado', width: 190 },
+    { key: 'investimento', label: 'Já investiu', width: 190 },
+    { key: 'objetivo_profissional', label: 'Objetivo profissional', width: 260 },
+    { key: 'qualidade_vida', label: 'Qualidade de vida', width: 260 },
+    { key: 'acompanhante', label: 'Leva acompanhante', width: 150 },
   ],
   normalize: (body) => {
     // Guarda o corpo inteiro como veio, tirando só o que já virou coluna. Assim
