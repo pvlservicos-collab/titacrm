@@ -2,8 +2,11 @@
   Formulário de aplicação — Ascensão Titã
   ======================================
 
-  Cole este arquivo inteiro num bloco HTML do WordPress, na página
-  /preencha-o-formulario/. Não depende de plugin, biblioteca nem fonte externa.
+  Bloco pra colar no WordPress, na página /preencha-o-formulario/, no lugar do
+  formulário atual: copie TUDO daqui e cole num bloco "HTML personalizado"
+  (Gutenberg) ou num widget "HTML" (Elementor). Não depende de plugin,
+  biblioteca nem fonte externa, e entra no meio da página como qualquer outro
+  bloco — sem fundo próprio e sem tomar a tela.
 
   COMO ELE SE LIGA AO LEAD QUE JÁ EXISTE
   --------------------------------------
@@ -60,14 +63,21 @@
     --texto-fraco: #a7a7a2;
     --erro: #e5675c;
 
-    background: radial-gradient(120% 90% at 50% 0%, #1b1f26 0%, var(--fundo) 62%);
+    /*
+     * EMBED: entra dentro da página, não toma a tela.
+     *
+     * Sem fundo próprio e sem altura de tela cheia — o fundo é o da página do
+     * WordPress, e o bloco ocupa só o espaço que precisa, no lugar onde for
+     * colado. Se a sua página for clara, troque --cartao, --texto e --linha
+     * logo acima.
+     */
+    background: transparent;
     color: var(--texto);
     font-family: "Inter", "Helvetica Neue", Arial, sans-serif;
     display: flex;
-    align-items: center;
     justify-content: center;
-    padding: 28px 16px 44px;
-    min-height: 100vh;
+    padding: 0;
+    width: 100%;
     box-sizing: border-box;
   }
   #aplicacao-titan *,
@@ -77,6 +87,7 @@
   #aplicacao-titan .aplic__cartao {
     width: 100%;
     max-width: 660px;
+    margin: 0 auto;
     background: var(--cartao);
     border: 1px solid var(--linha);
     border-radius: 18px;
@@ -108,7 +119,12 @@
   }
   #aplicacao-titan .aplic__contador { font-size: 11px; color: var(--texto-fraco); letter-spacing: 0.08em; }
 
-  #aplicacao-titan .aplic__palco { padding: 18px 22px 6px; }
+  #aplicacao-titan .aplic__palco {
+    padding: 18px 22px 6px;
+    /* Altura mínima: sem isso o bloco encolhe e cresce a cada pergunta, e a
+       página inteira dá um pulo embaixo dele a cada resposta. */
+    min-height: 330px;
+  }
 
   #aplicacao-titan .aplic__pergunta {
     font-family: Georgia, "Times New Roman", serif;
