@@ -51,14 +51,21 @@
     --texto-fraco: #a7a7a2;
     --erro: #e5675c;
 
-    /* Embed: fundo é o da página, largura é a do container onde for colado. */
+    /*
+     * Embed: fundo é o da página, largura é a do container onde for colado.
+     *
+     * `display: block` de propósito, e não flex: dentro do Elementor o bloco
+     * cai em containers que já são flex, e um filho flex a mais bagunçava o
+     * alinhamento do resto da página.
+     */
     background: transparent;
     color: var(--texto);
     font-family: "Inter", "Helvetica Neue", Arial, sans-serif;
-    display: flex;
-    justify-content: center;
+    display: block;
     width: 100%;
+    max-width: 100%;
     padding: 0;
+    margin: 0;
     box-sizing: border-box;
   }
   #aplicacao-titan *,
@@ -420,6 +427,7 @@
 
     var pergunta = PERGUNTAS[estado.passo];
     palco.innerHTML = '';
+    setTimeout(avisarAltura, 0);
 
     var titulo = document.createElement('h2');
     titulo.className = 'aplic__pergunta';
@@ -551,6 +559,17 @@
     }
   });
 
+  /*
+   * Dentro de um iframe, o pai não sabe a altura do conteúdo — avisa a cada
+   * desenho pra a caixa acompanhar a pergunta (as de 6 opções são bem mais
+   * altas que as de 2). Ver o trecho do iframe em /codigo-do-formulario.html.
+   */
+  function avisarAltura() {
+    if (window.parent === window) return;
+    var altura = Math.ceil(document.getElementById('aplicacao-titan').getBoundingClientRect().height) + 8;
+    window.parent.postMessage({ tipo: 'aplicacao-titan-altura', altura: altura }, '*');
+  }
+
   botaoAvancar.addEventListener('click', avancar);
   botaoVoltar.addEventListener('click', voltar);
 
@@ -559,5 +578,7 @@
     if (memoria.respostas) estado.respostas = memoria.respostas;
   } catch (e) {}
   desenhar();
+  avisarAltura();
+  window.addEventListener('resize', avisarAltura);
 })();
 </script>
