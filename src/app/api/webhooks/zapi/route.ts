@@ -4,6 +4,7 @@ import { integrations } from '@/lib/schema'
 import { eq, and, isNull } from 'drizzle-orm'
 import { processZapiMessage, logZapiDiagnostico } from '@/lib/zapiInbound'
 import { ZAPI_INTEGRATION_TYPE } from '@/lib/zapi'
+import { publishEvent, channels, events } from '@/lib/realtime'
 
 /**
  * Webhook único da Z-API.
@@ -45,6 +46,7 @@ export async function POST(req: NextRequest) {
     }
     if (body.type === 'DisconnectedCallback' || body.disconnected === true) {
       await marcarStatus(orgId, 'disabled')
+      await ligarAvisoDeDesconexao(orgId)
       return NextResponse.json({ ok: true, evento: 'desconectado' })
     }
 
@@ -86,6 +88,38 @@ async function marcarStatus(orgId: string, status: 'active' | 'disabled') {
       ))
   } catch (err) {
     console.error('[zapi webhook] falha ao atualizar status da integração', err)
+  }
+}
+
+/**
+ * Liga o aviso fixo "INSTÂNCIA DESCONECTADA!" em cima do chat. Fica em
+ * `integrations.config` (não em `status`, que já reflete conectado/desconectado
+ * sozinho) porque precisa sobreviver a uma reconexão automática — só um humano
+ * fechando o aviso (PUT .../zapi ação "fechar_aviso") desliga.
+ */
+async function ligarAvisoDeDesconexao(orgId: string) {
+  try {
+    const [integration] = await db
+      .select({ id: integrations.id, config: integrations.config })
+      .from(integrations)
+      .where(and(
+        eq(integrations.organizationId, orgId),
+        eq(integrations.type, ZAPI_INTEGRATION_TYPE),
+        isNull(integrations.deletedAt)
+      ))
+      .limit(1)
+    if (!integration) return
+
+    await db.update(integrations)
+      .set({
+        config: { ...((integration.config as object) || {}), disconnectAlertActive: true, disconnectedAt: new Date().toISOString() },
+        updatedAt: new Date(),
+      })
+      .where(eq(integrations.id, integration.id))
+
+    await publishEvent(channels.orgLeads(orgId), events.INTEGRATION_DISCONNECT_ALERT, { active: true })
+  } catch (err) {
+    console.error('[zapi webhook] falha ao ligar aviso de desconexão', err)
   }
 }
 

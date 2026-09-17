@@ -86,4 +86,12 @@ export const events = {
   MEMBER_UPDATED: 'member.updated',
   PIN_CREATED: 'pin.created',
   PIN_DELETED: 'pin.deleted',
+  /**
+   * Instância de WhatsApp (Z-API) caiu — dispara o aviso fixo em cima do chat.
+   * Fica ligado até um humano fechar (ver PUT /api/integrations/zapi ação
+   * "fechar_aviso"), mesmo que a instância já tenha reconectado sozinha —
+   * ninguém detectou a queda de hoje até um lead reclamar, então reconectar
+   * sozinho não é motivo pra sumir o aviso sem alguém confirmar que viu.
+   */
+  INTEGRATION_DISCONNECT_ALERT: 'integration.disconnect_alert',
 }

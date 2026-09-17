@@ -25,6 +25,7 @@ import {
   updateZapiWebhooks,
   disconnectZapi,
 } from '@/lib/zapi'
+import { publishEvent, channels, events } from '@/lib/realtime'
 
 async function assertManageIntegrations(auth: Awaited<ReturnType<typeof authenticateRequest>>) {
   if (auth.isSuperAdmin || !auth.memberId || !auth.roleId) return
@@ -87,6 +88,7 @@ export async function GET(req: NextRequest) {
       status: integration.status,
       instance_id: (integration.config as any)?.instance_id ?? null,
       aviso_resposta_grupo: (integration.config as any)?.aviso_resposta_grupo ?? null,
+      alerta_desconexao: !!(integration.config as any)?.disconnectAlertActive,
       grupos,
       // Só diz se existe; o valor nunca volta pro navegador.
       tem_instance_token: !!secret.instance_token,
@@ -178,9 +180,14 @@ export async function POST(req: NextRequest) {
 export async function PUT(req: NextRequest) {
   try {
     const auth = await authenticateRequest(req)
-    await assertManageIntegrations(auth)
     const body = await req.json().catch(() => ({}))
     const acao = String(body?.acao || '')
+
+    // "fechar_aviso" é só um "vi isso" no aviso de instância desconectada —
+    // qualquer membro autenticado pode fechar, não só quem gerencia
+    // integrações (é quem está no chat vendo o aviso, não necessariamente
+    // quem tem essa permissão). As outras ações desta rota continuam restritas.
+    if (acao !== 'fechar_aviso') await assertManageIntegrations(auth)
 
     if (acao === 'qrcode') {
       const valor = await fetchZapiQrCode(auth.organizationId)
@@ -215,7 +222,20 @@ export async function PUT(req: NextRequest) {
       return Response.json({ ok: true, resultado })
     }
 
-    return apiError(400, `Ação desconhecida: "${acao}". Use qrcode, webhooks ou desconectar.`)
+    if (acao === 'fechar_aviso') {
+      const integ = await buscarIntegracao(auth.organizationId)
+      if (!integ) return apiError(400, 'Integração Z-API não configurada.')
+      const config = { ...((integ.config as object) || {}) } as Record<string, unknown>
+      delete config.disconnectAlertActive
+      delete config.disconnectedAt
+      await db.update(integrations)
+        .set({ config, updatedAt: new Date() })
+        .where(and(eq(integrations.id, integ.id), eq(integrations.organizationId, auth.organizationId)))
+      await publishEvent(channels.orgLeads(auth.organizationId), events.INTEGRATION_DISCONNECT_ALERT, { active: false })
+      return Response.json({ ok: true })
+    }
+
+    return apiError(400, `Ação desconhecida: "${acao}". Use qrcode, webhooks, aviso, desconectar ou fechar_aviso.`)
   } catch (err: any) {
     return apiError(err.status || 500, err.message || 'Erro interno.')
   }
