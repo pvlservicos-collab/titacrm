@@ -3,7 +3,7 @@ import {
   leads, leadActivities, messageFunnels, funnelBlocks, funnelConnections,
   funnelExecutions, funnelClickEvents, funnelResponseEvents, leadStageHistory,
 } from '@/lib/schema'
-import { eq, and, lte, sql } from 'drizzle-orm'
+import { eq, and, lte, asc, sql } from 'drizzle-orm'
 import { publishEvent, channels, events } from '@/lib/realtime'
 import { getAutomationAdapter } from '@/lib/channels/registry'
 import { randomBytes } from 'crypto'
@@ -37,6 +37,19 @@ function waitMs(value: number, unit: string) {
     days: 24 * 60 * 60 * 1000,
   }
   return value * (factor[unit] || factor.minutes)
+}
+
+/**
+ * Atraso aleatório (2-30 min) entre uma mensagem automática e a próxima.
+ *
+ * O tick roda todo minuto e processa TODA espera vencida na hora — normal
+ * quando cada lead vence em um minuto diferente, mas depois de um problema
+ * (Z-API caiu, cron parou, etc.) várias esperas vencem juntas, e sem isso todo
+ * mundo que tava na fila recebia a mensagem no mesmo minuto. Só a mais antiga
+ * da leva sai na hora; as outras ganham esse atraso, que espalha o resto.
+ */
+function atrasoDeFila(): number {
+  return (2 + Math.random() * 28) * 60 * 1000
 }
 
 async function getNextBlock(funnelId: string, sourceBlockId: string, branch: 'default' | 'yes' | 'no') {
@@ -414,12 +427,23 @@ export async function processTick() {
   const now = new Date()
   let processed = 0
 
-  // Esperas simples vencidas → segue para o próximo bloco
+  // Esperas simples vencidas → segue para o próximo bloco. Ordenada por
+  // vencimento: quem venceu primeiro sai primeiro, o resto de uma leva grande
+  // é espalhado (ver atrasoDeFila).
   const dueWaits = await db.select().from(funnelExecutions)
     .where(and(eq(funnelExecutions.status, 'waiting'), lte(funnelExecutions.waitUntil, now)))
+    .orderBy(asc(funnelExecutions.waitUntil))
 
-  for (const execution of dueWaits) {
+  for (let i = 0; i < dueWaits.length; i++) {
+    const execution = dueWaits[i]
     if (!execution.currentBlockId) continue
+
+    if (i > 0) {
+      await db.update(funnelExecutions)
+        .set({ waitUntil: new Date(Date.now() + atrasoDeFila()), updatedAt: new Date() })
+        .where(and(eq(funnelExecutions.id, execution.id), eq(funnelExecutions.status, 'waiting')))
+      continue
+    }
 
     /*
      * Reivindica a execução antes de mexer nela: só segue quem conseguir virar o
@@ -449,6 +473,12 @@ export async function processTick() {
   // Condições "Respondeu?" → checa se o lead respondeu desde a última mensagem
   const pendingConditions = await db.select().from(funnelExecutions)
     .where(eq(funnelExecutions.status, 'waiting_condition'))
+    .orderBy(asc(funnelExecutions.waitUntil))
+
+  // Só o ramo "não" (prazo esgotado, ver abaixo) manda mensagem — "sim" é
+  // reação a uma resposta que o próprio lead já mandou, sem rajada nenhuma pra
+  // espalhar. Mesmo espalhamento do loop de esperas, só nesse ramo.
+  let timeoutsLiberados = 0
 
   for (const execution of pendingConditions) {
     if (!execution.currentBlockId) continue
@@ -493,6 +523,14 @@ export async function processTick() {
       }
       processed++
     } else if (execution.waitUntil && execution.waitUntil <= now) {
+      if (timeoutsLiberados > 0) {
+        await db.update(funnelExecutions)
+          .set({ waitUntil: new Date(Date.now() + atrasoDeFila()), updatedAt: new Date() })
+          .where(and(eq(funnelExecutions.id, execution.id), eq(funnelExecutions.status, 'waiting_condition')))
+        continue
+      }
+      timeoutsLiberados++
+
       await db.insert(funnelResponseEvents).values({ executionId: execution.id, blockId: execution.currentBlockId, branch: 'no' })
       const next = await getNextBlock(execution.funnelId, execution.currentBlockId, 'no')
       if (!next) {
