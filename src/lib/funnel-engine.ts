@@ -95,13 +95,39 @@ async function renderMessage(text: string, opts: { leadTitle: string; executionI
   return rendered
 }
 
-async function sendMessageBlock(execution: { id: string; funnelId: string; organizationId: string; leadId: string; context?: any }, block: { id: string; config: any }) {
+async function sendMessageBlock(
+  execution: { id: string; funnelId: string; organizationId: string; leadId: string; context?: any },
+  block: { id: string; config: any }
+): Promise<{ variante: string | null } | undefined> {
   const [lead] = await db.select({ id: leads.id, title: leads.title, phone: leads.phone })
     .from(leads).where(eq(leads.id, execution.leadId)).limit(1)
   if (!lead) return
 
-  const config = block.config as { text?: string; trackableUrl?: string }
-  const content = await renderMessage(config?.text || '', {
+  const config = block.config as {
+    text?: string
+    trackableUrl?: string
+    variantes?: { id: string; texto: string }[]
+  }
+
+  /*
+   * Teste A/B/C: o bloco pode ter várias versões da mesma mensagem.
+   *
+   * Uma é sorteada por lead, com peso igual, e fica gravada na própria
+   * mensagem (`metadata.variante`). É isso que depois permite dizer qual texto
+   * fez mais gente responder — sem isso só dava pra contar envios, e a pergunta
+   * "qual mensagem funciona melhor" continuaria sem resposta.
+   *
+   * Sorteio por lead, e não rodízio, de propósito: rodízio exige guardar de
+   * quem foi a vez e dá viés quando os disparos não chegam na mesma ordem em
+   * que os leads entram.
+   */
+  const variantes = Array.isArray(config?.variantes)
+    ? config.variantes.filter((v) => v && typeof v.texto === 'string' && v.texto.trim())
+    : []
+  const variante = variantes.length > 0 ? variantes[Math.floor(Math.random() * variantes.length)] : null
+  const textoDaMensagem = variante ? variante.texto : config?.text || ''
+
+  const content = await renderMessage(textoDaMensagem, {
     leadTitle: lead.title,
     executionId: execution.id,
     blockId: block.id,
@@ -116,6 +142,7 @@ async function sendMessageBlock(execution: { id: string; funnelId: string; organ
     funnel_id: execution.funnelId,
     execution_id: execution.id,
     block_id: block.id,
+    ...(variante ? { variante: variante.id } : {}),
   }
 
   if (!lead.phone) {
@@ -209,6 +236,8 @@ async function sendMessageBlock(execution: { id: string; funnelId: string; organ
 
   await publishEvent(channels.leadActivities(lead.id), events.ACTIVITY_CREATED, { id: activity.id })
   await publishEvent(channels.orgLeads(execution.organizationId), events.LEAD_UPDATED, { id: lead.id })
+
+  return { variante: variante ? variante.id : null }
 }
 
 /**
@@ -273,9 +302,13 @@ export async function advanceExecution(executionId: string) {
     }
 
     if (block.type === 'message') {
-      await sendMessageBlock(execution as any, block as any)
+      const enviada = await sendMessageBlock(execution as any, block as any)
       await db.update(funnelExecutions).set({
-        context: { ...(execution.context as object), lastMessageAt: new Date().toISOString() },
+        context: {
+          ...(execution.context as object),
+          lastMessageAt: new Date().toISOString(),
+          ...(enviada?.variante ? { variante: enviada.variante } : {}),
+        },
         updatedAt: new Date(),
       }).where(eq(funnelExecutions.id, executionId))
 
@@ -325,6 +358,25 @@ export async function advanceExecution(executionId: string) {
 
   // Excedeu o limite de passos (possível ciclo na configuração do funil)
   await db.update(funnelExecutions).set({ status: 'stopped', updatedAt: new Date() }).where(eq(funnelExecutions.id, executionId))
+}
+
+/**
+ * O lead terminou o formulário do fim da Agenda?
+ *
+ * Ver o uso em processTick (conditionType `formulario_agenda`).
+ */
+export async function preencheuFormularioDaAgenda(leadId: string): Promise<boolean> {
+  const [lead] = await db
+    .select({ customAttributes: leads.customAttributes })
+    .from(leads)
+    .where(eq(leads.id, leadId))
+    .limit(1)
+  if (!lead) return false
+  const atributos = (lead.customAttributes ?? {}) as Record<string, unknown>
+  return ['area', 'aumento', 'investimento'].some((campo) => {
+    const valor = atributos[campo]
+    return typeof valor === 'string' && valor.trim() !== ''
+  })
 }
 
 /**
@@ -408,7 +460,20 @@ export async function processTick() {
 
     // Verifica se a condição configurada já foi satisfeita
     let responded = false
-    if (conditionType === 'clique_pagina') {
+    if (conditionType === 'formulario_agenda') {
+      /*
+       * "A pessoa terminou o formulário do fim da Agenda?"
+       *
+       * O site da Agenda só manda área / aumento / investimento quando o CTA de
+       * 4 passos é concluído — então ter qualquer um deles preenchido É a
+       * confirmação de que ela se cadastrou. Enquanto não tiver, a execução
+       * segue esperando, e no fim do prazo cai no ramo "não" (a mensagem).
+       *
+       * É assim que o cancelamento acontece sozinho: quem preenche durante a
+       * espera sai pelo ramo "sim", que termina o fluxo sem enviar nada.
+       */
+      responded = await preencheuFormularioDaAgenda(execution.leadId)
+    } else if (conditionType === 'clique_pagina') {
       responded = !!context.viu_pagina || await hasClickedSince(execution.id)
     } else if (conditionType === 'pagamento') {
       responded = !!context.pagamento_confirmado

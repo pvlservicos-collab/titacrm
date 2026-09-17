@@ -54,7 +54,16 @@ export async function startFunnelForSource(
   const trigger = TRIGGER_BY_SOURCE[source]
   if (!trigger) return null
 
-  const [funnel] = await db
+  /*
+   * TODOS os funis ativos daquele gatilho, não só o primeiro.
+   *
+   * Um lead da Agenda hoje entra em dois: o de boas-vindas (manda a mensagem na
+   * hora) e o teste A/B/C de quem não terminou o formulário (espera 30 minutos
+   * e só manda se ainda faltar). Com `limit(1)` o segundo nunca rodava, e o
+   * motivo era invisível — o funil aparecia ativo no painel e simplesmente não
+   * acontecia nada.
+   */
+  const funis = await db
     .select({ id: messageFunnels.id })
     .from(messageFunnels)
     .where(and(
@@ -63,9 +72,18 @@ export async function startFunnelForSource(
       eq(messageFunnels.isActive, true),
       isNull(messageFunnels.deletedAt)
     ))
-    .limit(1)
 
-  if (!funnel) return null
+  if (funis.length === 0) return null
 
-  return startExecution(funnel.id, organizationId, leadId, { source })
+  let primeiraExecucao: string | null = null
+  for (const funil of funis) {
+    try {
+      const execucao = await startExecution(funil.id, organizationId, leadId, { source })
+      if (!primeiraExecucao) primeiraExecucao = execucao
+    } catch (err) {
+      // Um funil mal montado não pode impedir os outros de rodar.
+      console.error(`[funnel] falha ao iniciar o funil ${funil.id} para o lead ${leadId}:`, err)
+    }
+  }
+  return primeiraExecucao
 }

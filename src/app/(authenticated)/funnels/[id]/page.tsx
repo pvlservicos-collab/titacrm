@@ -2,7 +2,8 @@
 
 import { useEffect, useState, useCallback, useRef } from 'react'
 import { useParams, useRouter } from 'next/navigation'
-import { ArrowLeft, FloppyDisk, CheckCircle } from '@phosphor-icons/react'
+import { ArrowLeft, FloppyDisk, CheckCircle, ChartBar } from '@phosphor-icons/react'
+import MetricasDoFluxo from '@/components/Funnels/MetricasDoFluxo'
 import type { Edge } from '@xyflow/react'
 import FunnelEditor, { type FunnelBlockData, type StageOption } from '@/components/Funnels/FunnelEditor'
 import { useAuth, usePipeline } from '@/hooks'
@@ -30,6 +31,7 @@ export default function FunnelEditorPage() {
   const [edges, setEdges] = useState<Edge[]>([])
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
+  const [verMetricas, setVerMetricas] = useState(false)
 
   // Etapas do pipeline — alimentam o seletor do bloco "Mover de etapa".
   const { organizationId } = useAuth()
@@ -169,6 +171,16 @@ export default function FunnelEditorPage() {
             )}
           </label>
 
+          {/* Métricas do fluxo: envios e, principalmente, quem respondeu cada
+              versão da mensagem no teste A/B/C. */}
+          <button
+            onClick={() => setVerMetricas(true)}
+            className="flex items-center gap-1.5 text-sm font-semibold px-3 py-1.5 rounded-lg border border-line text-ink hover:bg-white/[0.06] transition-colors"
+          >
+            <ChartBar size={16} weight="bold" />
+            Métricas
+          </button>
+
           <button
             onClick={handleSave}
             disabled={saving}
@@ -182,6 +194,17 @@ export default function FunnelEditorPage() {
 
       <div className="flex-1 relative">
         <FunnelEditor initialNodes={nodes as any} initialEdges={edges} stages={stageOptions} funnelId={funnelId} onChange={handleFlowChange as any} />
+
+        {verMetricas && (
+          <MetricasDoFluxo
+            funnelId={funnelId}
+            rotuloDoBloco={(blockId) => {
+              const bloco = nodes.find((n: any) => n.id === blockId) as any
+              return bloco?.data?.label || bloco?.data?.config?.label || 'Mensagem'
+            }}
+            onClose={() => setVerMetricas(false)}
+          />
+        )}
       </div>
     </div>
   )

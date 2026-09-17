@@ -58,6 +58,10 @@ const CONDITION_TYPE_LABELS: Record<string, string> = {
   respondeu: 'Respondeu mensagem',
   clique_pagina: 'Clicou no link / viu a página',
   pagamento: 'Pagamento confirmado',
+  // A Agenda só manda área/aumento/investimento quando o formulário do fim é
+  // concluído — ter esses campos É a confirmação de cadastro. Usado pra não
+  // mandar mensagem de retomada pra quem já se cadastrou.
+  formulario_agenda: 'Preencheu o formulário do fim da agenda',
 }
 
 const TRIGGER_WEBHOOKS: Record<string, string> = {
@@ -435,19 +439,28 @@ function BlockEditorPanel({ node, stages, onChange, onDelete, onClose }: {
 
         {node.data.blockType === 'message' && (
           <>
-            <div>
-              <label className="block text-xs font-semibold text-muted uppercase tracking-wide mb-1.5">Texto da mensagem</label>
-              <textarea
-                value={config.text || ''}
-                onChange={(e) => onChange({ ...config, text: e.target.value })}
-                rows={6}
-                placeholder="Ex: Olá {nome}, tudo bem?"
-                className="w-full px-3 py-2 border border-line rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-accent resize-none"
-              />
-              <p className="text-[11px] text-muted mt-1">
-                Use <code className="bg-panel-2 px-1 rounded">{'{nome}'}</code> para o nome do lead e <code className="bg-panel-2 px-1 rounded">{'{link}'}</code> para o link rastreável.
-              </p>
-            </div>
+            {/*
+              Teste A/B/C: cada lead recebe UMA das versões, sorteada, e o CRM
+              guarda qual foi. Em "Métricas" dá pra ver qual delas fez mais
+              gente responder. Sem versões, vale o texto único abaixo.
+            */}
+            <TesteDeMensagens config={config} onChange={onChange} />
+
+            {(!Array.isArray(config.variantes) || config.variantes.length === 0) && (
+              <div>
+                <label className="block text-xs font-semibold text-muted uppercase tracking-wide mb-1.5">Texto da mensagem</label>
+                <textarea
+                  value={config.text || ''}
+                  onChange={(e) => onChange({ ...config, text: e.target.value })}
+                  rows={6}
+                  placeholder="Ex: Olá {nome}, tudo bem?"
+                  className="w-full px-3 py-2 border border-line rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-accent resize-none"
+                />
+                <p className="text-[11px] text-muted mt-1">
+                  Use <code className="bg-panel-2 px-1 rounded">{'{nome}'}</code> para o nome do lead e <code className="bg-panel-2 px-1 rounded">{'{link}'}</code> para o link rastreável.
+                </p>
+              </div>
+            )}
             <div>
               <label className="block text-xs font-semibold text-muted uppercase tracking-wide mb-1.5">Link rastreável (opcional)</label>
               <input
@@ -756,5 +769,101 @@ export default function FunnelEditor({
         )}
       </div>
     </ReactFlowProvider>
+  )
+}
+
+/**
+ * Teste A/B/C de um bloco de mensagem.
+ *
+ * Fica escondido até alguém ligar: a maioria dos blocos manda um texto só, e um
+ * editor de versões sempre à mostra transformaria o caso simples numa decisão.
+ *
+ * As letras (A, B, C) são o que aparece na tela de métricas, e vêm da POSIÇÃO —
+ * assim uma versão removida no meio do teste não faz os números de antes e de
+ * depois virarem a mesma linha com nomes trocados.
+ */
+function TesteDeMensagens({
+  config,
+  onChange,
+}: {
+  config: Record<string, any>
+  onChange: (config: Record<string, any>) => void
+}) {
+  const variantes: { id: string; texto: string }[] = Array.isArray(config.variantes) ? config.variantes : []
+  const ligado = variantes.length > 0
+  const LETRAS = ['A', 'B', 'C', 'D', 'E']
+
+  const salvar = (lista: { id: string; texto: string }[]) =>
+    onChange({ ...config, variantes: lista.map((v, i) => ({ ...v, id: LETRAS[i] || String(i + 1) })) })
+
+  return (
+    <div className="border border-line rounded-lg p-3">
+      <label className="flex items-start gap-2.5 cursor-pointer">
+        <input
+          type="checkbox"
+          checked={ligado}
+          onChange={(e) =>
+            e.target.checked
+              ? salvar([
+                  { id: 'A', texto: config.text || '' },
+                  { id: 'B', texto: '' },
+                ])
+              : onChange({ ...config, variantes: [], text: variantes[0]?.texto || config.text || '' })
+          }
+          className="mt-0.5 w-4 h-4 accent-[var(--blue)]"
+        />
+        <span className="min-w-0">
+          <span className="block text-xs font-bold text-ink uppercase tracking-wide">Testar versões (A/B/C)</span>
+          <span className="block text-[11px] text-muted leading-snug">
+            Cada lead recebe uma versão sorteada. Em Métricas dá pra ver qual faz mais gente responder.
+          </span>
+        </span>
+      </label>
+
+      {ligado && (
+        <div className="mt-3 space-y-3">
+          {variantes.map((v, i) => (
+            <div key={v.id || i}>
+              <div className="flex items-center justify-between mb-1">
+                <span className="text-xs font-bold text-accent-2">Versão {v.id || LETRAS[i]}</span>
+                {variantes.length > 2 && (
+                  <button
+                    type="button"
+                    onClick={() => salvar(variantes.filter((_, j) => j !== i))}
+                    className="text-[11px] text-muted hover:text-ink"
+                  >
+                    remover
+                  </button>
+                )}
+              </div>
+              <textarea
+                value={v.texto}
+                onChange={(e) =>
+                  salvar(variantes.map((outro, j) => (j === i ? { ...outro, texto: e.target.value } : outro)))
+                }
+                rows={5}
+                placeholder={'Ex: Oi {nome}! Vi que você parou no meio…'}
+                className="w-full px-3 py-2 border border-line rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-accent resize-none"
+              />
+            </div>
+          ))}
+
+          {variantes.length < 5 && (
+            <button
+              type="button"
+              onClick={() => salvar([...variantes, { id: '', texto: '' }])}
+              className="text-xs font-semibold text-accent-2 hover:underline"
+            >
+              + Acrescentar versão
+            </button>
+          )}
+
+          <p className="text-[11px] text-muted leading-snug">
+            Mude uma coisa por vez entre as versões (a abertura, a pergunta, o tamanho).
+            Mudando tudo de uma vez, o resultado não diz o que causou a diferença.
+          </p>
+        </div>
+      )}
+    </div>
   )
 }
