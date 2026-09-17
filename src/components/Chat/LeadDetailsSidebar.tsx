@@ -412,6 +412,19 @@ export default function LeadDetailsSidebar({
             )}
           </div>
 
+          {/* @usuário do Instagram, pequeno, embaixo do nome */}
+          {lead.custom_attributes?.instagram_username && (
+            <a
+              href={`https://instagram.com/${lead.custom_attributes.instagram_username}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-1 text-[11px] text-[var(--chat-text-muted)] hover:text-[var(--chat-accent)] hover:underline mb-2 -mt-2"
+            >
+              <InstagramLogo size={11} className="flex-shrink-0" />
+              @{lead.custom_attributes.instagram_username}
+            </a>
+          )}
+
           {(lead.is_group || lead.integration?.type === 'instagram_direct' || lead.integration?.type === 'whatsapp_evolution') && (
             <div className="flex items-center justify-center flex-wrap gap-1.5 mb-3">
               <LeadBadges lead={lead} size="md" />

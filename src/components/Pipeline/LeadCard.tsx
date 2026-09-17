@@ -4,7 +4,7 @@ import { memo, useCallback, useEffect, useRef } from 'react'
 
 import { useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
-import { Info, ShoppingBag } from '@phosphor-icons/react'
+import { Info, ShoppingBag, InstagramLogo } from '@phosphor-icons/react'
 import { LeadWithOwner } from '@/lib/types'
 import { formatPhone } from '@/lib/utils'
 import Avatar from '@/components/Shared/Avatar'
@@ -132,6 +132,15 @@ const LeadCard = ({ lead, isDragOverlay, stageColor, onClick, onInfoClick, isHig
             )}
           </div>
 
+          {/* @usuário do Instagram — só quando o lead veio de lá (ver custom_attributes
+              em src/app/api/webhooks/facebook/route.ts) */}
+          {lead.custom_attributes?.instagram_username && (
+            <div className="flex items-center gap-1 text-[11px] text-muted mb-1 truncate">
+              <InstagramLogo size={11} className="flex-shrink-0" />
+              <span className="truncate">@{lead.custom_attributes.instagram_username}</span>
+            </div>
+          )}
+
           {/* Last message row */}
           <div className="text-[12px] text-muted mb-2 truncate">
             {description}
@@ -184,6 +193,8 @@ export default memo(LeadCard, (prevProps, nextProps) => {
       nextProps.lead.custom_attributes?.last_order_products &&
     prevProps.lead.custom_attributes?.last_order_payment_status ===
       nextProps.lead.custom_attributes?.last_order_payment_status &&
+    prevProps.lead.custom_attributes?.instagram_username ===
+      nextProps.lead.custom_attributes?.instagram_username &&
     prevProps.isDragOverlay === nextProps.isDragOverlay &&
     prevProps.isHighlighted === nextProps.isHighlighted &&
     prevProps.stageColor === nextProps.stageColor &&
