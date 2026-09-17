@@ -40,7 +40,7 @@ function waitMs(value: number, unit: string) {
 }
 
 /**
- * Atraso aleatório (2-30 min) entre uma mensagem automática e a próxima.
+ * Atraso aleatório (20-30 min) entre uma mensagem automática e a próxima.
  *
  * O tick roda todo minuto e processa TODA espera vencida na hora — normal
  * quando cada lead vence em um minuto diferente, mas depois de um problema
@@ -49,7 +49,7 @@ function waitMs(value: number, unit: string) {
  * da leva sai na hora; as outras ganham esse atraso, que espalha o resto.
  */
 function atrasoDeFila(): number {
-  return (2 + Math.random() * 28) * 60 * 1000
+  return (20 + Math.random() * 10) * 60 * 1000
 }
 
 async function getNextBlock(funnelId: string, sourceBlockId: string, branch: 'default' | 'yes' | 'no') {
@@ -315,6 +315,21 @@ export async function advanceExecution(executionId: string) {
     }
 
     if (block.type === 'message') {
+      /*
+       * Se o lead já teve contato de verdade (respondeu, ou um humano já falou
+       * com ele) desde o último passo do funil, não manda a automática por
+       * cima — sobretudo depois de uma fila acumulada (Z-API caiu, tick
+       * atrasou), mandar "Recebemos sua aplicação!" horas depois de alguém já
+       * ter conversado com o lead fica robótico e fora de contexto. A execução
+       * encerra aqui, como se tivesse concluído normalmente.
+       */
+      const contextoAtual = (execution.context as any) || {}
+      const desde = contextoAtual.lastMessageAt ? new Date(contextoAtual.lastMessageAt) : execution.startedAt
+      if (await temContatoRealDesde(execution.leadId, desde as Date)) {
+        await db.update(funnelExecutions).set({ status: 'completed', updatedAt: new Date() }).where(eq(funnelExecutions.id, executionId))
+        return
+      }
+
       const enviada = await sendMessageBlock(execution as any, block as any)
       await db.update(funnelExecutions).set({
         context: {
@@ -579,6 +594,18 @@ async function hasRespondedSince(leadId: string, since: Date) {
     .where(and(
       eq(leadActivities.leadId, leadId),
       sql`${leadActivities.metadata}->>'direction' = 'inbound'`,
+      sql`${leadActivities.createdAt} > ${since.toISOString()}`,
+    ))
+    .limit(1)
+  return !!row
+}
+
+/** O lead respondeu, ou um humano da equipe já falou com ele, desde `since`? */
+async function temContatoRealDesde(leadId: string, since: Date) {
+  const [row] = await db.select({ id: leadActivities.id }).from(leadActivities)
+    .where(and(
+      eq(leadActivities.leadId, leadId),
+      sql`(${leadActivities.metadata}->>'direction' = 'inbound' OR ${leadActivities.metadata}->>'source' = 'human')`,
       sql`${leadActivities.createdAt} > ${since.toISOString()}`,
     ))
     .limit(1)
