@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { integrations } from '@/lib/schema'
-import { eq, and, isNull } from 'drizzle-orm'
+import { eq, and, isNull, sql } from 'drizzle-orm'
 import { processZapiMessage, logZapiDiagnostico } from '@/lib/zapiInbound'
 import { ZAPI_INTEGRATION_TYPE } from '@/lib/zapi'
 import { publishEvent, channels, events } from '@/lib/realtime'
@@ -96,30 +96,38 @@ async function marcarStatus(orgId: string, status: 'active' | 'disabled') {
  * `integrations.config` (não em `status`, que já reflete conectado/desconectado
  * sozinho) porque precisa sobreviver a uma reconexão automática — só um humano
  * fechando o aviso (PUT .../zapi ação "fechar_aviso") desliga.
+ *
+ * UPDATE só, com merge de jsonb direto no Postgres (`config || '{...}'`) — não
+ * faz o SELECT-então-UPDATE que tinha antes. Foram dois round-trips separados
+ * pro banco pra uma única gravação; a primeira vez que isso rodou em produção,
+ * o status desconectado gravou (marcarStatus, uma query só) mas o aviso não
+ * (essa função, que dependia de duas em sequência) — sem log de erro nenhum,
+ * o que só reforça o problema: alguma das duas falhou ali no meio e o catch
+ * escondeu qual. Uma query atômica fecha essa lacuna específica; o log virou
+ * console.error(err.message) pra próxima vez não ficar sem pista nenhuma.
  */
 async function ligarAvisoDeDesconexao(orgId: string) {
   try {
-    const [integration] = await db
-      .select({ id: integrations.id, config: integrations.config })
-      .from(integrations)
+    const resultado = await db.update(integrations)
+      .set({
+        config: sql`COALESCE(${integrations.config}, '{}'::jsonb) || jsonb_build_object('disconnectAlertActive', true, 'disconnectedAt', ${new Date().toISOString()}::text)`,
+        updatedAt: new Date(),
+      })
       .where(and(
         eq(integrations.organizationId, orgId),
         eq(integrations.type, ZAPI_INTEGRATION_TYPE),
         isNull(integrations.deletedAt)
       ))
-      .limit(1)
-    if (!integration) return
+      .returning({ id: integrations.id })
 
-    await db.update(integrations)
-      .set({
-        config: { ...((integration.config as object) || {}), disconnectAlertActive: true, disconnectedAt: new Date().toISOString() },
-        updatedAt: new Date(),
-      })
-      .where(eq(integrations.id, integration.id))
+    if (resultado.length === 0) {
+      console.error(`[zapi webhook] aviso de desconexão: nenhuma integração Z-API encontrada pra org ${orgId}`)
+      return
+    }
 
     await publishEvent(channels.orgLeads(orgId), events.INTEGRATION_DISCONNECT_ALERT, { active: true })
-  } catch (err) {
-    console.error('[zapi webhook] falha ao ligar aviso de desconexão', err)
+  } catch (err: any) {
+    console.error('[zapi webhook] falha ao ligar aviso de desconexão:', err?.message || err)
   }
 }
 
