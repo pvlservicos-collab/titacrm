@@ -20,7 +20,7 @@
  * procrastinação. Sem checar isso, todo mundo que não respondeu receberia a
  * mensagem III comentando uma agenda que nunca preencheu.
  */
-import { quizNaoRespondido } from '@/lib/agenda'
+import { AGENDA_A1_PADROES, quizNaoRespondido } from '@/lib/agenda'
 
 export type IdMensagemAgenda = 'I' | 'II' | 'III' | 'IV' | 'V' | 'VI'
 
@@ -84,8 +84,11 @@ export const REGRAS_AGENDA: Regra[] = [
     // preencheu é o tipo de erro que entrega a automação. Intacto no padrão
     // conta como "não respondeu" só aqui; os outros padrões nem chegam perto
     // dos limites.
+    // Vale pra qualquer padrão que o site já usou (o de hoje, 1h + 1h30, nem
+    // chega a 3h; o antigo, 1h30 + 1h30, chegava).
     encaixa: (a1) =>
-      num(a1.vazAM) + num(a1.vazPM) >= 180 && !(num(a1.vazAM) === 90 && num(a1.vazPM) === 90),
+      num(a1.vazAM) + num(a1.vazPM) >= 180 &&
+      !AGENDA_A1_PADROES.some((p) => num(a1.vazAM) === num(p.vazAM) && num(a1.vazPM) === num(p.vazPM)),
     // O número é o que a pessoa preencheu — "4h" fixo mentiria pra quem pôs 3h.
     texto: (a1) =>
       ABERTURA + `notamos que você preencheu ${horas(num(a1.vazAM) + num(a1.vazPM))} de procrastinação diária.` + AJUDA +

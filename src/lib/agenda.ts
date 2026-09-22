@@ -115,8 +115,23 @@ export const AGENDA_A1_PADRAO: Record<string, unknown> = {
   train: true, trainDays: [0, 2, 4], trainT: '18:30', trainD: 60, trainCom: 15,
   ppl: true, pplWkDays: [0, 1, 2, 3, 4], pplWkT: '20:00', pplWkD: 180,
   pplWeDays: [5, 6], pplWeT: '11:00', pplWeD: 420,
-  vazAM: 90, vazAMp: 'começo', vazPM: 90, vazPMp: 'começo',
+  // Procrastinação da manhã: 1h (era 1h30 até 22/09/2026 — ver o padrão anterior abaixo).
+  vazAM: 60, vazAMp: 'começo', vazPM: 90, vazPMp: 'começo',
 }
+
+/**
+ * Todos os padrões que o site já usou, do atual pro mais antigo.
+ *
+ * O cadastro antigo continua chegando (reenvio, ressincronização) com o padrão
+ * da época dele. Comparar só com o atual faria quem nunca respondeu, antes da
+ * mudança, passar a parecer que respondeu — e receber mensagem "personalizada"
+ * sobre valores de fábrica. Mudou o padrão no site: acrescenta aqui, não troca.
+ */
+export const AGENDA_A1_PADROES: Record<string, unknown>[] = [
+  AGENDA_A1_PADRAO,
+  // Até 22/09/2026: manhã com 1h30 de procrastinação.
+  { ...AGENDA_A1_PADRAO, vazAM: 90 },
+]
 
 /**
  * As respostas são só o padrão do site — a pessoa não respondeu ao questionário.
@@ -130,8 +145,8 @@ export const AGENDA_A1_PADRAO: Record<string, unknown> = {
 export function quizNaoRespondido(a1: Record<string, any> | null | undefined, phase?: string | null): boolean {
   if (!a1 || typeof a1 !== 'object') return false
   if (phase === 'done') return false
-  return Object.entries(AGENDA_A1_PADRAO).every(
-    ([chave, valor]) => JSON.stringify(a1[chave]) === JSON.stringify(valor)
+  return AGENDA_A1_PADROES.some((padrao) =>
+    Object.entries(padrao).every(([chave, valor]) => JSON.stringify(a1[chave]) === JSON.stringify(valor))
   )
 }
 
