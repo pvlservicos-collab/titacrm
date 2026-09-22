@@ -28,6 +28,7 @@ interface EstadoIntegracao {
   instancia_erro: string | null
   aviso_resposta_grupo: string | null
   aviso_formulario_grupo: string | null
+  relatorio_diario_grupo: string | null
   grupos: { id: string; nome: string | null }[]
 }
 
@@ -88,7 +89,7 @@ export default function ZapiPage() {
     }
   }
 
-  async function definirAviso(grupo: string | null, tipo: 'resposta' | 'formulario' = 'resposta') {
+  async function definirAviso(grupo: string | null, tipo: 'resposta' | 'formulario' | 'relatorio' = 'resposta') {
     try {
       const res = await fetch('/api/integrations/zapi', {
         method: 'PUT',
@@ -351,6 +352,26 @@ export default function ZapiPage() {
         <select
           value={estado?.aviso_formulario_grupo || ''}
           onChange={(e) => definirAviso(e.target.value || null, 'formulario')}
+          disabled={!temCredenciais}
+          className="field max-w-sm disabled:opacity-40"
+        >
+          <option value="">Desligado</option>
+          {(estado?.grupos || []).map((g) => (
+            <option key={g.id} value={g.id}>{g.nome || g.id}</option>
+          ))}
+        </select>
+      </div>
+
+      {/* Relatório diário às 23h */}
+      <div className="bg-panel border rounded-xl p-6 mb-6">
+        <h2 className="font-bold text-ink mb-1">Relatório diário às 23h</h2>
+        <p className="text-sm text-muted mb-4">
+          Todo dia às 23h sai no grupo o resumo do dia (das 23h de ontem às 23h de hoje): site,
+          agenda, quem entrou no pipeline, automação, atendimento humano, calls e vendas.
+        </p>
+        <select
+          value={estado?.relatorio_diario_grupo || ''}
+          onChange={(e) => definirAviso(e.target.value || null, 'relatorio')}
           disabled={!temCredenciais}
           className="field max-w-sm disabled:opacity-40"
         >

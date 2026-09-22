@@ -24,6 +24,7 @@ export function middleware(req: NextRequest) {
     // configurado no projeto) — sem isso na lista, toda chamada do cron caía no redirect
     // de login e a reconciliação nunca rodou de verdade desde que foi criada (13/07).
     '/api/cron/evolution-reconcile',
+    '/api/cron/relatorio-diario',
     // Manifest/service worker/ícones do PWA: o navegador busca isso sem sessão
     // (checagem de instalabilidade), então não pode cair no redirect de login.
     '/manifest.webmanifest', '/sw.js', '/icons/',
