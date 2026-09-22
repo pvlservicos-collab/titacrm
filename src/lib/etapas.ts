@@ -21,13 +21,18 @@
 import { and, eq, ilike, isNull } from 'drizzle-orm'
 import { db } from '@/lib/db'
 import { leads, pipelineStages } from '@/lib/schema'
+import {
+  ETAPA_CONTACTADO_IA,
+  ETAPA_LEAD_RESPONDEU,
+  ETAPA_ATENDIMENTO_HUMANO,
+} from '@/lib/etapasNomes'
 
-export const ETAPA_CONTACTADO_IA = 'Contactado por IA'
-export const ETAPA_LEAD_RESPONDEU = 'Lead respondeu IA'
-export const ETAPA_ATENDIMENTO_HUMANO = 'Atendimento por humano'
-
-/** Ordem da jornada: mover só avança, nunca puxa o lead pra trás. */
-const ORDEM = [ETAPA_CONTACTADO_IA, ETAPA_LEAD_RESPONDEU, ETAPA_ATENDIMENTO_HUMANO]
+export {
+  ETAPA_CONTACTADO_IA,
+  ETAPA_LEAD_RESPONDEU,
+  ETAPA_ATENDIMENTO_HUMANO,
+  ORDEM_DA_JORNADA,
+} from '@/lib/etapasNomes'
 
 /** Etapa pelo nome (o nome é editável no painel; id fixo aqui seria frágil). */
 export async function acharEtapaPorNome(organizationId: string, nome: string) {
@@ -85,5 +90,3 @@ export const avancarJornada = {
   leadRespondeu: (org: string, leadId: string) => moverParaEtapa(org, leadId, ETAPA_LEAD_RESPONDEU),
   humanoRespondeu: (org: string, leadId: string) => moverParaEtapa(org, leadId, ETAPA_ATENDIMENTO_HUMANO),
 }
-
-export { ORDEM as ORDEM_DA_JORNADA }
