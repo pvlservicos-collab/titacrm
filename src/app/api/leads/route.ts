@@ -73,6 +73,10 @@ export async function GET(req: NextRequest) {
       .select({
         lead: leads,
         integrationType: integrations.type,
+        // id e nome também: no Kanban a COR do card é a linha de WhatsApp, e é
+        // o nome cadastrado no painel que decide rótulo e cor (linhasWhatsapp.ts).
+        integrationId: integrations.id,
+        integrationName: integrations.name,
         ownerMemberIdJoin: organizationMembers.id,
         ownerFullName: profiles.fullName,
         ownerAvatarUrl: profiles.avatarUrl,
@@ -159,7 +163,9 @@ export async function GET(req: NextRequest) {
         em_atendimento_humano: r.lead.isGroup ? false : atendimento[r.lead.id]?.humano ?? false,
       }),
       lead_tags: tagsMap[r.lead.id] || [],
-      integration: r.integrationType ? ({ type: r.integrationType } as Integration) : undefined,
+      integration: r.integrationType
+        ? ({ id: r.integrationId, name: r.integrationName, type: r.integrationType } as Integration)
+        : undefined,
       owner: r.ownerMemberIdJoin
         ? { id: r.ownerMemberIdJoin, profiles: { full_name: r.ownerFullName || '', avatar_url: r.ownerAvatarUrl || undefined } }
         : undefined,

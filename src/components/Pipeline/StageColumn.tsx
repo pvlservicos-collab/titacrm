@@ -5,6 +5,8 @@ import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable'
 import { PipelineStage, LeadWithOwner, StageGoal } from '@/lib/types'
 import { useOrganizationMembers } from '@/hooks'
 import { montarAtendentes, atendenteDaConversa, type Atendente } from '@/lib/atendentes'
+import { montarLinhas, linhaDoLead, SEM_LINHA, type LinhaWhatsapp } from '@/lib/linhasWhatsapp'
+import { useLinhasDeWhatsapp } from '@/hooks/useLinhasDeWhatsapp'
 import { ETAPA_ATENDIMENTO_HUMANO } from '@/lib/etapasNomes'
 import { getStageColor } from '@/lib/stageColors'
 import LeadCard from './LeadCard'
@@ -49,31 +51,45 @@ export default function StageColumn({
    * pessoa; clicar de novo mostra todos.
    */
   const ehColunaDeAtendimento = stage.name?.toLowerCase() === ETAPA_ATENDIMENTO_HUMANO.toLowerCase()
-  const { members } = useOrganizationMembers(ehColunaDeAtendimento ? organizationId : '')
-  const atendentes = useMemo(() => (ehColunaDeAtendimento ? montarAtendentes(members) : []), [members, ehColunaDeAtendimento])
+  const { members } = useOrganizationMembers(organizationId)
+  const { linhas: integracoes } = useLinhasDeWhatsapp(ehColunaDeAtendimento ? organizationId : '')
+
   const atendentePorId = useMemo(() => {
     const mapa: Record<string, Atendente> = {}
-    for (const a of atendentes) mapa[a.id] = a
+    for (const a of montarAtendentes(members)) mapa[a.id] = a
     return mapa
-  }, [atendentes])
-  const [filtroAtendente, setFiltroAtendente] = useState<string | null>(null)
+  }, [members])
 
-  /** Quem atende cada lead desta coluna — pinta o card e alimenta as etiquetas. */
+  const linhas = useMemo(() => montarLinhas(integracoes), [integracoes])
+  const linhaPorId = useMemo(() => {
+    const mapa: Record<string, LinhaWhatsapp> = {}
+    for (const l of linhas) mapa[l.id] = l
+    return mapa
+  }, [linhas])
+  const [filtroLinha, setFiltroLinha] = useState<string | null>(null)
+
+  /** Quem assumiu cada conversa — etiqueta dentro do card, em toda etapa. */
   const atendentePorLead = useMemo(() => {
     const mapa: Record<string, Atendente | undefined> = {}
-    if (!ehColunaDeAtendimento) return mapa
     for (const lead of leads) mapa[lead.id] = atendenteDaConversa(lead.autores_manuais, atendentePorId)
     return mapa
-  }, [leads, atendentePorId, ehColunaDeAtendimento])
+  }, [leads, atendentePorId])
 
-  const quantosPorAtendente = useMemo(() => {
+  /** Por qual número cada conversa corre — é daqui que sai a cor da faixa. */
+  const linhaPorLead = useMemo(() => {
+    const mapa: Record<string, LinhaWhatsapp> = {}
+    for (const lead of leads) mapa[lead.id] = linhaDoLead(lead.integration?.id, linhaPorId)
+    return mapa
+  }, [leads, linhaPorId])
+
+  const quantosPorLinha = useMemo(() => {
     const conta: Record<string, number> = {}
     for (const lead of leads) {
-      const a = atendentePorLead[lead.id]
-      if (a) conta[a.id] = (conta[a.id] ?? 0) + 1
+      const l = linhaPorLead[lead.id]
+      if (l && l.id !== SEM_LINHA.id) conta[l.id] = (conta[l.id] ?? 0) + 1
     }
     return conta
-  }, [leads, atendentePorLead])
+  }, [leads, linhaPorLead])
   const fallbackColor = getStageColor(stage.rank)
   const stageColor = stage.color || fallbackColor.bar
 
@@ -110,9 +126,9 @@ export default function StageColumn({
   }, [])
 
   // Slice leads to respect the per-stage display limit
-  // A etiqueta acesa deixa na coluna só os cards daquela pessoa.
-  const leadsVisiveisNaColuna = filtroAtendente
-    ? leads.filter((l) => atendentePorLead[l.id]?.id === filtroAtendente)
+  // A etiqueta acesa deixa na coluna só os cards daquele número.
+  const leadsVisiveisNaColuna = filtroLinha
+    ? leads.filter((l) => linhaPorLead[l.id]?.id === filtroLinha)
     : leads
   const visibleLeads = leadsVisiveisNaColuna.slice(0, displayLimit)
 
@@ -168,25 +184,37 @@ export default function StageColumn({
           />
         )}
 
-        {ehColunaDeAtendimento && atendentes.length > 0 && (
+        {/* Os NÚMEROS (linhas de WhatsApp). Linha ainda sem número conectado
+            aparece apagada: o menu já existe pra montar a operação antes de
+            plugar os aparelhos. */}
+        {ehColunaDeAtendimento && linhas.length > 0 && (
           <div className="flex flex-wrap items-center gap-1.5 mt-2">
-            {atendentes.map((a) => {
-              const ativo = filtroAtendente === a.id
-              const quantos = quantosPorAtendente[a.id] ?? 0
+            {linhas.map((linha) => {
+              const ativo = filtroLinha === linha.id
+              const quantos = quantosPorLinha[linha.id] ?? 0
               return (
                 <button
-                  key={a.id}
+                  key={linha.id}
                   type="button"
-                  onClick={() => setFiltroAtendente(ativo ? null : a.id)}
-                  title={ativo ? `Mostrando só os leads de ${a.nome}` : `Ver só os leads de ${a.nome}`}
-                  className="flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wide border transition-colors"
+                  disabled={!linha.conectada}
+                  onClick={() => setFiltroLinha(ativo ? null : linha.id)}
+                  title={
+                    linha.conectada
+                      ? ativo
+                        ? 'Mostrando só as conversas do ' + linha.rotulo
+                        : 'Ver só as conversas do ' + linha.rotulo
+                      : linha.rotulo + ': nenhum número conectado ainda'
+                  }
+                  className={`flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wide border transition-colors ${
+                    linha.conectada ? '' : 'opacity-40 cursor-not-allowed'
+                  }`}
                   style={
                     ativo
-                      ? { backgroundColor: a.cor, borderColor: a.cor, color: '#17140a' }
-                      : { backgroundColor: `${a.cor}14`, borderColor: `${a.cor}59`, color: a.cor }
+                      ? { backgroundColor: linha.cor, borderColor: linha.cor, color: '#17140a' }
+                      : { backgroundColor: linha.cor + '14', borderColor: linha.cor + '59', color: linha.cor }
                   }
                 >
-                  {a.nome}
+                  {linha.rotulo.replace('WhatsApp ', '')}
                   {quantos > 0 && (
                     <span className={`px-1 rounded-full text-[9px] ${ativo ? 'bg-black/20' : 'bg-white/10'}`}>
                       {quantos}
@@ -220,6 +248,7 @@ export default function StageColumn({
                 organizationId={organizationId}
                 stageColor={stageColor}
                 atendente={atendentePorLead[lead.id]}
+                linha={linhaPorLead[lead.id]?.id !== SEM_LINHA.id ? linhaPorLead[lead.id] : undefined}
                 isHighlighted={highlightedLeadId === lead.id}
                 onClick={onLeadClick ? () => onLeadClick(lead) : undefined}
                 onInfoClick={onLeadInfoClick ? () => onLeadInfoClick(lead) : undefined}

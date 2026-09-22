@@ -25,14 +25,21 @@ interface LeadCardProps {
   /**
    * Quem está atendendo este lead (Michele, Augusto, Cau).
    *
-   * Quando existe, a faixa do card ganha a cor da pessoa: numa coluna com
-   * dezenas de cards, "quais são os meus?" se responde de longe, sem abrir
-   * nada.
+   * Aparece como etiqueta embaixo do nome e segue o lead pelas etapas
+   * seguintes — quem assumiu a conversa continua sendo o dono dela depois da
+   * call, da proposta e do fechamento.
    */
   atendente?: { nome: string; cor: string }
+  /**
+   * A linha de WhatsApp por onde a conversa acontece (o número).
+   *
+   * É ela que dá a cor da faixa do card: olhando a coluna, dá pra ver por qual
+   * número cada conversa está correndo. Ver src/lib/linhasWhatsapp.ts.
+   */
+  linha?: { rotulo: string; cor: string }
 }
 
-const LeadCard = ({ lead, isDragOverlay, stageColor, onClick, onInfoClick, isHighlighted, atendente }: LeadCardProps) => {
+const LeadCard = ({ lead, isDragOverlay, stageColor, onClick, onInfoClick, isHighlighted, atendente, linha }: LeadCardProps) => {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: lead.id,
   })
@@ -99,17 +106,18 @@ const LeadCard = ({ lead, isDragOverlay, stageColor, onClick, onInfoClick, isHig
         }
       `}
     >
-      {/* Faixa da esquerda: a cor de quem atende fica SEMPRE visível (é o que se
-          procura na coluna); sem atendente, a cor da etapa aparece só ao passar
-          o mouse, como era antes. */}
-      {!isDragOverlay && (atendente || stageColor) && (
+      {/* Faixa da esquerda: a cor é a LINHA de WhatsApp (o número) e fica sempre
+          visível. Sem linha definida, volta a ser a cor da etapa, que aparece só
+          ao passar o mouse — como era antes. */}
+      {!isDragOverlay && (linha || stageColor) && (
         <div
           className={`absolute left-0 top-0 bottom-0 w-1 transition-opacity duration-200 ${
-            atendente ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
+            linha ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
           }`}
+          title={linha?.rotulo}
           style={{
-            background: atendente
-              ? `linear-gradient(180deg, ${atendente.cor}, ${atendente.cor}55)`
+            background: linha
+              ? `linear-gradient(180deg, ${linha.cor}, ${linha.cor}55)`
               : `linear-gradient(180deg, ${stageColor}, ${stageColor}33)`,
           }}
         />
@@ -129,9 +137,27 @@ const LeadCard = ({ lead, isDragOverlay, stageColor, onClick, onInfoClick, isHig
         <div className="flex-1 min-w-0 flex flex-col pt-0.5">
           {/* Header row */}
           <div className="flex items-start justify-between mb-0.5">
-            <h4 className="font-semibold text-sm text-ink truncate pr-2">
-              {formatPhone(lead.title)}
-            </h4>
+            <div className="min-w-0 pr-2">
+              <h4 className="font-semibold text-sm text-ink truncate">
+                {formatPhone(lead.title)}
+              </h4>
+              {/* Quem assumiu a conversa. Fica logo embaixo do nome e segue o
+                  lead pelas etapas seguintes: depois da call e da proposta, a
+                  conversa continua sendo de quem começou. */}
+              {atendente && (
+                <span
+                  className="inline-flex items-center gap-1 mt-0.5 px-1.5 py-[1px] rounded-full text-[9px] font-bold uppercase tracking-wide border"
+                  style={{
+                    color: atendente.cor,
+                    backgroundColor: atendente.cor + '1F',
+                    borderColor: atendente.cor + '66',
+                  }}
+                  title={atendente.nome + ' está atendendo'}
+                >
+                  {atendente.nome}
+                </span>
+              )}
+            </div>
             {onInfoClick && !isDragOverlay && (
               <button
                 type="button"
@@ -203,6 +229,7 @@ const LeadCard = ({ lead, isDragOverlay, stageColor, onClick, onInfoClick, isHig
 
 export default memo(LeadCard, (prevProps, nextProps) => {
   if (prevProps.atendente?.nome !== nextProps.atendente?.nome) return false
+  if (prevProps.linha?.rotulo !== nextProps.linha?.rotulo) return false
   return (
     prevProps.lead.id === nextProps.lead.id &&
     prevProps.lead.updated_at === nextProps.lead.updated_at &&
