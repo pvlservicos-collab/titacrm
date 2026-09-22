@@ -22,9 +22,17 @@ interface LeadCardProps {
   onInfoClick?: () => void
   /** Pisca o card — usado ao clicar no minicard deste lead na coluna "Fonte:". */
   isHighlighted?: boolean
+  /**
+   * Quem está atendendo este lead (Michele, Augusto, Cau).
+   *
+   * Quando existe, a faixa do card ganha a cor da pessoa: numa coluna com
+   * dezenas de cards, "quais são os meus?" se responde de longe, sem abrir
+   * nada.
+   */
+  atendente?: { nome: string; cor: string }
 }
 
-const LeadCard = ({ lead, isDragOverlay, stageColor, onClick, onInfoClick, isHighlighted }: LeadCardProps) => {
+const LeadCard = ({ lead, isDragOverlay, stageColor, onClick, onInfoClick, isHighlighted, atendente }: LeadCardProps) => {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: lead.id,
   })
@@ -91,11 +99,19 @@ const LeadCard = ({ lead, isDragOverlay, stageColor, onClick, onInfoClick, isHig
         }
       `}
     >
-      {/* Left colored border on hover - 4px width */}
-      {!isDragOverlay && stageColor && (
+      {/* Faixa da esquerda: a cor de quem atende fica SEMPRE visível (é o que se
+          procura na coluna); sem atendente, a cor da etapa aparece só ao passar
+          o mouse, como era antes. */}
+      {!isDragOverlay && (atendente || stageColor) && (
         <div
-          className="absolute left-0 top-0 bottom-0 w-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200"
-          style={{ background: `linear-gradient(180deg, ${stageColor}, ${stageColor}33)` }}
+          className={`absolute left-0 top-0 bottom-0 w-1 transition-opacity duration-200 ${
+            atendente ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
+          }`}
+          style={{
+            background: atendente
+              ? `linear-gradient(180deg, ${atendente.cor}, ${atendente.cor}55)`
+              : `linear-gradient(180deg, ${stageColor}, ${stageColor}33)`,
+          }}
         />
       )}
 
@@ -186,6 +202,7 @@ const LeadCard = ({ lead, isDragOverlay, stageColor, onClick, onInfoClick, isHig
 }
 
 export default memo(LeadCard, (prevProps, nextProps) => {
+  if (prevProps.atendente?.nome !== nextProps.atendente?.nome) return false
   return (
     prevProps.lead.id === nextProps.lead.id &&
     prevProps.lead.updated_at === nextProps.lead.updated_at &&

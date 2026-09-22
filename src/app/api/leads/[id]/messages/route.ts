@@ -9,6 +9,7 @@ import { eq, and, isNull, desc, asc, ilike, sql } from 'drizzle-orm'
 import { getChannelAdapter } from '@/lib/channels/registry'
 import { integrations } from '@/lib/schema'
 import { isOrgAdmin } from '@/lib/admin-auth'
+import { ETAPA_ATENDIMENTO_HUMANO, acharEtapaPorNome } from '@/lib/etapas'
 import { isUniqueViolation } from '@/lib/db-helpers'
 
 const CHANNEL_LABELS: Record<string, string> = {
@@ -344,12 +345,21 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       }
     }
 
-    // Ao responder o lead, move a conversa para o pipeline "Em atendimento"
-    if (direction === 'outbound' && body.type === 'whatsapp') {
-      const [stage] = await db.select({ id: pipelineStages.id }).from(pipelineStages)
-        .where(and(eq(pipelineStages.organizationId, auth.organizationId), isNull(pipelineStages.deletedAt), ilike(pipelineStages.name, 'Em atendimento')))
-        .limit(1)
-      if (stage) updates.stageId = stage.id
+    /*
+     * Alguém do time respondeu → o lead entra em "Atendimento por humano".
+     *
+     * É AQUI que essa etapa se preenche, e só aqui. Antes o funil jogava todo
+     * lead nela assim que a mensagem automática saía (220 pessoas numa coluna
+     * que ninguém tinha atendido), e este trecho procurava uma etapa chamada
+     * "Em atendimento", que não existe — movia quem não devia e não movia quem
+     * devia.
+     *
+     * Só conta mensagem de gente: disparo de funil entra por outro caminho e
+     * não pode se passar por atendimento humano.
+     */
+    if (direction === 'outbound' && body.type === 'whatsapp' && body.source === 'human' && metadata.send_status !== 'failed') {
+      const etapa = await acharEtapaPorNome(auth.organizationId, ETAPA_ATENDIMENTO_HUMANO)
+      if (etapa) updates.stageId = etapa.id
     }
 
     await db.update(leads).set(updates).where(eq(leads.id, actualLeadId))

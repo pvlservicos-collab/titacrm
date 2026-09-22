@@ -1,5 +1,6 @@
 import { after } from 'next/server'
 import { db } from '@/lib/db'
+import { ETAPA_LEAD_RESPONDEU } from '@/lib/etapas'
 import { leads, leadActivities, integrations, pipelineStages, webhookLogs } from '@/lib/schema'
 import { eq, and, isNull, asc, ilike, inArray } from 'drizzle-orm'
 import { publishEvent, channels, events } from '@/lib/realtime'
@@ -413,7 +414,7 @@ export async function processZapiMessage(orgId: string, body: any): Promise<Zapi
       .where(and(
         eq(pipelineStages.organizationId, orgId),
         isNull(pipelineStages.deletedAt),
-        ilike(pipelineStages.name, 'Em atendimento')
+        ilike(pipelineStages.name, ETAPA_LEAD_RESPONDEU)
       ))
       .limit(1)
     if (stage) leadUpdates.stageId = stage.id

@@ -108,11 +108,12 @@ export async function GET(req: NextRequest) {
       }
     }
 
-    // Atendimento (etiqueta de quem está atendendo + aba "Humano"). Calculado das
-    // mensagens a cada leitura, nunca gravado — ver src/lib/atendentes.ts. Só na
-    // lista do Chat, que é a única tela que mostra.
+    // Atendimento (quem está atendendo). Calculado das mensagens a cada leitura,
+    // nunca gravado — ver src/lib/atendentes.ts. Vale no Chat (etiqueta e aba
+    // "Humano") e no Pipeline, onde pinta o card e filtra a coluna de
+    // atendimento humano pela pessoa.
     const atendimento: Record<string, { autores: string[]; humano: boolean }> = {}
-    if (scope === 'conversas' && leadIds.length > 0) {
+    if ((scope === 'conversas' || scope === 'funil') && leadIds.length > 0) {
       // Mensagem de robô (funil, automação, agente de IA) não é atendimento.
       const manual = sql`(
         a.metadata->>'direction' = 'outbound'
@@ -153,7 +154,7 @@ export async function GET(req: NextRequest) {
     const result = rows.map((r) => ({
       ...mapLead(r.lead),
       // Grupo não é atendimento de lead: fica fora das etiquetas e da aba Humano.
-      ...(scope === 'conversas' && {
+      ...((scope === 'conversas' || scope === 'funil') && {
         autores_manuais: r.lead.isGroup ? [] : atendimento[r.lead.id]?.autores ?? [],
         em_atendimento_humano: r.lead.isGroup ? false : atendimento[r.lead.id]?.humano ?? false,
       }),

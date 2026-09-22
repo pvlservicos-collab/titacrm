@@ -3,6 +3,9 @@
 import { useDroppable } from '@dnd-kit/core'
 import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable'
 import { PipelineStage, LeadWithOwner, StageGoal } from '@/lib/types'
+import { useOrganizationMembers } from '@/hooks'
+import { montarAtendentes, atendenteDaConversa, type Atendente } from '@/lib/atendentes'
+import { ETAPA_ATENDIMENTO_HUMANO } from '@/lib/etapas'
 import { getStageColor } from '@/lib/stageColors'
 import LeadCard from './LeadCard'
 import { useMemo, useRef, useState, useEffect } from 'react'
@@ -37,6 +40,40 @@ export default function StageColumn({
   highlightedLeadId,
 }: StageColumnProps) {
   const { setNodeRef } = useDroppable({ id: stage.id })
+
+  /*
+   * Etiquetas de quem atende, no topo da coluna de atendimento humano.
+   *
+   * Só nela: é a única etapa onde a pergunta "quais desses são meus?" existe.
+   * Clicar numa etiqueta acende ela e deixa na coluna só os cards daquela
+   * pessoa; clicar de novo mostra todos.
+   */
+  const ehColunaDeAtendimento = stage.name?.toLowerCase() === ETAPA_ATENDIMENTO_HUMANO.toLowerCase()
+  const { members } = useOrganizationMembers(ehColunaDeAtendimento ? organizationId : '')
+  const atendentes = useMemo(() => (ehColunaDeAtendimento ? montarAtendentes(members) : []), [members, ehColunaDeAtendimento])
+  const atendentePorId = useMemo(() => {
+    const mapa: Record<string, Atendente> = {}
+    for (const a of atendentes) mapa[a.id] = a
+    return mapa
+  }, [atendentes])
+  const [filtroAtendente, setFiltroAtendente] = useState<string | null>(null)
+
+  /** Quem atende cada lead desta coluna — pinta o card e alimenta as etiquetas. */
+  const atendentePorLead = useMemo(() => {
+    const mapa: Record<string, Atendente | undefined> = {}
+    if (!ehColunaDeAtendimento) return mapa
+    for (const lead of leads) mapa[lead.id] = atendenteDaConversa(lead.autores_manuais, atendentePorId)
+    return mapa
+  }, [leads, atendentePorId, ehColunaDeAtendimento])
+
+  const quantosPorAtendente = useMemo(() => {
+    const conta: Record<string, number> = {}
+    for (const lead of leads) {
+      const a = atendentePorLead[lead.id]
+      if (a) conta[a.id] = (conta[a.id] ?? 0) + 1
+    }
+    return conta
+  }, [leads, atendentePorLead])
   const fallbackColor = getStageColor(stage.rank)
   const stageColor = stage.color || fallbackColor.bar
 
@@ -73,7 +110,11 @@ export default function StageColumn({
   }, [])
 
   // Slice leads to respect the per-stage display limit
-  const visibleLeads = leads.slice(0, displayLimit)
+  // A etiqueta acesa deixa na coluna só os cards daquela pessoa.
+  const leadsVisiveisNaColuna = filtroAtendente
+    ? leads.filter((l) => atendentePorLead[l.id]?.id === filtroAtendente)
+    : leads
+  const visibleLeads = leadsVisiveisNaColuna.slice(0, displayLimit)
 
   // Memoize item ids to prevent SortableContext from infinite re-rendering
   const itemIds = useMemo(() => visibleLeads.map((l) => l.id), [visibleLeads])
@@ -126,6 +167,36 @@ export default function StageColumn({
             style={{ background: `linear-gradient(90deg, ${stageColor}55, ${stageColor}11)` }}
           />
         )}
+
+        {ehColunaDeAtendimento && atendentes.length > 0 && (
+          <div className="flex flex-wrap items-center gap-1.5 mt-2">
+            {atendentes.map((a) => {
+              const ativo = filtroAtendente === a.id
+              const quantos = quantosPorAtendente[a.id] ?? 0
+              return (
+                <button
+                  key={a.id}
+                  type="button"
+                  onClick={() => setFiltroAtendente(ativo ? null : a.id)}
+                  title={ativo ? `Mostrando só os leads de ${a.nome}` : `Ver só os leads de ${a.nome}`}
+                  className="flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wide border transition-colors"
+                  style={
+                    ativo
+                      ? { backgroundColor: a.cor, borderColor: a.cor, color: '#17140a' }
+                      : { backgroundColor: `${a.cor}14`, borderColor: `${a.cor}59`, color: a.cor }
+                  }
+                >
+                  {a.nome}
+                  {quantos > 0 && (
+                    <span className={`px-1 rounded-full text-[9px] ${ativo ? 'bg-black/20' : 'bg-white/10'}`}>
+                      {quantos}
+                    </span>
+                  )}
+                </button>
+              )
+            })}
+          </div>
+        )}
       </div>
 
       {/* Leads List */}
@@ -148,6 +219,7 @@ export default function StageColumn({
                 lead={lead}
                 organizationId={organizationId}
                 stageColor={stageColor}
+                atendente={atendentePorLead[lead.id]}
                 isHighlighted={highlightedLeadId === lead.id}
                 onClick={onLeadClick ? () => onLeadClick(lead) : undefined}
                 onInfoClick={onLeadInfoClick ? () => onLeadInfoClick(lead) : undefined}
