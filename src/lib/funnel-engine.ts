@@ -85,14 +85,33 @@ function primeiroNome(titulo: string | null | undefined): string {
   return primeiro.charAt(0).toLocaleUpperCase('pt-BR') + primeiro.slice(1).toLocaleLowerCase('pt-BR')
 }
 
-async function renderMessage(text: string, opts: { leadTitle: string; executionId: string; blockId: string; trackableUrl?: string; context?: Record<string, any> }) {
+async function renderMessage(text: string, opts: { leadTitle: string; executionId: string; blockId: string; trackableUrl?: string; context?: Record<string, any>; atributos?: Record<string, unknown> }) {
   const nome = primeiroNome(opts.leadTitle)
   let rendered = text
     // {nome_completo} existe pra quando o nome inteiro for mesmo o que se quer.
     .replace(/\{nome_completo\}/gi, (opts.leadTitle || '').trim())
     .replace(/\{nome\}/gi, nome)
-  // Sem nome, "Oi {nome}!" viraria "Oi !" — junta a pontuação de volta.
-  if (!nome) rendered = rendered.replace(/ +([!?,.])/g, '$1').replace(/ {2,}/g, ' ')
+
+  /*
+   * Qualquer outro campo do lead: {area}, {aumento}, {procrastinacao}, {sono}...
+   *
+   * Lido na hora do envio, não na entrada no funil — é pra isso que a Agenda
+   * espera 30 minutos antes de mandar: dá tempo de o formulário do fim chegar
+   * e a mensagem já sair com as respostas dele. {link} fica pro bloco abaixo.
+   *
+   * Campo que não veio vira vazio: mandar "{area}" literal pro cliente é pior
+   * do que uma frase sem o dado.
+   */
+  let faltouCampo = !nome
+  rendered = rendered.replace(/\{([a-z_][a-z0-9_]*)\}/gi, (marca, chave: string) => {
+    if (chave.toLowerCase() === 'link') return marca
+    const valor = opts.atributos?.[chave] ?? opts.atributos?.[chave.toLowerCase()]
+    if ((typeof valor === 'string' && valor.trim()) || typeof valor === 'number') return String(valor).trim()
+    faltouCampo = true
+    return ''
+  })
+  // Sem o dado, "Oi {nome}!" viraria "Oi !" — junta a pontuação de volta.
+  if (faltouCampo) rendered = rendered.replace(/ +([!?,.])/g, '$1').replace(/ {2,}/g, ' ')
 
   if (rendered.includes('{link}') && opts.trackableUrl) {
     const token = randomBytes(8).toString('hex')
@@ -112,7 +131,7 @@ async function sendMessageBlock(
   execution: { id: string; funnelId: string; organizationId: string; leadId: string; context?: any },
   block: { id: string; config: any }
 ): Promise<{ variante: string | null } | undefined> {
-  const [lead] = await db.select({ id: leads.id, title: leads.title, phone: leads.phone })
+  const [lead] = await db.select({ id: leads.id, title: leads.title, phone: leads.phone, customAttributes: leads.customAttributes })
     .from(leads).where(eq(leads.id, execution.leadId)).limit(1)
   if (!lead) return
 
@@ -146,6 +165,7 @@ async function sendMessageBlock(
     blockId: block.id,
     trackableUrl: config?.trackableUrl,
     context: execution.context,
+    atributos: (lead.customAttributes ?? {}) as Record<string, unknown>,
   })
 
   const metadata: Record<string, any> = {
