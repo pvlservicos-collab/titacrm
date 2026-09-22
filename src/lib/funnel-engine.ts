@@ -8,6 +8,7 @@ import { publishEvent, channels, events } from '@/lib/realtime'
 import { getAutomationAdapter } from '@/lib/channels/registry'
 import { randomBytes } from 'crypto'
 import { isUniqueViolation } from '@/lib/db-helpers'
+import { escolherMensagemDaAgenda } from '@/lib/mensagensAgenda'
 
 const MAX_STEPS_PER_RUN = 25
 
@@ -139,6 +140,8 @@ async function sendMessageBlock(
     text?: string
     trackableUrl?: string
     variantes?: { id: string; texto: string }[]
+    /** 'agenda' = escolhe entre as mensagens I–VI pela agenda do lead (mensagensAgenda.ts). */
+    personalizar?: string
   }
 
   /*
@@ -156,8 +159,16 @@ async function sendMessageBlock(
   const variantes = Array.isArray(config?.variantes)
     ? config.variantes.filter((v) => v && typeof v.texto === 'string' && v.texto.trim())
     : []
-  const variante = variantes.length > 0 ? variantes[Math.floor(Math.random() * variantes.length)] : null
-  const textoDaMensagem = variante ? variante.texto : config?.text || ''
+  /*
+   * Mensagem personalizada pela agenda (I a VI). Lida AGORA, depois da espera —
+   * é pra isso que o funil da Agenda espera 30 min: o quiz inteiro já chegou.
+   * Nada se encaixa (ou não respondeu o quiz) → a mensagem padrão do bloco.
+   */
+  const personalizada = config?.personalizar === 'agenda'
+    ? escolherMensagemDaAgenda(lead.customAttributes as Record<string, unknown> | null)
+    : null
+  const variante = !personalizada && variantes.length > 0 ? variantes[Math.floor(Math.random() * variantes.length)] : null
+  const textoDaMensagem = personalizada ? personalizada.texto : variante ? variante.texto : config?.text || ''
 
   const content = await renderMessage(textoDaMensagem, {
     leadTitle: lead.title,
@@ -176,6 +187,8 @@ async function sendMessageBlock(
     execution_id: execution.id,
     block_id: block.id,
     ...(variante ? { variante: variante.id } : {}),
+    // Qual das mensagens da Agenda saiu — 'padrao' quando nenhuma se encaixou.
+    ...(config?.personalizar === 'agenda' ? { mensagem_agenda: personalizada?.id ?? 'padrao' } : {}),
   }
 
   if (!lead.phone) {
