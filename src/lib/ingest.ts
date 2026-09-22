@@ -39,7 +39,7 @@ import {
   type NormalizedLead,
 } from '@/lib/leadSources'
 import { startFunnelForSource } from '@/lib/funnel-triggers'
-import { avisarGrupoFormularioConcluido, CAMPOS_FORMULARIO_FINAL } from '@/lib/avisoGrupo'
+import { avisarGrupoFormularioConcluido, marcarLeadEspecial, CAMPOS_FORMULARIO_FINAL } from '@/lib/avisoGrupo'
 import { publishEvent, channels, events } from '@/lib/realtime'
 
 /**
@@ -751,11 +751,13 @@ export async function handleIngest(
           const preenchidos = Object.fromEntries(
             Object.entries(normalized.fields).filter(([, v]) => v !== null && v !== undefined && v !== '')
           )
-          const atributos = (atual.customAttributes ?? {}) as Record<string, unknown>
+          // Mescla no banco (||), não em memória: ler, juntar e gravar de volta
+          // apagava o que outro caminho tivesse escrito no meio — as marcas do
+          // card do lead especial, por exemplo.
           await db
             .update(leads)
             .set({
-              customAttributes: { ...atributos, ...preenchidos },
+              customAttributes: sql`coalesce(${leads.customAttributes}, '{}'::jsonb) || ${JSON.stringify(preenchidos)}::jsonb`,
               ...(atual.email ? {} : normalized.email ? { email: normalized.email } : {}),
               updatedAt: new Date(),
             })
@@ -813,12 +815,20 @@ export async function handleIngest(
       const v = normalized.fields[c]
       return typeof v === 'string' && v.trim() !== ''
     })
+    // Cadastro manual (modal "Cadastrar lead" do Pipeline) não é o cliente
+    // chegando: quem digitou já está falando com a pessoa.
+    const cadastroManual = !!normalized.fields.cadastrado_por
     if (
-      leadId && trouxeFormulario && !ehResync &&
+      leadId && trouxeFormulario && !ehResync && !cadastroManual &&
       (sourceDef.key === 'agenda_ascensao' || sourceDef.key === 'site_evento')
     ) {
       const idDoLead = leadId
-      after(() => avisarGrupoFormularioConcluido(auth.organizationId, idDoLead))
+      try {
+        await marcarLeadEspecial(idDoLead)
+        after(() => avisarGrupoFormularioConcluido(auth.organizationId, idDoLead))
+      } catch (err) {
+        console.error('[ingest] não consegui marcar o lead especial:', err)
+      }
     }
 
     if (leadId && leadCreated && !ehResync && !semAutomacao) {

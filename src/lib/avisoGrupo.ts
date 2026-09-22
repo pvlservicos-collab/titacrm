@@ -121,45 +121,75 @@ function temValor(v: unknown): boolean {
   return typeof v === 'string' ? v.trim() !== '' : typeof v === 'number'
 }
 
-/**
- * Card no grupo quando o lead termina o formulário final — o da Agenda ou o de
- * aplicação do site, os dois que perguntam a área/profissão.
+/*
+ * LEAD ESPECIAL — quem vai até o fim do formulário final (o da Agenda ou o de
+ * aplicação do site, os dois que perguntam a área/profissão). Respondeu tudo:
+ * é o lead mais quente que existe, e o time fica sabendo pelo grupo com um
+ * card das respostas.
  *
- * É o lead mais quente que existe: respondeu tudo. O card leva as respostas
- * pra quem está no celular decidir ali mesmo quem chama e como.
+ * Três marcas em custom_attributes, e nenhuma se perde:
  *
- * Uma vez por lead. A marca `aviso_formulario_em` é gravada ANTES de enviar,
- * num UPDATE condicional — dois reenvios chegando juntos (a Agenda manda o
- * mesmo cadastro mais de uma vez) não conseguem os dois passar pela trava. Se
- * o envio falhar, a marca fica: melhor perder um card do que o grupo receber
- * o mesmo lead duas vezes a cada reenvio.
+ *   aviso_formulario_pendente   o lead concluiu, o card ainda não saiu
+ *   aviso_formulario_tentativa  última tentativa de envio (trava + espera)
+ *   aviso_formulario_em         o card saiu — nunca mais sai de novo
  *
- * Nunca lança, pelo mesmo motivo do aviso de resposta.
+ * "Enviado" só é gravado DEPOIS que a Z-API aceitou. Com o WhatsApp fora do ar
+ * a pendência fica, e o tick (/api/funnels/tick, todo minuto) tenta de novo a
+ * cada 5 min, por até 48 h — card mais velho que isso já não é aviso, é
+ * histórico. A tentativa é tomada num UPDATE condicional: dois caminhos ao
+ * mesmo tempo (o reenvio da Agenda e o tick) não mandam o card duas vezes.
  */
-export async function avisarGrupoFormularioConcluido(organizationId: string, leadId: string): Promise<void> {
+
+const ESPERA_ENTRE_TENTATIVAS = "interval '5 minutes'"
+const VALIDADE_DA_PENDENCIA = "interval '48 hours'"
+
+/**
+ * Marca o lead como especial (card pendente). Idempotente: quem já está
+ * pendente ou já foi avisado não muda.
+ */
+export async function marcarLeadEspecial(leadId: string): Promise<void> {
+  await db
+    .update(leads)
+    .set({
+      customAttributes: sql`coalesce(${leads.customAttributes}, '{}'::jsonb) || jsonb_build_object('aviso_formulario_pendente', now())`,
+    })
+    .where(and(
+      eq(leads.id, leadId),
+      sql`NOT (coalesce(${leads.customAttributes}, '{}'::jsonb) ?| array['aviso_formulario_pendente', 'aviso_formulario_em'])`
+    ))
+}
+
+/**
+ * Tenta mandar o card de UM lead pendente. Nunca lança.
+ *
+ * Devolve true só se o card saiu agora.
+ */
+export async function avisarGrupoFormularioConcluido(organizationId: string, leadId: string): Promise<boolean> {
   try {
     const grupo = await grupoDoAviso(organizationId, 'aviso_formulario_grupo')
-    if (!grupo) return // desligado
+    if (!grupo) return false // desligado: a pendência fica até vencer
 
+    // Toma a vez. Falha se já foi enviado, se não está pendente, se a
+    // pendência venceu ou se outra tentativa rolou há menos de 5 min.
     const [lead] = await db
-      .select({ id: leads.id, title: leads.title, phone: leads.phone, customAttributes: leads.customAttributes })
-      .from(leads)
-      .where(eq(leads.id, leadId))
-      .limit(1)
-    if (!lead) return
-    const attrs = (lead.customAttributes ?? {}) as Record<string, unknown>
-    if (!CAMPOS_FORMULARIO_FINAL.some((c) => temValor(attrs[c]))) return
-
-    const fonte = attrs.lead_source === 'site_evento' ? 'site' : 'agenda'
-
-    const [travou] = await db
       .update(leads)
       .set({
-        customAttributes: sql`coalesce(${leads.customAttributes}, '{}'::jsonb) || jsonb_build_object('aviso_formulario_em', now())`,
+        customAttributes: sql`${leads.customAttributes} || jsonb_build_object('aviso_formulario_tentativa', now())`,
       })
-      .where(and(eq(leads.id, leadId), sql`NOT (coalesce(${leads.customAttributes}, '{}'::jsonb) ? 'aviso_formulario_em')`))
-      .returning({ id: leads.id })
-    if (!travou) return // já avisado
+      .where(and(
+        eq(leads.id, leadId),
+        isNull(leads.deletedAt),
+        sql`${leads.customAttributes} ? 'aviso_formulario_pendente'`,
+        sql`NOT (${leads.customAttributes} ? 'aviso_formulario_em')`,
+        sql`(${leads.customAttributes}->>'aviso_formulario_pendente')::timestamptz > now() - ${sql.raw(VALIDADE_DA_PENDENCIA)}`,
+        sql`(NOT (${leads.customAttributes} ? 'aviso_formulario_tentativa')
+             OR (${leads.customAttributes}->>'aviso_formulario_tentativa')::timestamptz < now() - ${sql.raw(ESPERA_ENTRE_TENTATIVAS)})`
+      ))
+      .returning({ id: leads.id, title: leads.title, phone: leads.phone, customAttributes: leads.customAttributes })
+    if (!lead) return false
+
+    const attrs = (lead.customAttributes ?? {}) as Record<string, unknown>
+    const fonte = attrs.lead_source === 'site_evento' ? 'site' : 'agenda'
 
     // O @ da Agenda fica no cadastro, não no lead.
     const [cadastro] = await db
@@ -171,7 +201,8 @@ export async function avisarGrupoFormularioConcluido(organizationId: string, lea
     const instagram = cadastro?.instagram || (attrs.instagram_username as string | undefined) || null
 
     const linhas = [
-      fonte === 'site' ? '🏆 *Lead concluiu o formulário do SITE*' : '🏆 *Lead concluiu o formulário da AGENDA*',
+      '⭐ *LEAD ESPECIAL*',
+      fonte === 'site' ? 'Concluiu o formulário do *SITE* até o fim' : 'Concluiu o formulário da *AGENDA* até o fim',
       '',
       `👤 ${lead.title || 'Sem nome'}`,
       `📱 ${telefoneLegivel(lead.phone)}`,
@@ -185,7 +216,42 @@ export async function avisarGrupoFormularioConcluido(organizationId: string, lea
     ]
 
     await sendZapiMessage(organizationId, grupo, linhas.join('\n'))
+
+    await db
+      .update(leads)
+      .set({
+        customAttributes: sql`(${leads.customAttributes} - 'aviso_formulario_pendente' - 'aviso_formulario_tentativa') || jsonb_build_object('aviso_formulario_em', now())`,
+      })
+      .where(eq(leads.id, leadId))
+    return true
   } catch (err) {
-    console.error('[aviso-grupo] não consegui mandar o card do formulário:', err)
+    // A pendência continua: o tick tenta de novo em 5 min.
+    console.error('[aviso-grupo] card do lead especial não saiu (tenta de novo no tick):', err)
+    return false
   }
+}
+
+/**
+ * Chamado pelo tick: manda os cards que ficaram pendentes (WhatsApp estava fora
+ * do ar, a função caiu no meio). Poucos por vez — é recado, não disparo.
+ */
+export async function enviarCardsPendentes(): Promise<{ tentados: number; enviados: number }> {
+  const pendentes = await db
+    .select({ id: leads.id, organizationId: leads.organizationId })
+    .from(leads)
+    .where(and(
+      isNull(leads.deletedAt),
+      sql`${leads.customAttributes} ? 'aviso_formulario_pendente'`,
+      sql`NOT (${leads.customAttributes} ? 'aviso_formulario_em')`,
+      sql`(${leads.customAttributes}->>'aviso_formulario_pendente')::timestamptz > now() - ${sql.raw(VALIDADE_DA_PENDENCIA)}`,
+      sql`(NOT (${leads.customAttributes} ? 'aviso_formulario_tentativa')
+           OR (${leads.customAttributes}->>'aviso_formulario_tentativa')::timestamptz < now() - ${sql.raw(ESPERA_ENTRE_TENTATIVAS)})`
+    ))
+    .limit(10)
+
+  let enviados = 0
+  for (const lead of pendentes) {
+    if (await avisarGrupoFormularioConcluido(lead.organizationId, lead.id)) enviados++
+  }
+  return { tentados: pendentes.length, enviados }
 }

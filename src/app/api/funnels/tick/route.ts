@@ -1,4 +1,5 @@
 import { processTick } from '@/lib/funnel-engine'
+import { enviarCardsPendentes } from '@/lib/avisoGrupo'
 
 /**
  * GET/POST /api/funnels/tick
@@ -9,7 +10,13 @@ import { processTick } from '@/lib/funnel-engine'
 async function tick() {
   try {
     const result = await processTick()
-    return Response.json({ status: 'ok', ...result })
+    // Card do lead especial que não saiu na hora (WhatsApp fora do ar). Falhar
+    // aqui não pode derrubar o tick dos funis.
+    const cards = await enviarCardsPendentes().catch((err) => {
+      console.error('[tick] cards pendentes:', err)
+      return null
+    })
+    return Response.json({ status: 'ok', ...result, cards })
   } catch (err: any) {
     return Response.json({ status: 'error', message: err.message || 'Erro interno.' }, { status: 500 })
   }
