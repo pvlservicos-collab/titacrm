@@ -92,7 +92,7 @@ export async function GET(
      */
     // Chave como literal, não parâmetro: a mesma expressão vai pro SELECT e pro
     // GROUP BY da contagem, e com parâmetros ($1, $2) o Postgres as vê diferentes.
-    const campo = (chave: 'area' | 'aumento' | 'investimento') => sql`coalesce(
+    const campo = (chave: string) => sql`coalesce(
       nullif(trim(${leads.customAttributes}->>${sql.raw(`'${chave}'`)}), ''),
       nullif(trim(${leadSourceSubmissions.payload}->>${sql.raw(`'${chave}'`)}), ''))`
     const fases = sql`array_remove(array[
@@ -109,14 +109,18 @@ export async function GET(
      * funil em preencheuFormularioDaAgenda e da etiqueta dourada). Entra como
      * degrau entre "gerou a agenda" e a mentoria, porque o filtro responde "até
      * onde o lead foi": quem enviou o formulário sai do chip "Gerou a agenda".
-     * Só nas fontes da Agenda — o formulário do site é outra coisa.
+     * No site é o formulário de aplicação (public/formulario-aplicacao.html),
+     * que também pergunta a profissão; quem não chegou nele só passou pelo
+     * popup (nome, WhatsApp, @).
      */
     const ehAgenda = source === 'agenda_ascensao' || source === 'agenda_antigos'
-    const enviouFormulario = sql`(
-      ${campo('area')} IS NOT NULL
-      OR ${campo('aumento')} IS NOT NULL
-      OR ${campo('investimento')} IS NOT NULL)`
-    const momentoDoLead = ehAgenda
+    const ehSite = source === 'site_evento'
+    // `campo` recebe só estas chaves fixas (vão literais pro SQL, ver acima).
+    const camposDoFormulario = ehSite
+      ? ['area', 'aumento', 'investimento', 'objetivo_profissional', 'qualidade_vida', 'acompanhante']
+      : ['area', 'aumento', 'investimento']
+    const enviouFormulario = sql`(${sql.join(camposDoFormulario.map((c) => sql`${campo(c)} IS NOT NULL`), sql` OR `)})`
+    const momentoDoLead = ehAgenda || ehSite
       ? sql`CASE
           WHEN ${faseDoLead} IN ('mentoria_iniciada', 'mentoria_concluida') THEN ${faseDoLead}
           WHEN ${enviouFormulario} THEN 'enviou_formulario'

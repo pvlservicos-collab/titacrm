@@ -49,8 +49,16 @@ function posicaoMomento(chave: string) {
 }
 
 /** Nome do momento pros chips: os quatro do vocabulário, mais "sem momento". */
-function rotuloMomento(chave: string): { label: string; cor: string | null; descricao?: string } {
-  if (chave === 'enviou_formulario') return ENVIOU_FORMULARIO
+function rotuloMomento(chave: string, fonte?: string | null): { label: string; cor: string | null; descricao?: string } {
+  if (chave === 'enviou_formulario') {
+    return fonte === 'site_evento'
+      ? { ...ENVIOU_FORMULARIO, descricao: 'Respondeu o formulário de aplicação do site até o fim' }
+      : ENVIOU_FORMULARIO
+  }
+  // No site, quem não tem momento é quem só passou pelo popup.
+  if (chave === SEM_MOMENTO && fonte === 'site_evento') {
+    return { label: 'Só o popup', cor: null, descricao: 'Deixou nome, WhatsApp e @, mas não fez o formulário de aplicação' }
+  }
   const conhecido = MOMENTOS.find((m) => m.key === chave)
   if (conhecido) return { label: conhecido.label, cor: conhecido.cor, descricao: conhecido.descricao }
   if (chave === SEM_MOMENTO) return { label: 'Sem momento', cor: null }
@@ -293,7 +301,7 @@ export default function LeadsPage() {
                 </span>
               </button>
               {[...momentos].sort((a, b) => posicaoMomento(a.key) - posicaoMomento(b.key)).map((m) => {
-                const info = rotuloMomento(m.key)
+                const info = rotuloMomento(m.key, activeSource)
                 const brilhante = m.key === 'enviou_formulario'
                 return (
                   <button
