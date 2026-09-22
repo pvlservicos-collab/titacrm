@@ -102,7 +102,7 @@ export async function GET(
       WHEN 'mentoria_concluida' = ANY(${fases}) THEN 'mentoria_concluida'
       WHEN 'mentoria_iniciada' = ANY(${fases}) THEN 'mentoria_iniciada'
       WHEN 'done' = ANY(${fases}) THEN 'done'
-      ELSE ${fases}[1] END`
+      ELSE (${fases})[1] END`
     /*
      * "Enviou formulário" não é fase que a Agenda manda: é quem respondeu o
      * formulário do fim dela (área, aumento, investimento — o mesmo critério do
