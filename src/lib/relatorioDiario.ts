@@ -1,7 +1,10 @@
 /**
- * Relatório diário no grupo do WhatsApp — todo dia às 23h (Brasília).
+ * Relatório diário no grupo do WhatsApp — sai às 7h (Brasília) com o dia
+ * anterior fechado.
  *
- * A janela é das 23h de ontem às 23h de hoje, e o relatório tem dois tipos de
+ * A janela é das 23h de anteontem às 23h de ontem: o dia "de trabalho" fecha
+ * às 23h, e o resumo chega de manhã, na hora em que o time começa. O relatório
+ * tem dois tipos de
  * número, de propósito:
  *
  *   - SITE, AGENDA e "entraram no pipeline" contam os LEADS DO DIA: quem chegou
@@ -38,7 +41,12 @@ export interface NumerosDoRelatorio {
 const HORA_DO_CORTE = 23 // Brasília
 const FUSO_MS = -3 * 3600e3 // Brasília não tem mais horário de verão
 
-/** Janela [23h de ontem, 23h de hoje) no horário de Brasília, para `agora`. */
+/**
+ * A última janela [23h, 23h) já fechada, no horário de Brasília.
+ *
+ * Às 7h de 23/09 é a de 21/09 23h → 22/09 23h. Rodando depois das 22h, fecha a
+ * do próprio dia (é o que permite mudar o horário de volta sem mexer aqui).
+ */
 export function janelaDoDia(agora = new Date()): { inicio: Date; fim: Date } {
   const local = new Date(agora.getTime() + FUSO_MS)
   // Depois das 23h já é a janela de "amanhã"; o relatório das 23h fecha a de hoje.

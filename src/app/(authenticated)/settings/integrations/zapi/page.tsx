@@ -362,11 +362,11 @@ export default function ZapiPage() {
         </select>
       </div>
 
-      {/* Relatório diário às 23h */}
+      {/* Relatório diário às 7h */}
       <div className="bg-panel border rounded-xl p-6 mb-6">
-        <h2 className="font-bold text-ink mb-1">Relatório diário às 23h</h2>
+        <h2 className="font-bold text-ink mb-1">Relatório diário às 7h</h2>
         <p className="text-sm text-muted mb-4">
-          Todo dia às 23h sai no grupo o resumo do dia (das 23h de ontem às 23h de hoje): site,
+          Todo dia às 7h sai no grupo o resumo do dia anterior (das 23h às 23h): site,
           agenda, quem entrou no pipeline, automação, atendimento humano, calls e vendas.
         </p>
         <select

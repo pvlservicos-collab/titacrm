@@ -5,9 +5,10 @@ import { ZAPI_INTEGRATION_TYPE } from '@/lib/zapi'
 import { enviarRelatorioDoDia } from '@/lib/relatorioDiario'
 
 /**
- * GET /api/cron/relatorio-diario — relatório do dia no grupo, às 23h de Brasília.
+ * GET /api/cron/relatorio-diario — relatório do dia anterior no grupo, às 7h de
+ * Brasília.
  *
- * Chamado pelo Cron da Vercel às 02:00 UTC (ver vercel.json). Sem autenticação,
+ * Chamado pelo Cron da Vercel às 10:00 UTC (ver vercel.json). Sem autenticação,
  * como os outros crons: chamar de novo não faz mal, porque o envio é uma vez só
  * por dia (trava em enviarRelatorioDoDia). Precisa estar em `publicPaths` do
  * middleware — sem isso o cron leva redirect pro login e nunca roda.
