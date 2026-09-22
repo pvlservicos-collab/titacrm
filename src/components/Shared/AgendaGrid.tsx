@@ -115,6 +115,29 @@ export function posicionar(blocos: AgendaBlock[]): BlocoPosicionado[] {
   return saida
 }
 
+/**
+ * Arrastar a grade com o mouse (clicar e puxar), pros dois lados.
+ * Só mouse: no toque o dedo já rola sozinho.
+ */
+function arrastarGrade(e: React.PointerEvent<HTMLDivElement>) {
+  if (e.pointerType !== 'mouse' || e.button !== 0) return
+  const caixa = e.currentTarget
+  const x0 = e.clientX
+  const y0 = e.clientY
+  const esquerda0 = caixa.scrollLeft
+  const topo0 = caixa.scrollTop
+  const mover = (ev: PointerEvent) => {
+    caixa.scrollLeft = esquerda0 - (ev.clientX - x0)
+    caixa.scrollTop = topo0 - (ev.clientY - y0)
+  }
+  const soltar = () => {
+    window.removeEventListener('pointermove', mover)
+    window.removeEventListener('pointerup', soltar)
+  }
+  window.addEventListener('pointermove', mover)
+  window.addEventListener('pointerup', soltar)
+}
+
 export default function AgendaGrid({
   blocks,
   alturaMax = 420,
@@ -148,7 +171,14 @@ export default function AgendaGrid({
 
   return (
     <div className="rounded-xl border border-[var(--chat-border)] overflow-hidden bg-[var(--chat-bg-panel)]">
-      <div className="overflow-auto scrollbar-hide" style={{ maxHeight: alturaMax }}>
+      {/* A semana tem 7 colunas e não cabe no painel: rola pro lado. A barra
+          fica visível (escondida, ninguém sabia que dava) e dá pra arrastar a
+          grade com o mouse — no PC, rolar de lado pela roda exige Shift. */}
+      <div
+        className="overflow-auto chat-dark-scroll cursor-grab active:cursor-grabbing select-none"
+        style={{ maxHeight: alturaMax }}
+        onPointerDown={arrastarGrade}
+      >
         <div style={{ minWidth: LARGURA_GUTTER + 7 * LARGURA_DIA }}>
           {/* Cabeçalho dos dias — gruda no topo enquanto a grade rola. */}
           <div className="flex sticky top-0 z-20 bg-[var(--chat-bg-panel)] border-b border-[var(--chat-border)]">

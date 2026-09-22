@@ -15,6 +15,7 @@
 
 import { useState, useEffect } from 'react'
 import { CalendarBlank, CaretDown, CaretRight } from '@phosphor-icons/react'
+import { useLeadSubmissions, type LeadSubmission } from '@/hooks/useLeadSubmissions'
 import {
   AGENDA_BLOCK_CATEGORIES,
   AGENDA_QUIZ_LABELS,
@@ -23,17 +24,6 @@ import {
   type AgendaBlock,
 } from '@/lib/agenda'
 import AgendaGrid from '@/components/Shared/AgendaGrid'
-
-interface LeadSubmission {
-  id: string
-  source: string
-  source_label: string
-  external_id: string | null
-  instagram: string | null
-  payload: Record<string, any>
-  received_at: string
-  updated_at: string
-}
 
 /** Campos de resumo do quiz, na ordem em que fazem sentido lidos em sequência. */
 const RESUMO: { key: string; label: string }[] = [
@@ -56,42 +46,38 @@ const PERFIL: { key: string; label: string }[] = [
 ]
 
 /** Tem alguma coisa da Agenda aqui dentro? */
-function temAgenda(payload: Record<string, any>): boolean {
+export function temAgenda(payload: Record<string, any>): boolean {
   if (!payload) return false
   if (payload.a1 || (Array.isArray(payload.real) && payload.real.length > 0)) return true
   return RESUMO.some(({ key }) => payload[key]) || PERFIL.some(({ key }) => payload[key])
 }
 
-export default function LeadAgendaCard({ leadId }: { leadId: string }) {
-  const [submissions, setSubmissions] = useState<LeadSubmission[]>([])
-  const [loading, setLoading] = useState(true)
+export default function LeadAgendaCard({
+  leadId,
+  submissions: deFora,
+  embutido = false,
+  mostrarPerfil = true,
+}: {
+  leadId: string
+  /** Os cadastros já buscados por quem usa o cartão (o painel do lead); sem eles, busca aqui. */
+  submissions?: LeadSubmission[]
+  /** Dentro de uma seção que já tem moldura e título: não desenha os seus. */
+  embutido?: boolean
+  /** Área/aumento/investimento — o painel mostra em "Informações pessoais". */
+  mostrarPerfil?: boolean
+}) {
+  const buscado = useLeadSubmissions(deFora ? null : leadId)
+  const loading = deFora ? false : buscado.loading
+  const submissions = (deFora ?? buscado.submissions).filter((s) => temAgenda(s.payload))
   const [abertos, setAbertos] = useState<Set<string>>(new Set())
 
+  // A semana já abre desenhada: quem clica no lead quer ver a agenda dele, e a
+  // grade atrás de mais um clique fazia o painel parecer só texto. O quiz
+  // continua fechado — são 31 respostas, é consulta, não é o primeiro olhar.
+  const idsComAgenda = submissions.map((s) => s.id).join(',')
   useEffect(() => {
-    let cancelado = false
-    setLoading(true)
-    fetch(`/api/leads/${leadId}/submissions`)
-      .then((res) => (res.ok ? res.json() : { data: [] }))
-      .then(({ data }) => {
-        if (cancelado) return
-        const comAgenda = (data || []).filter((s: LeadSubmission) => temAgenda(s.payload))
-        setSubmissions(comAgenda)
-        // A semana já abre desenhada: quem clica no lead quer ver a agenda dele,
-        // e a grade atrás de mais um clique fazia o painel parecer só texto.
-        // O quiz continua fechado — são 31 respostas, é consulta, não é o
-        // primeiro olhar.
-        setAbertos(new Set(comAgenda.map((s: LeadSubmission) => `${s.id}:semana`)))
-      })
-      .catch(() => {
-        if (!cancelado) setSubmissions([])
-      })
-      .finally(() => {
-        if (!cancelado) setLoading(false)
-      })
-    return () => {
-      cancelado = true
-    }
-  }, [leadId])
+    setAbertos(new Set(idsComAgenda ? idsComAgenda.split(',').map((id) => `${id}:semana`) : []))
+  }, [idsComAgenda])
 
   // Enquanto carrega, e quando o lead não veio da Agenda, o cartão não aparece:
   // a maioria dos leads não tem agenda, e um cartão vazio em todo painel só
@@ -107,11 +93,13 @@ export default function LeadAgendaCard({ leadId }: { leadId: string }) {
     })
 
   return (
-    <div className="glass-soft rounded-xl p-3 space-y-3">
-      <div className="flex items-center gap-1.5">
-        <CalendarBlank size={13} className="text-[var(--chat-accent)]" weight="bold" />
-        <p className="text-[11px] font-bold text-[var(--chat-text-secondary)]">Agenda em Ascensão</p>
-      </div>
+    <div className={embutido ? 'space-y-3' : 'glass-soft rounded-xl p-3 space-y-3'}>
+      {!embutido && (
+        <div className="flex items-center gap-1.5">
+          <CalendarBlank size={13} className="text-[var(--chat-accent)]" weight="bold" />
+          <p className="text-[12px] font-bold text-[var(--chat-text-secondary)]">Agenda em Ascensão</p>
+        </div>
+      )}
 
       {submissions.map((submission) => {
         const payload = submission.payload || {}
@@ -129,7 +117,7 @@ export default function LeadAgendaCard({ leadId }: { leadId: string }) {
         return (
           <div key={submission.id} className="space-y-2.5">
             <div className="flex items-center justify-between gap-2">
-              <p className="text-[10px] uppercase tracking-wider font-bold text-[var(--chat-text-tertiary)]">
+              <p className="text-[11px] uppercase tracking-wider font-bold text-[var(--chat-text-tertiary)]">
                 {submission.source_label}
                 {submission.external_id ? ` · #${submission.external_id}` : ''}
               </p>
@@ -148,11 +136,11 @@ export default function LeadAgendaCard({ leadId }: { leadId: string }) {
                 cada, que é o que dá pra ler de relance antes de falar com a
                 pessoa. O detalhe fica nas seções que abrem abaixo. */}
             <dl className="space-y-1.5">
-              {[...PERFIL, ...(semResposta ? [] : RESUMO)].map(({ key, label }) =>
+              {[...(mostrarPerfil ? PERFIL : []), ...(semResposta ? [] : RESUMO)].map(({ key, label }) =>
                 payload[key] ? (
                   <div key={key} className="flex items-baseline justify-between gap-3">
-                    <dt className="text-[11px] text-[var(--chat-text-tertiary)] flex-shrink-0">{label}</dt>
-                    <dd className="text-[11px] text-[var(--chat-text-secondary)] text-right break-words min-w-0">
+                    <dt className="text-[12.5px] text-[var(--chat-text-tertiary)] flex-shrink-0">{label}</dt>
+                    <dd className="text-[13px] font-medium text-[var(--chat-text-secondary)] text-right break-words min-w-0">
                       {String(payload[key])}
                     </dd>
                   </div>
@@ -164,7 +152,7 @@ export default function LeadAgendaCard({ leadId }: { leadId: string }) {
               <div>
                 <button
                   onClick={() => alternar(chaveSemana)}
-                  className="w-full flex items-center gap-1 text-[11px] font-bold text-[var(--chat-text-secondary)] hover:text-[var(--chat-accent)] transition-colors"
+                  className="w-full flex items-center gap-1 text-[12.5px] font-bold text-[var(--chat-text-secondary)] hover:text-[var(--chat-accent)] transition-colors"
                 >
                   {abertos.has(chaveSemana) ? <CaretDown size={11} weight="bold" /> : <CaretRight size={11} weight="bold" />}
                   Semana montada
@@ -181,7 +169,7 @@ export default function LeadAgendaCard({ leadId }: { leadId: string }) {
                         <span
                           key={chave}
                           title={meta.desc}
-                          className="flex items-center gap-1 text-[9.5px] text-[var(--chat-text-tertiary)]"
+                          className="flex items-center gap-1 text-[11px] text-[var(--chat-text-tertiary)]"
                         >
                           <span
                             className="w-2 h-2 rounded-full flex-shrink-0"
@@ -197,7 +185,7 @@ export default function LeadAgendaCard({ leadId }: { leadId: string }) {
             )}
 
             {semResposta && (
-              <p className="text-[11px] text-[var(--chat-text-tertiary)]">
+              <p className="text-[12.5px] text-[var(--chat-text-tertiary)]">
                 Deixou nome e WhatsApp e saiu antes de responder — o questionário
                 está todo no valor padrão do site.
               </p>
@@ -207,7 +195,7 @@ export default function LeadAgendaCard({ leadId }: { leadId: string }) {
               <div>
                 <button
                   onClick={() => alternar(chaveQuiz)}
-                  className="w-full flex items-center gap-1 text-[11px] font-bold text-[var(--chat-text-secondary)] hover:text-[var(--chat-accent)] transition-colors"
+                  className="w-full flex items-center gap-1 text-[12.5px] font-bold text-[var(--chat-text-secondary)] hover:text-[var(--chat-accent)] transition-colors"
                 >
                   {abertos.has(chaveQuiz) ? <CaretDown size={11} weight="bold" /> : <CaretRight size={11} weight="bold" />}
                   Respostas do quiz
@@ -217,8 +205,8 @@ export default function LeadAgendaCard({ leadId }: { leadId: string }) {
                   <dl className="mt-2 space-y-1.5">
                     {AGENDA_QUIZ_LABELS.map(({ key, label }) => (
                       <div key={key} className="flex items-baseline justify-between gap-3">
-                        <dt className="text-[11px] text-[var(--chat-text-tertiary)] flex-shrink-0">{label}</dt>
-                        <dd className="text-[11px] text-[var(--chat-text-secondary)] text-right break-words min-w-0">
+                        <dt className="text-[12.5px] text-[var(--chat-text-tertiary)] flex-shrink-0">{label}</dt>
+                        <dd className="text-[13px] font-medium text-[var(--chat-text-secondary)] text-right break-words min-w-0">
                           {formatQuizValue(key, quiz[key])}
                         </dd>
                       </div>
@@ -231,7 +219,7 @@ export default function LeadAgendaCard({ leadId }: { leadId: string }) {
             {/* Quando o lead veio pela Agenda mas o quiz parou no meio, dizer
                 isso vale mais que deixar o cartão pela metade sem explicação. */}
             {blocks.length === 0 && !semResposta && (
-              <p className="text-[11px] text-[var(--chat-text-tertiary)]">
+              <p className="text-[12.5px] text-[var(--chat-text-tertiary)]">
                 Sem semana montada — a pessoa não terminou o quiz no site.
               </p>
             )}
