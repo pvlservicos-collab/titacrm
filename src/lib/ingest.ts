@@ -31,6 +31,7 @@ import { db } from '@/lib/db'
 import { leadSourceSubmissions, leads, pipelineStages, webhookLogs } from '@/lib/schema'
 import { isUniqueViolation } from '@/lib/db-helpers'
 import {
+  LEAD_SOURCES,
   LEAD_SOURCE_ORDER,
   dedupeKeyFor,
   getLeadSource,
@@ -406,7 +407,19 @@ async function upsertCrmLead(
        * disparando mensagem nenhuma.
        */
       const atributos = (existing.customAttributes ?? {}) as Record<string, unknown>
-      const ehSoConversa = !atributos.lead_source
+      /*
+       * A lista antiga da Agenda (`agenda_antigos`, importada por planilha)
+       * também não é lead de aquisição: é gente de antes do CRM, que nunca
+       * entrou no Pipeline. Quando alguém dela preenche a Agenda nova ou o
+       * formulário do site, está chegando AGORA por um canal ao vivo — e antes
+       * ficava sem card no Pipeline e sem mensagem, só com os dados
+       * atualizados (Henrique Augusto, Matheus, Victor Gabriel...). Só vale
+       * quando a entrada é de um canal ao vivo: reimportar a planilha antiga
+       * continua sendo só atualização.
+       */
+      const eraDaListaAntiga =
+        atributos.lead_source === 'agenda_antigos' && LEAD_SOURCES[source].isAcquisitionChannel !== false
+      const ehSoConversa = !atributos.lead_source || eraDaListaAntiga
 
       /*
        * Lead que JÁ é de aquisição e voltou (o quiz da Agenda que avançou, a
@@ -435,6 +448,8 @@ async function upsertCrmLead(
           // Agenda e depois preenche o formulário do site continua da Agenda,
           // senão o card mudaria de coluna na "Fonte:" do Pipeline.
           lead_source: ehSoConversa ? source : atributos.lead_source,
+          // De onde veio antes de virar lead ao vivo — não se perde a história.
+          ...(eraDaListaAntiga ? { fonte_anterior: 'agenda_antigos' } : {}),
           ...camposPreenchidos,
         },
         lastActivityAt: new Date(),
