@@ -366,6 +366,10 @@ const agendaAscensao: LeadSourceDef = {
   required: ['id', 'nome', 'whatsapp'],
   columns: [
     { key: 'external_id', label: 'ID', format: 'number', width: 80 },
+    // A data de cadastro na Agenda aparece duas vezes de propósito: aqui, do
+    // lado do nome, pra bater o olho em quem chegou agora sem rolar a planilha;
+    // e no fim, junto das outras datas.
+    { key: 'criado_em', label: 'Recebido em', format: 'datetime', width: 170 },
     { key: 'name', label: 'Nome', width: 200 },
     { key: 'phone', label: 'WhatsApp', format: 'phone', width: 150 },
     { key: 'instagram', label: 'Instagram', format: 'instagram', width: 150 },
@@ -376,8 +380,10 @@ const agendaAscensao: LeadSourceDef = {
     { key: 'phase', label: 'Quiz', format: 'badge', width: 110 },
     { key: 'blocos', label: 'Blocos', format: 'number', width: 80 },
     ...COLUNAS_RESUMO_AGENDA,
-    { key: 'criado_em', label: 'Criado em', format: 'datetime', width: 170 },
-    { key: 'received_at', label: 'Recebido em', format: 'datetime', width: 170 },
+    { key: 'criado_em', label: 'Recebido em', format: 'datetime', width: 170 },
+    // Antes "Recebido em" — o nome passou pra data de cadastro na Agenda. Esta é
+    // a hora em que o CRM recebeu (difere da outra em importação e reenvio).
+    { key: 'received_at', label: 'Chegou no CRM', format: 'datetime', width: 170 },
   ],
   normalize: (body) => {
     const { perfil, instagram, phase, quiz, blocos, agenda } = camposDaAgenda(body)

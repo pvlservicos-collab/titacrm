@@ -12,7 +12,7 @@
  * procurada no `payload`, que é onde ficam os campos específicos da fonte.
  */
 
-import { memo } from 'react'
+import { memo, useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import { ChatCircleDots, Check, Kanban } from '@phosphor-icons/react'
 import { linkDaConversa } from '@/lib/links'
@@ -257,12 +257,62 @@ interface SubmissionsTableProps {
   onAdicionarAoPipeline: (row: Submission) => void
 }
 
+/**
+ * Barra de rolagem lateral que fica grudada no pé da tela.
+ *
+ * A planilha é larga e comprida: com a barra nativa, pra ir pro lado era
+ * preciso descer até o fim da lista. Esta é uma segunda barra, "sticky" no pé
+ * da área visível, espelhando a rolagem da tabela nos dois sentidos. Quando a
+ * pessoa chega no fim da lista ela para no lugar de sempre, logo abaixo da
+ * tabela. A barra nativa da tabela fica escondida pra não aparecerem duas.
+ *
+ * Fica FORA do card (que tem overflow-hidden): dentro dele o sticky grudaria no
+ * card, e não na tela.
+ */
+function useRolagemEspelhada() {
+  const corpoRef = useRef<HTMLDivElement>(null)
+  const barraRef = useRef<HTMLDivElement>(null)
+  const [largura, setLargura] = useState(0)
+  const [precisa, setPrecisa] = useState(false)
+
+  useEffect(() => {
+    const corpo = corpoRef.current
+    const barra = barraRef.current
+    if (!corpo || !barra) return
+
+    const medir = () => {
+      setLargura(corpo.scrollWidth)
+      setPrecisa(corpo.scrollWidth > corpo.clientWidth + 1)
+    }
+    medir()
+    const observador = new ResizeObserver(medir)
+    observador.observe(corpo)
+    if (corpo.firstElementChild) observador.observe(corpo.firstElementChild)
+
+    // Os dois lados escrevem, mas só quando o valor difere: atribuir o mesmo
+    // scrollLeft não dispara evento, então não entra em ciclo.
+    const doCorpo = () => { if (barra.scrollLeft !== corpo.scrollLeft) barra.scrollLeft = corpo.scrollLeft }
+    const daBarra = () => { if (corpo.scrollLeft !== barra.scrollLeft) corpo.scrollLeft = barra.scrollLeft }
+    corpo.addEventListener('scroll', doCorpo, { passive: true })
+    barra.addEventListener('scroll', daBarra, { passive: true })
+    return () => {
+      observador.disconnect()
+      corpo.removeEventListener('scroll', doCorpo)
+      barra.removeEventListener('scroll', daBarra)
+    }
+  }, [])
+
+  return { corpoRef, barraRef, largura, precisa }
+}
+
 function SubmissionsTable({ columns, rows, onSelect, onContatar, onAdicionarAoPipeline }: SubmissionsTableProps) {
+  const { corpoRef, barraRef, largura, precisa } = useRolagemEspelhada()
   return (
-    // overflow-x no wrapper (não no body da página): planilha larga rola dentro
-    // do próprio card, a página nunca escorrega na horizontal.
+    <div>
+    {/* overflow-x no wrapper (não no body da página): planilha larga rola dentro
+        do próprio card, a página nunca escorrega na horizontal. */}
     <div className="glass-sunken rounded-2xl overflow-hidden">
-      <div className="overflow-x-auto">
+      <div ref={corpoRef} className="overflow-x-auto scrollbar-hide">
         <table className="w-full border-collapse text-xs">
           <thead>
             <tr>
@@ -281,9 +331,9 @@ function SubmissionsTable({ columns, rows, onSelect, onContatar, onAdicionarAoPi
               >
                 Etapa
               </th>
-              {columns.map((column) => (
+              {columns.map((column, i) => (
                 <th
-                  key={column.key}
+                  key={column.key + ':' + i}
                   style={{ minWidth: column.width ?? 140 }}
                   className="sticky top-0 z-10 text-left font-semibold text-muted uppercase tracking-wider text-[10px] px-3.5 py-2.5 whitespace-nowrap surface-raised"
                 >
@@ -320,8 +370,8 @@ function SubmissionsTable({ columns, rows, onSelect, onContatar, onAdicionarAoPi
                     <span className="text-muted">—</span>
                   )}
                 </td>
-                {columns.map((column) => (
-                  <td key={column.key} className="px-3.5 py-2.5 align-top whitespace-nowrap">
+                {columns.map((column, i) => (
+                  <td key={column.key + ':' + i} className="px-3.5 py-2.5 align-top whitespace-nowrap">
                     <Cell row={row} column={column} />
                   </td>
                 ))}
@@ -330,6 +380,18 @@ function SubmissionsTable({ columns, rows, onSelect, onContatar, onAdicionarAoPi
           </tbody>
         </table>
       </div>
+    </div>
+    {/* No celular a barra de navegação de baixo é fixa e cobriria esta; por
+        isso o pé dela fica acima da barra lá, e colado no fundo no PC. */}
+    <div
+      ref={barraRef}
+      aria-hidden
+      className={`barra-rolagem-lateral sticky z-30 bottom-[calc(4rem+env(safe-area-inset-bottom))] md:bottom-0 mt-1 overflow-x-auto overflow-y-hidden rounded-full ${
+        precisa ? '' : 'invisible h-0'
+      }`}
+    >
+      <div style={{ width: largura, height: 1 }} />
+    </div>
     </div>
   )
 }

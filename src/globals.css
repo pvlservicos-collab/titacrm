@@ -287,6 +287,30 @@ h1, h2 {
   display: none;             /* Chrome/Safari/Opera */
 }
 
+/* Barra lateral grudada no pé da tela, na planilha da aba Leads
+   (SubmissionsTable). Tem fundo próprio porque flutua por cima das linhas. */
+.barra-rolagem-lateral {
+  scrollbar-width: auto;
+  scrollbar-color: rgba(255,255,255,0.35) rgba(12,12,12,0.85);
+  background: rgba(12,12,12,0.85);
+  backdrop-filter: blur(6px);
+}
+.barra-rolagem-lateral::-webkit-scrollbar {
+  height: 12px;
+}
+.barra-rolagem-lateral::-webkit-scrollbar-track {
+  background: transparent;
+}
+.barra-rolagem-lateral::-webkit-scrollbar-thumb {
+  background-color: rgba(255,255,255,0.3);
+  border-radius: 999px;
+  border: 3px solid transparent;
+  background-clip: content-box;
+}
+.barra-rolagem-lateral::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(255,255,255,0.5);
+}
+
 /* Dark, subtle scrollbar used inside the chat (WhatsApp-style dark UI) */
 .chat-dark-scroll {
   scrollbar-width: thin;

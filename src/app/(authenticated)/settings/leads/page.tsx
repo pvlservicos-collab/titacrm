@@ -30,8 +30,27 @@ type FiltroContato = 'todos' | 'nao' | 'sim'
 /** Chip "Sem momento" — o mesmo valor que a API usa. */
 const SEM_MOMENTO = 'sem_momento'
 
+/**
+ * Quem respondeu o formulário do fim da Agenda. Não é fase que se cadastra à
+ * mão (por isso não está em MOMENTOS): a API calcula pelas respostas.
+ * Dourado brilhante, o mesmo da etiqueta de lead mais quente.
+ */
+const ENVIOU_FORMULARIO = {
+  label: 'Enviou formulário',
+  cor: '#FFC700',
+  descricao: 'Respondeu o formulário do fim da Agenda',
+}
+
+/** Ordem dos chips: do começo da jornada pro fim. */
+const ORDEM_MOMENTOS = ['w1', 'done', 'enviou_formulario', 'mentoria_iniciada', 'mentoria_concluida']
+function posicaoMomento(chave: string) {
+  const i = ORDEM_MOMENTOS.indexOf(chave)
+  return i === -1 ? ORDEM_MOMENTOS.length : i
+}
+
 /** Nome do momento pros chips: os quatro do vocabulário, mais "sem momento". */
 function rotuloMomento(chave: string): { label: string; cor: string | null; descricao?: string } {
+  if (chave === 'enviou_formulario') return ENVIOU_FORMULARIO
   const conhecido = MOMENTOS.find((m) => m.key === chave)
   if (conhecido) return { label: conhecido.label, cor: conhecido.cor, descricao: conhecido.descricao }
   if (chave === SEM_MOMENTO) return { label: 'Sem momento', cor: null }
@@ -262,7 +281,7 @@ export default function LeadsPage() {
           {momentos.some((m) => m.key !== SEM_MOMENTO) && (
             <div className="flex flex-wrap items-center gap-2">
               <span className="text-[10px] font-bold uppercase tracking-wider text-muted mr-1">
-                Momento
+                Até onde o lead foi
               </span>
               <button
                 onClick={() => setMomentoFiltro(null)}
@@ -273,14 +292,20 @@ export default function LeadsPage() {
                   {momentos.reduce((a, m) => a + m.total, 0)}
                 </span>
               </button>
-              {momentos.map((m) => {
+              {[...momentos].sort((a, b) => posicaoMomento(a.key) - posicaoMomento(b.key)).map((m) => {
                 const info = rotuloMomento(m.key)
+                const brilhante = m.key === 'enviou_formulario'
                 return (
                   <button
                     key={m.key}
                     onClick={() => setMomentoFiltro(momentoFiltro === m.key ? null : m.key)}
                     className={`pill !py-1 ${momentoFiltro === m.key ? 'pill-active' : ''}`}
                     title={info.descricao}
+                    style={brilhante ? {
+                      color: momentoFiltro === m.key ? '#1A1405' : '#FFC700',
+                      backgroundColor: momentoFiltro === m.key ? '#FFC700' : 'rgba(255,199,0,0.12)',
+                      borderColor: 'rgba(255,199,0,0.7)',
+                    } : undefined}
                   >
                     {info.cor && (
                       <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: info.cor }} />

@@ -86,7 +86,26 @@ export async function GET(
      * porque é lá que ele fica atualizado: a Agenda reenvia o mesmo lead quando
      * o quiz avança, e o cadastro manual do Pipeline também escreve ali.
      */
-    const momentoDoLead = sql`coalesce(${leads.customAttributes}->>'phase', ${leads.customAttributes}->>'fase')`
+    const faseDoLead = sql`coalesce(${leads.customAttributes}->>'phase', ${leads.customAttributes}->>'fase')`
+    /*
+     * "Enviou formulário" não é fase que a Agenda manda: é quem respondeu o
+     * formulário do fim dela (área, aumento, investimento — o mesmo critério do
+     * funil em preencheuFormularioDaAgenda e da etiqueta dourada). Entra como
+     * degrau entre "gerou a agenda" e a mentoria, porque o filtro responde "até
+     * onde o lead foi": quem enviou o formulário sai do chip "Gerou a agenda".
+     * Só nas fontes da Agenda — o formulário do site é outra coisa.
+     */
+    const ehAgenda = source === 'agenda_ascensao' || source === 'agenda_antigos'
+    const enviouFormulario = sql`(
+      nullif(trim(${leads.customAttributes}->>'area'), '') IS NOT NULL
+      OR nullif(trim(${leads.customAttributes}->>'aumento'), '') IS NOT NULL
+      OR nullif(trim(${leads.customAttributes}->>'investimento'), '') IS NOT NULL)`
+    const momentoDoLead = ehAgenda
+      ? sql`CASE
+          WHEN ${faseDoLead} IN ('mentoria_iniciada', 'mentoria_concluida') THEN ${faseDoLead}
+          WHEN ${enviouFormulario} THEN 'enviou_formulario'
+          ELSE ${faseDoLead} END`
+      : faseDoLead
     const momento = url.searchParams.get('momento')?.trim()
     if (momento === SEM_MOMENTO) filtros.push(sql`${momentoDoLead} IS NULL`)
     else if (momento) filtros.push(sql`${momentoDoLead} = ${momento}`)
