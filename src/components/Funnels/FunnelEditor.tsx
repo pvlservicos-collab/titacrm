@@ -31,7 +31,9 @@ import {
   Plus,
   Trash,
   X,
+  Path,
 } from '@phosphor-icons/react'
+import { PREVIA_DAS_MENSAGENS } from '@/lib/mensagensAgenda'
 
 export interface FunnelBlockData {
   blockType: 'trigger' | 'message' | 'wait' | 'condition' | 'end' | 'move_stage'
@@ -251,13 +253,50 @@ function TriggerNode({ data, selected }: NodeProps<FlowNode>) {
 function MessageNode({ data, selected }: NodeProps<FlowNode>) {
   const config = data.config || {}
   const texto = (config.text || '').trim()
+  const pelaAgenda = config.personalizar === 'agenda'
   return (
     <Cartao selected={selected}>
       <Conector tipo="target" />
       <Cabecalho icone={<IconeCanal />} canal="WhatsApp" nome={config.titulo || 'Enviar Mensagem'} />
       <Numeros stats={statsDo(data)} />
 
+      {/* Personalizada pela agenda: a escolha das seis mensagens aparece
+          desenhada aqui, em ordem de prioridade — é a regra que decide o
+          envio, não um desenho à parte (ver src/lib/mensagensAgenda.ts). */}
+      {pelaAgenda && (
+        <div className="px-3 pb-1">
+          <div className="rounded-xl px-3 py-2.5" style={{ background: '#fff', border: '1px solid ' + C.borda }}>
+            <p className="text-[11px] font-bold uppercase tracking-wide mb-2 flex items-center gap-1" style={{ color: C.numero }}>
+              <Path size={12} weight="bold" />
+              Escolhe pela agenda do lead
+            </p>
+            <ol className="space-y-1">
+              {PREVIA_DAS_MENSAGENS.map((m) => (
+                <li key={m.id} className="flex items-start gap-1.5 text-[12px]" style={{ color: C.bolhaTexto }}>
+                  <span
+                    className="flex-shrink-0 mt-[1px] w-5 text-center rounded text-[10px] font-bold py-[1px]"
+                    style={{ background: C.bolha, color: C.numero }}
+                  >
+                    {m.id}
+                  </span>
+                  <span className="leading-[1.35]">{m.condicao}</span>
+                </li>
+              ))}
+            </ol>
+            <p className="text-[11px] mt-2 leading-snug" style={{ color: C.textoFraco }}>
+              Vale a primeira que se encaixar. Nenhuma se encaixa (ou a pessoa não
+              respondeu o quiz) → manda a mensagem abaixo.
+            </p>
+          </div>
+        </div>
+      )}
+
       <div className="px-3 pb-1">
+        {pelaAgenda && (
+          <p className="text-[11px] font-bold uppercase tracking-wide mb-1" style={{ color: C.textoFraco }}>
+            Se nada se encaixar
+          </p>
+        )}
         <div className="rounded-xl px-3.5 py-3" style={{ background: C.bolha }}>
           {texto ? (
             <p style={{ color: C.bolhaTexto }} className="text-[13px] leading-[1.55] whitespace-pre-wrap break-words line-clamp-[12]">
@@ -444,7 +483,9 @@ function BlockEditorPanel({ node, stages, onChange, onDelete, onClose }: {
               guarda qual foi. Em "Métricas" dá pra ver qual delas fez mais
               gente responder. Sem versões, vale o texto único abaixo.
             */}
-            <TesteDeMensagens config={config} onChange={onChange} />
+            <MensagensPelaAgenda config={config} onChange={onChange} />
+
+            {config.personalizar !== 'agenda' && <TesteDeMensagens config={config} onChange={onChange} />}
 
             {(!Array.isArray(config.variantes) || config.variantes.length === 0) && (
               <div>
@@ -769,6 +810,84 @@ export default function FunnelEditor({
         )}
       </div>
     </ReactFlowProvider>
+  )
+}
+
+/**
+ * Mensagens escolhidas pela agenda que o lead montou (as seis, I a VI).
+ *
+ * Os textos e as regras vivem em src/lib/mensagensAgenda.ts — aqui só se liga,
+ * desliga e lê. Editar por aqui daria a impressão de que o texto é do bloco,
+ * quando quem manda é a regra: mudar um texto é mudar aquele arquivo.
+ */
+function MensagensPelaAgenda({
+  config,
+  onChange,
+}: {
+  config: Record<string, any>
+  onChange: (config: Record<string, any>) => void
+}) {
+  const ligado = config.personalizar === 'agenda'
+  const [aberta, setAberta] = useState<string | null>(null)
+
+  return (
+    <div className="border border-line rounded-lg p-3">
+      <label className="flex items-start gap-2.5 cursor-pointer">
+        <input
+          type="checkbox"
+          checked={ligado}
+          onChange={(e) => {
+            const novo = { ...config }
+            if (e.target.checked) {
+              novo.personalizar = 'agenda'
+              // Uma coisa de cada vez: com as seis ligadas, o sorteio A/B/C
+              // nunca aconteceria e a tela mentiria sobre o que sai.
+              novo.variantes = []
+            } else {
+              delete novo.personalizar
+            }
+            onChange(novo)
+          }}
+          className="mt-0.5 w-4 h-4 accent-[var(--blue)]"
+        />
+        <span className="min-w-0">
+          <span className="block text-xs font-bold text-ink uppercase tracking-wide">Personalizar pela agenda</span>
+          <span className="block text-[11px] text-muted leading-snug">
+            Depois da espera, olha a agenda que a pessoa montou e manda a primeira
+            das seis mensagens que se encaixar.
+          </span>
+        </span>
+      </label>
+
+      {ligado && (
+        <div className="mt-3 space-y-1.5">
+          {PREVIA_DAS_MENSAGENS.map((m, i) => (
+            <div key={m.id} className="border border-line rounded-lg overflow-hidden">
+              <button
+                type="button"
+                onClick={() => setAberta(aberta === m.id ? null : m.id)}
+                className="w-full flex items-center gap-2 px-2.5 py-2 text-left hover:bg-panel-2 transition-colors"
+              >
+                <span className="flex-shrink-0 w-6 text-center rounded text-[10px] font-bold py-0.5 bg-panel-2 text-accent-2">
+                  {m.id}
+                </span>
+                <span className="flex-1 min-w-0 text-[12px] text-ink leading-snug">{m.condicao}</span>
+                <span className="text-[10px] text-muted flex-shrink-0">{i + 1}ª</span>
+              </button>
+              {aberta === m.id && (
+                <p className="px-2.5 pb-2.5 text-[12px] text-muted whitespace-pre-wrap leading-snug">{m.texto}</p>
+              )}
+            </div>
+          ))}
+          <p className="text-[11px] text-muted leading-snug pt-1">
+            Ordem de prioridade: se a agenda se encaixa em mais de uma, vale a de
+            cima. Nenhuma se encaixa, ou a pessoa parou no meio do quiz (o
+            questionário fica no valor padrão do site): manda o texto do bloco.
+            Os textos ficam em <code className="bg-panel-2 px-1 rounded">src/lib/mensagensAgenda.ts</code>.
+          </p>
+        </div>
+      )}
+    </div>
   )
 }
 

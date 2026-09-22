@@ -54,7 +54,8 @@ interface Regra {
   id: IdMensagemAgenda
   descricao: string
   encaixa: (a1: Record<string, any>) => boolean
-  texto: (a1: Record<string, any>) => string
+  /** Sem a agenda (`a1`), devolve o texto pra mostrar na tela do funil. */
+  texto: (a1?: Record<string, any>) => string
 }
 
 /** Em ordem de prioridade: I primeiro. */
@@ -91,7 +92,7 @@ export const REGRAS_AGENDA: Regra[] = [
       !AGENDA_A1_PADROES.some((p) => num(a1.vazAM) === num(p.vazAM) && num(a1.vazPM) === num(p.vazPM)),
     // O número é o que a pessoa preencheu — "4h" fixo mentiria pra quem pôs 3h.
     texto: (a1) =>
-      ABERTURA + `notamos que você preencheu ${horas(num(a1.vazAM) + num(a1.vazPM))} de procrastinação diária.` + AJUDA +
+      ABERTURA + `notamos que você preencheu ${a1 ? horas(num(a1.vazAM) + num(a1.vazPM)) : '[quantas horas a pessoa preencheu]'} de procrastinação diária.` + AJUDA +
       'Como essa procrastinação acontece? Você tem mais dificuldade de começar as atividade ou você se distrai durante elas?',
   },
   {
@@ -147,3 +148,14 @@ export function escolherMensagemDaAgenda(
   }
   return null
 }
+
+/**
+ * As seis mensagens pra mostrar na tela do funil, na ordem de prioridade.
+ * É a mesma lista que decide o envio — a tela não tem cópia própria pra
+ * divergir do que sai no WhatsApp.
+ */
+export const PREVIA_DAS_MENSAGENS = REGRAS_AGENDA.map((r) => ({
+  id: r.id,
+  condicao: r.descricao,
+  texto: r.texto(),
+}))
