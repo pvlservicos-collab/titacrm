@@ -78,6 +78,16 @@ export function useLeadActivities(organizationId: string, leadId: string) {
 
       const filtered = (json.data || []).filter((a: any) => {
         if (a.type === 'system' && a.metadata?.source === 'custom_field') return false
+        /*
+         * Mensagem que NÃO saiu não é conversa.
+         *
+         * Quando a instância da Z-API ficou fora do ar, o CRM registrou 654
+         * mensagens que nunca chegaram a ninguém — e o time ficou olhando pra
+         * conversas que não existiam. Elas continuam no banco (marcadas com
+         * `nao_entregue`), mas fora da tela: pra essas pessoas o contato ainda
+         * não aconteceu, e é assim que precisa parecer.
+         */
+        if (a.metadata?.nao_entregue) return false
         return true
       })
       guardarConversa(alvo, filtered)

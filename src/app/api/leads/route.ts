@@ -118,6 +118,9 @@ export async function GET(req: NextRequest) {
         a.metadata->>'direction' = 'outbound'
         AND coalesce(a.metadata->>'automated', 'false') <> 'true'
         AND coalesce(a.metadata->>'source', '') NOT IN ('funnel', 'ai', 'ai_agent', 'automation')
+        -- Mensagem que não saiu (instância fora do ar) não conta como atendimento:
+        -- ninguém do outro lado recebeu nada.
+        AND coalesce(a.metadata->>'nao_entregue', 'false') <> 'true'
       )`
       const linhas = await db.execute(sql`
         SELECT a.lead_id,
