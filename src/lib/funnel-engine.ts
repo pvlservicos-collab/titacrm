@@ -86,6 +86,28 @@ function primeiroNome(titulo: string | null | undefined): string {
   return primeiro.charAt(0).toLocaleUpperCase('pt-BR') + primeiro.slice(1).toLocaleLowerCase('pt-BR')
 }
 
+/**
+ * Troca {nome}, {nome_completo} e os campos do lead — sem {link}, que precisa
+ * de uma execução de funil pra gerar o token. Usado também pela mensagem do
+ * link manual (a equipe manda pelo WhatsApp), pra sair igual à automática.
+ */
+export function aplicarVariaveis(text: string, leadTitle: string | null | undefined, atributos?: Record<string, unknown> | null): string {
+  const nome = primeiroNome(leadTitle)
+  let rendered = text
+    .replace(/\{nome_completo\}/gi, (leadTitle || '').trim())
+    .replace(/\{nome\}/gi, nome)
+  let faltou = !nome
+  rendered = rendered.replace(/\{([a-z_][a-z0-9_]*)\}/gi, (marca, chave: string) => {
+    if (chave.toLowerCase() === 'link') return marca
+    const valor = atributos?.[chave] ?? atributos?.[chave.toLowerCase()]
+    if ((typeof valor === 'string' && valor.trim()) || typeof valor === 'number') return String(valor).trim()
+    faltou = true
+    return ''
+  })
+  if (faltou) rendered = rendered.replace(/ +([!?,.])/g, '$1').replace(/ {2,}/g, ' ')
+  return rendered
+}
+
 async function renderMessage(text: string, opts: { leadTitle: string; executionId: string; blockId: string; trackableUrl?: string; context?: Record<string, any>; atributos?: Record<string, unknown> }) {
   const nome = primeiroNome(opts.leadTitle)
   let rendered = text

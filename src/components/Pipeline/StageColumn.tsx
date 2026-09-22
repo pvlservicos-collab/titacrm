@@ -132,6 +132,35 @@ export default function StageColumn({
     : leads
   const visibleLeads = leadsVisiveisNaColuna.slice(0, displayLimit)
 
+  /*
+   * Divisores por dia.
+   *
+   * Numa coluna com dezenas de cards parados ("Contactado por IA", "Link
+   * manual"), a pergunta é "quem entrou em cada dia" — e isso não se lê numa
+   * pilha sem marca nenhuma. Os cards são agrupados pelo dia do último
+   * movimento (a mensagem que saiu; sem mensagem, o dia em que o lead entrou),
+   * do mais recente pro mais antigo.
+   */
+  const gruposPorDia = useMemo(() => {
+    const diaDe = (lead: LeadWithOwner) => new Date(lead.last_activity_at || lead.created_at)
+    const grupos: { chave: string; rotulo: string; leads: LeadWithOwner[] }[] = []
+    const hoje = rotuloDoDia(new Date())
+    const ontem = rotuloDoDia(new Date(Date.now() - 24 * 3600e3))
+
+    const ordenados = [...visibleLeads].sort((a, b) => diaDe(b).getTime() - diaDe(a).getTime())
+    for (const lead of ordenados) {
+      const chave = rotuloDoDia(diaDe(lead))
+      const ultimo = grupos[grupos.length - 1]
+      if (ultimo && ultimo.chave === chave) ultimo.leads.push(lead)
+      else grupos.push({
+        chave,
+        rotulo: chave === hoje ? 'Hoje' : chave === ontem ? 'Ontem' : chave,
+        leads: [lead],
+      })
+    }
+    return grupos
+  }, [visibleLeads])
+
   // Memoize item ids to prevent SortableContext from infinite re-rendering
   const itemIds = useMemo(() => visibleLeads.map((l) => l.id), [visibleLeads])
 
@@ -241,22 +270,44 @@ export default function StageColumn({
               Sem leads
             </div>
           ) : (
-            visibleLeads.map((lead) => (
-              <LeadCard
-                key={lead.id}
-                lead={lead}
-                organizationId={organizationId}
-                stageColor={stageColor}
-                atendente={atendentePorLead[lead.id]}
-                linha={linhaPorLead[lead.id]?.id !== SEM_LINHA.id ? linhaPorLead[lead.id] : undefined}
-                isHighlighted={highlightedLeadId === lead.id}
-                onClick={onLeadClick ? () => onLeadClick(lead) : undefined}
-                onInfoClick={onLeadInfoClick ? () => onLeadInfoClick(lead) : undefined}
-              />
+            gruposPorDia.map((grupo) => (
+              <div key={grupo.chave} className="space-y-3">
+                {/* Divisor do dia: a data no meio, com quantos daquele dia. */}
+                <div className="flex items-center gap-2 pt-1" title={`${grupo.leads.length} lead(s) — ${grupo.chave}`}>
+                  <div className="h-px flex-1 hairline-x" />
+                  <span
+                    className="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wide border whitespace-nowrap"
+                    style={{ color: stageColor, backgroundColor: stageColor + '14', borderColor: stageColor + '4D' }}
+                  >
+                    {grupo.rotulo} · {grupo.leads.length}
+                  </span>
+                  <div className="h-px flex-1 hairline-x" />
+                </div>
+
+                {grupo.leads.map((lead) => (
+                  <LeadCard
+                    key={lead.id}
+                    lead={lead}
+                    organizationId={organizationId}
+                    stageColor={stageColor}
+                    atendente={atendentePorLead[lead.id]}
+                    linha={linhaPorLead[lead.id]?.id !== SEM_LINHA.id ? linhaPorLead[lead.id] : undefined}
+                    isHighlighted={highlightedLeadId === lead.id}
+                    onClick={onLeadClick ? () => onLeadClick(lead) : undefined}
+                    onInfoClick={onLeadInfoClick ? () => onLeadInfoClick(lead) : undefined}
+                  />
+                ))}
+              </div>
             ))
           )}
         </div>
       </SortableContext>
     </div>
   )
+}
+
+/** "11/09" no horário de Brasília — é por dia que a coluna se divide. */
+function rotuloDoDia(d: Date): string {
+  const local = new Date(d.getTime() - 3 * 3600e3)
+  return `${String(local.getUTCDate()).padStart(2, '0')}/${String(local.getUTCMonth() + 1).padStart(2, '0')}`
 }

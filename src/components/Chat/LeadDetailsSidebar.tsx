@@ -28,6 +28,9 @@ import {
   DotsThreeCircle,
   ClockCounterClockwise,
   CaretLeft,
+  PaperPlaneTilt,
+  Copy,
+  WhatsappLogo,
 } from '@phosphor-icons/react'
 import { CustomFieldDefinition, LeadWithOwner, PipelineStage, LeadStageHistory, Pipeline } from '@/lib/types'
 import { useSession } from 'next-auth/react'
@@ -86,6 +89,7 @@ const COR = {
   atendimento: '#34D399',
   venda: '#FB923C',
   campos: '#94A3B8',
+  manual: '#2FAE8C',
   outras: '#A1A1AA',
   historico: '#A1A1AA',
   tags: '#F472B6',
@@ -116,6 +120,104 @@ const LARGURA_PADRAO = 340
 const LARGURA_MIN = 300
 const LARGURA_MAX = 760
 const CHAVE_LARGURA = 'painel-lead-largura'
+
+/**
+ * A mensagem que a automação mandaria pra este lead, pronta pra mão.
+ *
+ * É a coluna "Link manual" resolvida: gente que nunca recebeu nada porque o
+ * WhatsApp caiu, e que vai ser chamada uma a uma. O texto sai da mesma regra
+ * do funil (as seis da agenda, ou o texto padrão), então o contato manual não
+ * fica diferente do automático.
+ */
+function MensagemManual({ leadId, abrirSozinho }: { leadId: string; abrirSozinho: boolean }) {
+  const [dados, setDados] = useState<{ texto: string; regra: string; link: string | null } | null>(null)
+  const [carregando, setCarregando] = useState(false)
+  const [erro, setErro] = useState(false)
+  const [copiado, setCopiado] = useState(false)
+
+  const carregar = async () => {
+    setCarregando(true)
+    setErro(false)
+    try {
+      const res = await fetch(`/api/leads/${leadId}/mensagem-manual`)
+      if (!res.ok) throw new Error('falhou')
+      const { data } = await res.json()
+      setDados(data)
+    } catch {
+      setErro(true)
+    } finally {
+      setCarregando(false)
+    }
+  }
+
+  useEffect(() => {
+    setDados(null)
+    setErro(false)
+    if (abrirSozinho) carregar()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [leadId, abrirSozinho])
+
+  const copiar = async () => {
+    if (!dados) return
+    try {
+      await navigator.clipboard.writeText(dados.texto)
+      setCopiado(true)
+      setTimeout(() => setCopiado(false), 2000)
+    } catch { /* navegador sem área de transferência: dá pra selecionar o texto */ }
+  }
+
+  if (!dados) {
+    return (
+      <div className="space-y-2">
+        <button
+          type="button"
+          onClick={carregar}
+          disabled={carregando}
+          className="text-[12.5px] font-bold px-3.5 py-2 rounded-lg border transition-colors hover:opacity-80 disabled:opacity-50"
+          style={{ color: COR.manual, borderColor: COR.manual + '4D', backgroundColor: COR.manual + '14' }}
+        >
+          {carregando ? 'Montando...' : 'Ver mensagem para mandar na mão'}
+        </button>
+        {erro && <p className="text-[12.5px] text-red-400">Não consegui montar a mensagem. Tente de novo.</p>}
+      </div>
+    )
+  }
+
+  return (
+    <div className="space-y-2.5">
+      <p className="text-[11.5px] font-semibold text-[var(--chat-text-muted)]">
+        {dados.regra === 'padrao'
+          ? 'Nenhuma das seis se encaixou — vai a mensagem padrão'
+          : `Mensagem ${dados.regra}, escolhida pela agenda dele`}
+      </p>
+      <p className="text-[13.5px] text-[var(--chat-text-primary)] whitespace-pre-wrap leading-relaxed rounded-xl px-3 py-2.5 bg-[var(--chat-bg-field)] border border-[var(--chat-border)]">
+        {dados.texto}
+      </p>
+      <div className="flex items-center gap-2">
+        {dados.link && (
+          <a
+            href={dados.link}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-[12.5px] font-bold text-white"
+            style={{ backgroundColor: COR.manual }}
+          >
+            <WhatsappLogo size={15} weight="fill" />
+            Abrir no WhatsApp
+          </a>
+        )}
+        <button
+          type="button"
+          onClick={copiar}
+          className="flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-[12.5px] font-bold border border-[var(--chat-border)] text-[var(--chat-text-secondary)] hover:bg-[var(--chat-bg-hover)] transition-colors"
+        >
+          <Copy size={15} weight="bold" />
+          {copiado ? 'Copiado!' : 'Copiar'}
+        </button>
+      </div>
+    </div>
+  )
+}
 
 function Secao({
   titulo,
@@ -498,6 +600,7 @@ export default function LeadDetailsSidebar({
     ? submissions.reduce((a, b) => (a.received_at < b.received_at ? a : b))
     : null
   const temAgendaAqui = submissions.some((s) => temAgenda(s.payload))
+  const etapaAtual = stages.find((e) => e.id === lead.stage_id)?.name ?? null
 
   return (
     <>
@@ -668,6 +771,13 @@ export default function LeadDetailsSidebar({
             ))
           )}
         </Secao>
+
+        {/* ── 2b. Mensagem pra mandar na mão (a da coluna Link manual) ──── */}
+        {!lead.is_group && (
+          <Secao titulo="Mensagem para contato manual" cor={COR.manual} icone={PaperPlaneTilt}>
+            <MensagemManual leadId={lead.id} abrirSozinho={etapaAtual === 'Link manual'} />
+          </Secao>
+        )}
 
         {/* ── 3. Agenda em Ascensão ─────────────────────────────────────── */}
         {temAgendaAqui && (
