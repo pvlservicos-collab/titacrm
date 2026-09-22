@@ -82,11 +82,27 @@ export async function GET(
     }
     /*
      * Momento da jornada (src/lib/momentos.ts) — "só se cadastrou", "gerou a
-     * agenda", os dois da mentoria. Sai do lead, e não do payload da submissão,
-     * porque é lá que ele fica atualizado: a Agenda reenvia o mesmo lead quando
-     * o quiz avança, e o cadastro manual do Pipeline também escreve ali.
+     * agenda", os dois da mentoria.
+     *
+     * O lead e o cadastro (a linha desta planilha) podem discordar: até 16/09 o
+     * reenvio da Agenda atualizava só o cadastro, e o lead ficou pra trás
+     * (Vanessa: "gerou a agenda" e profissão no cadastro, "só se cadastrou" e
+     * nada no lead). Vale o ponto MAIS LONGE que qualquer um dos dois registra
+     * — quem respondeu a profissão aparece como tal, esteja isso onde estiver.
      */
-    const faseDoLead = sql`coalesce(${leads.customAttributes}->>'phase', ${leads.customAttributes}->>'fase')`
+    // Chave como literal, não parâmetro: a mesma expressão vai pro SELECT e pro
+    // GROUP BY da contagem, e com parâmetros ($1, $2) o Postgres as vê diferentes.
+    const campo = (chave: 'area' | 'aumento' | 'investimento') => sql`coalesce(
+      nullif(trim(${leads.customAttributes}->>${sql.raw(`'${chave}'`)}), ''),
+      nullif(trim(${leadSourceSubmissions.payload}->>${sql.raw(`'${chave}'`)}), ''))`
+    const fases = sql`array_remove(array[
+      ${leads.customAttributes}->>'phase', ${leads.customAttributes}->>'fase',
+      ${leadSourceSubmissions.payload}->>'phase', ${leadSourceSubmissions.payload}->>'fase'], null)`
+    const faseDoLead = sql`CASE
+      WHEN 'mentoria_concluida' = ANY(${fases}) THEN 'mentoria_concluida'
+      WHEN 'mentoria_iniciada' = ANY(${fases}) THEN 'mentoria_iniciada'
+      WHEN 'done' = ANY(${fases}) THEN 'done'
+      ELSE ${fases}[1] END`
     /*
      * "Enviou formulário" não é fase que a Agenda manda: é quem respondeu o
      * formulário do fim dela (área, aumento, investimento — o mesmo critério do
@@ -97,9 +113,9 @@ export async function GET(
      */
     const ehAgenda = source === 'agenda_ascensao' || source === 'agenda_antigos'
     const enviouFormulario = sql`(
-      nullif(trim(${leads.customAttributes}->>'area'), '') IS NOT NULL
-      OR nullif(trim(${leads.customAttributes}->>'aumento'), '') IS NOT NULL
-      OR nullif(trim(${leads.customAttributes}->>'investimento'), '') IS NOT NULL)`
+      ${campo('area')} IS NOT NULL
+      OR ${campo('aumento')} IS NOT NULL
+      OR ${campo('investimento')} IS NOT NULL)`
     const momentoDoLead = ehAgenda
       ? sql`CASE
           WHEN ${faseDoLead} IN ('mentoria_iniciada', 'mentoria_concluida') THEN ${faseDoLead}
