@@ -8,6 +8,8 @@ import IntegrationBadge from '@/components/Shared/IntegrationBadge'
 import LeadBadges from '@/components/Shared/LeadBadges'
 import { PAYMENT_STATUS_META, TONE_STYLES } from '@/lib/orderStatus'
 import type { Atendente } from '@/lib/atendentes'
+import EtiquetaOrigem from '@/components/Shared/EtiquetaOrigem'
+import { etiquetaDeOrigem } from '@/lib/etiquetasOrigem'
 
 interface LeadListItemProps {
     lead: LeadWithOwner
@@ -118,6 +120,7 @@ const LeadListItem = ({ lead, isSelected, onClick, onContextMenu, timeStr, hit, 
                                 </h3>
                             </div>
                             <div className="flex items-center gap-2 pl-2 flex-shrink-0">
+                                <EtiquetaOrigem atributos={lead.custom_attributes} />
                                 {lead.is_unread && (
                                     <div className="w-2 h-2 rounded-full bg-[var(--chat-accent)] flex-shrink-0" />
                                 )}
@@ -204,6 +207,7 @@ export default memo(LeadListItem, (prevProps, nextProps) => {
         prevProps.lead.is_group === nextProps.lead.is_group &&
         prevProps.lead.custom_attributes?.last_order_payment_status === nextProps.lead.custom_attributes?.last_order_payment_status &&
         prevProps.lead.custom_attributes?.last_order_payment_method === nextProps.lead.custom_attributes?.last_order_payment_method &&
+        etiquetaDeOrigem(prevProps.lead.custom_attributes)?.chave === etiquetaDeOrigem(nextProps.lead.custom_attributes)?.chave &&
         prevProps.isSelected === nextProps.isSelected &&
         prevProps.hideReplyHighlight === nextProps.hideReplyHighlight &&
         prevProps.atendente?.id === nextProps.atendente?.id &&

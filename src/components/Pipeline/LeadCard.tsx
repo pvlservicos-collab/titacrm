@@ -9,6 +9,8 @@ import { LeadWithOwner } from '@/lib/types'
 import { formatPhone } from '@/lib/utils'
 import Avatar from '@/components/Shared/Avatar'
 import IntegrationBadge from '@/components/Shared/IntegrationBadge'
+import EtiquetaOrigem from '@/components/Shared/EtiquetaOrigem'
+import { etiquetaDeOrigem } from '@/lib/etiquetasOrigem'
 
 interface LeadCardProps {
   lead: LeadWithOwner
@@ -158,6 +160,9 @@ const LeadCard = ({ lead, isDragOverlay, stageColor, onClick, onInfoClick, isHig
                 </span>
               )}
             </div>
+            <div className="flex items-center gap-1 flex-shrink-0">
+            {/* De onde veio (Agenda / Site) e até onde foi — canto de cima. */}
+            <EtiquetaOrigem atributos={lead.custom_attributes} />
             {onInfoClick && !isDragOverlay && (
               <button
                 type="button"
@@ -172,6 +177,7 @@ const LeadCard = ({ lead, isDragOverlay, stageColor, onClick, onInfoClick, isHig
                 <Info size={16} />
               </button>
             )}
+            </div>
           </div>
 
           {/* @usuário do Instagram — só quando o lead veio de lá (ver custom_attributes
@@ -230,6 +236,7 @@ const LeadCard = ({ lead, isDragOverlay, stageColor, onClick, onInfoClick, isHig
 export default memo(LeadCard, (prevProps, nextProps) => {
   if (prevProps.atendente?.nome !== nextProps.atendente?.nome) return false
   if (prevProps.linha?.rotulo !== nextProps.linha?.rotulo) return false
+  if (etiquetaDeOrigem(prevProps.lead.custom_attributes)?.chave !== etiquetaDeOrigem(nextProps.lead.custom_attributes)?.chave) return false
   return (
     prevProps.lead.id === nextProps.lead.id &&
     prevProps.lead.updated_at === nextProps.lead.updated_at &&
