@@ -98,7 +98,9 @@ export function LeadsProvider({ children, escopo = 'tudo' }: { children: ReactNo
    * sem recarregar. Ver useAtualizacaoPeriodica — o Pusher abaixo continua
    * ligado, mas o app dele não existe mais, então hoje é isto que atualiza.
    */
-  useAtualizacaoPeriodica(() => fetchLeads(false), 6000, { ativo: !!organizationId })
+  // O Pipeline não precisa do mesmo ritmo do chat — card mudando de coluna a
+  // cada 15 s basta, e é a tela com mais leads (e a mais pesada de redesenhar).
+  useAtualizacaoPeriodica(() => fetchLeads(false), escopo === 'conversas' ? 6000 : 15000, { ativo: !!organizationId })
 
   usePusherChannel(
     organizationId ? `org-${organizationId}` : '',

@@ -292,8 +292,9 @@ h1, h2 {
 .barra-rolagem-lateral {
   scrollbar-width: auto;
   scrollbar-color: rgba(255,255,255,0.35) rgba(12,12,12,0.85);
-  background: rgba(12,12,12,0.85);
-  backdrop-filter: blur(6px);
+  /* Opaco e sem desfoque: flutua por cima de uma tabela que rola, e desfocar
+     o que passa por baixo redesenhava a cada movimento. */
+  background: rgb(14,14,14);
 }
 .barra-rolagem-lateral::-webkit-scrollbar {
   height: 12px;
@@ -434,8 +435,10 @@ html {
     background-color: var(--glass-bg-raised);
     background-image: var(--glass-veil-strong);
     border-color: var(--glass-edge-strong);
-    backdrop-filter: blur(28px) saturate(150%);
-    -webkit-backdrop-filter: blur(28px) saturate(150%);
+    /* 16px, não 28: o custo do desfoque cresce com o raio, e a diferença
+       visual sobre o fundo escuro é mínima. */
+    backdrop-filter: blur(16px) saturate(150%);
+    -webkit-backdrop-filter: blur(16px) saturate(150%);
     box-shadow: var(--glass-lift-lg);
   }
 
@@ -446,6 +449,11 @@ html {
     background-image: var(--glass-veil-soft);
     border-color: rgba(255, 255, 255, 0.06);
     box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.45) inset;
+    /* O rebaixado fica embaixo do conteúdo (a planilha da aba Leads inteira
+       está dentro de um), não na frente: desfocar o fundo aqui não se vê e
+       custa caro — é recalculado a cada rolagem. */
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
   }
 
   /* ── Superfície sólida com degradê ───────────────────────────────
@@ -699,6 +707,32 @@ html {
   background: rgba(255, 255, 255, 0.035);
   filter: blur(110px);
 }
+
+/* ── Modo leve ───────────────────────────────────────────────────────
+   Ligado sozinho em computador fraco (ver ModoLeve.tsx): tira o desfoque de
+   vidro e os brilhos de fundo, que são o que a placa de vídeo integrada de
+   notebook não aguenta. O fundo fica opaco no lugar — a mesma cor, sem ver
+   através. Tem precedência sobre tudo acima de propósito. */
+html.modo-leve .glass,
+html.modo-leve .glass-soft,
+html.modo-leve .glass-raised,
+html.modo-leve .glass-sunken,
+html.modo-leve .barra-rolagem-lateral,
+html.modo-leve [class*="backdrop-blur"] {
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+html.modo-leve .glass { background-color: rgb(20, 20, 20); }
+html.modo-leve .glass-soft { background-color: rgb(18, 18, 18); }
+html.modo-leve .glass-raised { background-color: rgb(28, 28, 28); }
+html.modo-leve .glass-sunken { background-color: rgb(10, 10, 10); }
+/* Tema claro do chat: o mesmo, em branco. */
+html.modo-leve:not(.dark) .chat-theme .glass,
+html.modo-leve:not(.dark) .chat-theme .glass-soft { background-color: rgb(250, 250, 250); }
+html.modo-leve:not(.dark) .chat-theme .glass-raised { background-color: rgb(255, 255, 255); }
+html.modo-leve:not(.dark) .chat-theme .glass-sunken { background-color: rgb(244, 244, 244); }
+html.modo-leve .ambient-glow::before,
+html.modo-leve .ambient-glow::after { display: none; }
 
 /* Safari/iOS não compõe backdrop-filter dentro de container com scroll próprio
    sem isso — sem o will-change o vidro "congela" a imagem de trás ao rolar. */

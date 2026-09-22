@@ -155,8 +155,27 @@ export async function GET(req: NextRequest) {
       }
     }
 
+    /*
+     * A lista não leva a agenda montada nem o backup da fila.
+     *
+     * No Pipeline eram ~440 KB (de 590 KB de custom_attributes) baixados, lidos e
+     * comparados no navegador a cada poucos segundos — o que travava notebook
+     * mais fraco. Nenhuma tela de lista usa isso: o cartão da agenda no chat
+     * busca o cadastro por conta própria, e o detalhe do lead vem de
+     * /api/leads/[id], que continua completo. Salvar campo não apaga nada
+     * porque o PATCH mescla (ver [id]/route.ts).
+     */
+    const CAMPOS_PESADOS = ['a1', 'real', 'blocos', 'backup_fila']
+    const enxuto = (attrs: unknown) => {
+      if (!attrs || typeof attrs !== 'object') return attrs
+      const copia = { ...(attrs as Record<string, unknown>) }
+      for (const chave of CAMPOS_PESADOS) delete copia[chave]
+      return copia
+    }
+
     const result = rows.map((r) => ({
       ...mapLead(r.lead),
+      custom_attributes: enxuto(r.lead.customAttributes) as Record<string, any>,
       // Grupo não é atendimento de lead: fica fora das etiquetas e da aba Humano.
       ...((scope === 'conversas' || scope === 'funil') && {
         autores_manuais: r.lead.isGroup ? [] : atendimento[r.lead.id]?.autores ?? [],

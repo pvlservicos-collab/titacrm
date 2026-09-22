@@ -5,6 +5,7 @@ import { FilterProvider } from '@/contexts/FilterContext'
 import AuthGuard from '@/components/Auth/AuthGuard'
 import InstallAppBanner from '@/components/Shared/InstallAppBanner'
 import SomNovoLead from '@/components/Shared/SomNovoLead'
+import ModoLeve from '@/components/Shared/ModoLeve'
 
 /**
  * Layout for all authenticated pages (pipeline, chat, settings, etc.)
@@ -42,6 +43,8 @@ export default function AuthenticatedLayout({
                 {/* Aviso sonoro de lead novo — fica no layout, e não numa página,
                     porque quem atende passa o dia no Chat ou no Pipeline. */}
                 <SomNovoLead />
+                {/* Tira o vidro em computador fraco — ver ModoLeve.tsx. */}
+                <ModoLeve />
             </FilterProvider>
         </AuthGuard>
     )

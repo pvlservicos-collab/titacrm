@@ -3,7 +3,7 @@ import { authenticateRequest, apiError, validateRequired } from '@/lib/api-auth'
 import { db } from '@/lib/db'
 import { publishEvent, channels, events } from '@/lib/realtime'
 import { leads, leadTags, tags, leadStageHistory, organizationMembers, profiles } from '@/lib/schema'
-import { eq, and, isNull, asc } from 'drizzle-orm'
+import { eq, and, isNull, asc, sql } from 'drizzle-orm'
 import { mapLead } from '@/lib/mappers'
 import { isUniqueViolation } from '@/lib/db-helpers'
 
@@ -99,6 +99,19 @@ export async function PATCH(req: NextRequest, { params }: Params) {
       }
     }
     if (body.custom_fields) updates.customAttributes = body.custom_fields
+
+    /*
+     * custom_attributes MESCLA com o que está no banco, nunca substitui.
+     *
+     * A tela manda o objeto que ela tem na mão — e a lista de leads não traz a
+     * agenda montada (a1/real/blocos), que é pesada demais pra baixar a cada
+     * poucos segundos. Substituir apagaria a agenda da pessoa no primeiro campo
+     * salvo, e junto tudo o que o servidor grava sozinho (as marcas do card do
+     * grupo, o backup da fila). Chave que a tela quer apagar vem como null.
+     */
+    if (updates.customAttributes && typeof updates.customAttributes === 'object') {
+      updates.customAttributes = sql`coalesce(${leads.customAttributes}, '{}'::jsonb) || ${JSON.stringify(updates.customAttributes)}::jsonb`
+    }
 
     if (Object.keys(updates).length > 0) {
       await db.update(leads).set({ ...updates, updatedAt: new Date() }).where(eq(leads.id, existing.id))
