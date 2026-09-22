@@ -88,6 +88,7 @@ export async function GET(req: NextRequest) {
       status: integration.status,
       instance_id: (integration.config as any)?.instance_id ?? null,
       aviso_resposta_grupo: (integration.config as any)?.aviso_resposta_grupo ?? null,
+      aviso_formulario_grupo: (integration.config as any)?.aviso_formulario_grupo ?? null,
       alerta_desconexao: !!(integration.config as any)?.disconnectAlertActive,
       grupos,
       // Só diz se existe; o valor nunca volta pro navegador.
@@ -207,14 +208,16 @@ export async function PUT(req: NextRequest) {
       // `grupo` = id do grupo que recebe o aviso, ou null pra desligar.
       const integ = await buscarIntegracao(auth.organizationId)
       if (!integ) return apiError(400, 'Integração Z-API não configurada.')
+      // `tipo`: 'resposta' (padrão, o aviso antigo) ou 'formulario'.
       const grupo = typeof body?.grupo === 'string' && body.grupo.trim() ? body.grupo.trim() : null
+      const chave = body?.tipo === 'formulario' ? 'aviso_formulario_grupo' : 'aviso_resposta_grupo'
       const config = { ...((integ.config as object) || {}) } as Record<string, unknown>
-      if (grupo) config.aviso_resposta_grupo = grupo
-      else delete config.aviso_resposta_grupo
+      if (grupo) config[chave] = grupo
+      else delete config[chave]
       await db.update(integrations)
         .set({ config, updatedAt: new Date() })
         .where(and(eq(integrations.id, integ.id), eq(integrations.organizationId, auth.organizationId)))
-      return Response.json({ ok: true, aviso_resposta_grupo: grupo })
+      return Response.json({ ok: true, [chave]: grupo })
     }
 
     if (acao === 'desconectar') {

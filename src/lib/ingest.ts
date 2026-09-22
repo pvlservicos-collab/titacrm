@@ -23,7 +23,7 @@
  *   3. Apelidos de campo: o nome do campo no WordPress é o que o autor do
  *      formulário escolheu ("your-name", "telefone", "field_3"), não o nosso.
  */
-import { NextRequest } from 'next/server'
+import { NextRequest, after } from 'next/server'
 import { and, asc, eq, inArray, isNull, sql } from 'drizzle-orm'
 import { authenticateRequest, apiError } from '@/lib/api-auth'
 import { getOrgRole } from '@/lib/admin-auth'
@@ -39,6 +39,7 @@ import {
   type NormalizedLead,
 } from '@/lib/leadSources'
 import { startFunnelForSource } from '@/lib/funnel-triggers'
+import { avisarGrupoFormularioConcluido, CAMPOS_FORMULARIO_FINAL } from '@/lib/avisoGrupo'
 import { publishEvent, channels, events } from '@/lib/realtime'
 
 /**
@@ -799,6 +800,27 @@ export async function handleIngest(
     // quem já estava cadastrado. Sem essa saída, rodar a ressincronização
     // mandaria a mensagem de boas-vindas pra todo lead antigo que ainda não
     // tivesse linha no CRM — de uma vez só, meses depois de ele ter se cadastrado.
+    /*
+     * Card no grupo "lead concluiu o formulário final" (avisoGrupo.ts).
+     *
+     * Só quando ESTA requisição trouxe as respostas do formulário — senão
+     * qualquer reenvio de um lead que terminou meses atrás mandaria o card na
+     * primeira vez depois do deploy. Fica fora da ressincronização em massa e
+     * da lista antiga pelo mesmo motivo. A trava de "uma vez por lead" fica
+     * dentro do aviso. `after`: o webhook responde sem esperar a Z-API.
+     */
+    const trouxeFormulario = CAMPOS_FORMULARIO_FINAL.some((c) => {
+      const v = normalized.fields[c]
+      return typeof v === 'string' && v.trim() !== ''
+    })
+    if (
+      leadId && trouxeFormulario && !ehResync &&
+      (sourceDef.key === 'agenda_ascensao' || sourceDef.key === 'site_evento')
+    ) {
+      const idDoLead = leadId
+      after(() => avisarGrupoFormularioConcluido(auth.organizationId, idDoLead))
+    }
+
     if (leadId && leadCreated && !ehResync && !semAutomacao) {
       try {
         await startFunnelForSource(auth.organizationId, sourceDef.key, leadId)

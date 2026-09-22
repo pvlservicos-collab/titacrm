@@ -27,6 +27,7 @@ interface EstadoIntegracao {
   instancia: { connected: boolean; smartphoneConnected?: boolean; error?: string | null } | null
   instancia_erro: string | null
   aviso_resposta_grupo: string | null
+  aviso_formulario_grupo: string | null
   grupos: { id: string; nome: string | null }[]
 }
 
@@ -87,12 +88,12 @@ export default function ZapiPage() {
     }
   }
 
-  async function definirAviso(grupo: string | null) {
+  async function definirAviso(grupo: string | null, tipo: 'resposta' | 'formulario' = 'resposta') {
     try {
       const res = await fetch('/api/integrations/zapi', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ acao: 'aviso', grupo }),
+        body: JSON.stringify({ acao: 'aviso', grupo, tipo }),
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data?.error || 'Falha ao salvar o aviso.')
@@ -337,6 +338,27 @@ export default function ZapiPage() {
             Nenhum grupo importado ainda — o aviso só pode ir para um grupo que exista no CRM.
           </p>
         )}
+      </div>
+
+      {/* Card no grupo quando o lead termina o formulário final */}
+      <div className="bg-panel border rounded-xl p-6 mb-6">
+        <h2 className="font-bold text-ink mb-1">Mandar card no grupo quando o lead concluir o formulário final</h2>
+        <p className="text-sm text-muted mb-4">
+          Quando alguém termina o formulário do fim da Agenda ou o formulário de aplicação do site,
+          sai um card no grupo com nome, telefone, @, área, aumento esperado, quanto já investiu e o
+          link da conversa. Uma vez por lead.
+        </p>
+        <select
+          value={estado?.aviso_formulario_grupo || ''}
+          onChange={(e) => definirAviso(e.target.value || null, 'formulario')}
+          disabled={!temCredenciais}
+          className="field max-w-sm disabled:opacity-40"
+        >
+          <option value="">Desligado</option>
+          {(estado?.grupos || []).map((g) => (
+            <option key={g.id} value={g.id}>{g.nome || g.id}</option>
+          ))}
+        </select>
       </div>
 
       {/* Importar conversas */}
