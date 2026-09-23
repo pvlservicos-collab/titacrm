@@ -44,3 +44,4 @@ tsconfig.tsbuildinfo
 # arquivos temporarios de sessao (scripts de diagnostico, bundles)
 .tmp-claude/
 .verificar-webhook.cjs
+.verificar-meta.cjs

@@ -6,8 +6,13 @@
  * POST → Receber mensagens inbound
  *
  * Configure no Facebook Developers:
- *   URL: https://seu-app.vercel.app/api/webhooks/facebook?org_id=SEU_ORG_ID
+ *   URL: https://titacrm.vercel.app/api/webhooks/facebook
  *   Verify Token: valor de FACEBOOK_WEBHOOK_VERIFY_TOKEN
+ *   Assinatura: FACEBOOK_APP_SECRET (App Secret; vários separados por vírgula)
+ *
+ * A organização vem do WABA id do payload (entry.id → integrations.config.waba_id);
+ * `?org_id=` ainda funciona (legado) mas não é preciso — a Meta só permite um
+ * callback por app, e o parâmetro se perde ao reconfigurar.
  */
 import { NextRequest, after } from 'next/server'
 import { db } from '@/lib/db'
@@ -18,6 +23,7 @@ import { dispatchOutboundWebhook } from '@/lib/outbound-webhook'
 import { ORGANIZATION_ID } from '@/lib/automated-message'
 import { isUniqueViolation } from '@/lib/db-helpers'
 import { notifyInboundMessage } from '@/lib/push'
+import { conferirAssinatura } from '@/lib/meta-signature'
 
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url)
@@ -25,8 +31,9 @@ export async function GET(req: NextRequest) {
   const token = searchParams.get('hub.verify_token')
   const challenge = searchParams.get('hub.challenge')
 
-  if (mode === 'subscribe' && token === process.env.FACEBOOK_WEBHOOK_VERIFY_TOKEN) {
-    return new Response(challenge, { status: 200 })
+  // hub.challenge volta como TEXTO PURO — sem JSON, sem aspas.
+  if (mode === 'subscribe' && challenge && token === process.env.FACEBOOK_WEBHOOK_VERIFY_TOKEN) {
+    return new Response(challenge, { status: 200, headers: { 'Content-Type': 'text/plain; charset=utf-8' } })
   }
   return new Response('Forbidden', { status: 403 })
 }
@@ -274,7 +281,27 @@ async function handleInstagramEntry(entry: any) {
 
 export async function POST(req: NextRequest) {
   try {
-    const body = await req.json()
+    // Corpo CRU primeiro: a assinatura é calculada sobre os bytes exatos que a
+    // Meta mandou, e req.json() + reserializar mudaria eles.
+    const corpoCru = await req.text()
+
+    const assinatura = conferirAssinatura(corpoCru, req.headers.get('x-hub-signature-256'))
+    if (assinatura === 'invalida') {
+      return Response.json({ status: 'unauthorized: assinatura inválida' }, { status: 401 })
+    }
+    if (assinatura === 'sem-segredo') {
+      // Fail-open de propósito: FACEBOOK_APP_SECRET ainda não existia na Vercel
+      // quando isto entrou, e exigir de cara derrubaria o WhatsApp/Instagram que
+      // já funcionam. Definindo a variável, a conferência passa a valer sozinha.
+      console.warn('[Facebook Webhook] FACEBOOK_APP_SECRET não definido — assinatura NÃO conferida')
+    }
+
+    let body: any
+    try {
+      body = JSON.parse(corpoCru)
+    } catch {
+      return Response.json({ status: 'ignored: corpo não é JSON' })
+    }
 
     const entry = body.entry?.[0]
 
