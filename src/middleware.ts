@@ -20,6 +20,13 @@ export function middleware(req: NextRequest) {
     '/api/public/',
     '/formulario-aplicacao.html',
     '/codigo-do-formulario.html',
+    // Páginas legais que a Meta exige (política de privacidade, termos de uso,
+    // exclusão de dados): o crawler da Meta e qualquer pessoa no rodapé do login
+    // abrem sem sessão. Ver rewrites em next.config.ts.
+    '/termos-de-uso',
+    '/politica-de-privacidade',
+    '/exclusao-de-dados',
+    '/paginas-legais/',
     // Cron da Vercel não manda cookie de sessão nem Authorization (CRON_SECRET não está
     // configurado no projeto) — sem isso na lista, toda chamada do cron caía no redirect
     // de login e a reconciliação nunca rodou de verdade desde que foi criada (13/07).

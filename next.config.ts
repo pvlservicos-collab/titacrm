@@ -33,6 +33,16 @@ const config: NextConfig = {
   // ENOENT" nos envios de áudio via API Oficial/Instagram). serverExternalPackages
   // exclui o pacote do bundling, mantendo o require() nativo do node_modules real.
   serverExternalPackages: ['ffmpeg-static'],
+  // Páginas legais (exigidas pela Meta) são HTML estático em public/paginas-legais;
+  // estes rewrites dão a elas URL limpa, sem ".html". Também precisam estar na
+  // lista pública do middleware (src/middleware.ts) — a Meta busca sem sessão.
+  async rewrites() {
+    return [
+      { source: '/termos-de-uso', destination: '/paginas-legais/termos-de-uso.html' },
+      { source: '/politica-de-privacidade', destination: '/paginas-legais/politica-de-privacidade.html' },
+      { source: '/exclusao-de-dados', destination: '/paginas-legais/exclusao-de-dados.html' },
+    ]
+  },
 }
 
 export default config
