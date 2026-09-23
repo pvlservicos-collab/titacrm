@@ -25,6 +25,8 @@ import FilterButton, { FilterState } from '@/components/Shared/FilterButton'
 import StageColumn from './StageColumn'
 import SourceRail from './SourceRail'
 import LeadCard from './LeadCard'
+import FiltroOrigem from './FiltroOrigem'
+import { etiquetaDeOrigem, type ChaveOrigem } from '@/lib/etiquetasOrigem'
 import LoadingSpinner from '@/components/Shared/LoadingSpinner'
 import { LeadDetailsSidebar } from '@/components/Chat'
 import { X } from '@phosphor-icons/react'
@@ -52,6 +54,9 @@ export default function PipelineBoard({ organizationId, filters }: PipelineBoard
 
   const { leads: globalLeads, moveLeadToStage, setLeads, stageStats } = useLeadsContext()
   const { setFilters } = usePipelineFilters()
+
+  // Filtro pelas etiquetas quadradas de origem (Agenda / Site...). Vazio = todos.
+  const [origens, setOrigens] = useState<ChaveOrigem[]>([])
 
   // Apply pipeline-specific filters in memory
   const leads = useMemo(() => {
@@ -162,7 +167,7 @@ export default function PipelineBoard({ organizationId, filters }: PipelineBoard
     }
   }, [])
 
-  const pipelineLeads = useMemo(() => {
+  const leadsDoPipeline = useMemo(() => {
     let filtered = leads.filter((l) => l.stage_id && stageIds.has(l.stage_id))
 
     // Apply filters only if they are explicitly set
@@ -196,6 +201,25 @@ export default function PipelineBoard({ organizationId, filters }: PipelineBoard
 
     return filtered
   }, [leads, stageIds, filters, matchesDateFilter])
+
+  // Quantos leads têm cada etiqueta de origem — conta ANTES do filtro de origem,
+  // pra os números dos chips continuarem valendo quando um deles está marcado.
+  const contagemPorOrigem = useMemo(() => {
+    const contagem: Record<ChaveOrigem, number> = { agenda: 0, formulario_agenda: 0, site: 0, formulario_site: 0 }
+    for (const l of leadsDoPipeline) {
+      const chave = etiquetaDeOrigem(l.custom_attributes)?.chave
+      if (chave) contagem[chave]++
+    }
+    return contagem
+  }, [leadsDoPipeline])
+
+  const pipelineLeads = useMemo(() => {
+    if (origens.length === 0) return leadsDoPipeline
+    return leadsDoPipeline.filter((l) => {
+      const chave = etiquetaDeOrigem(l.custom_attributes)?.chave
+      return !!chave && origens.includes(chave)
+    })
+  }, [leadsDoPipeline, origens])
 
   const leadsByStage = useMemo(() => {
     return stages.reduce(
@@ -408,6 +432,12 @@ export default function PipelineBoard({ organizationId, filters }: PipelineBoard
 
   return (
     <div className="flex-1 flex flex-col h-full min-h-0">
+      {stages.length > 0 && (
+        <div className="px-4 pt-3 flex-shrink-0">
+          <FiltroOrigem selecionadas={origens} contagens={contagemPorOrigem} onChange={setOrigens} />
+        </div>
+      )}
+
       {/* Kanban Board — largura rola no desktop (várias colunas lado a lado), altura
           é travada aqui e repassada pra baixo; quem rola de verdade é a lista de cards
           dentro de cada StageColumn, não essa página inteira. */}
@@ -481,7 +511,7 @@ export default function PipelineBoard({ organizationId, filters }: PipelineBoard
                     organizationId={organizationId}
                     totalLeads={pipelineLeads.length}
                     isGoalsEnabled={isGoalsEnabled}
-                    stageStats={stageStats[stage.id]}
+                    stageStats={origens.length > 0 ? undefined : stageStats[stage.id]}
                     highlightedLeadId={highlightedLeadId}
                     onLeadClick={setMovingLead}
                     onLeadInfoClick={setDetailLead}
@@ -507,7 +537,7 @@ export default function PipelineBoard({ organizationId, filters }: PipelineBoard
                   organizationId={organizationId}
                   totalLeads={pipelineLeads.length}
                   isGoalsEnabled={isGoalsEnabled}
-                  stageStats={stageStats[stage.id]}
+                  stageStats={origens.length > 0 ? undefined : stageStats[stage.id]}
                   highlightedLeadId={highlightedLeadId}
                   onLeadClick={setDetailLead}
                   onLeadInfoClick={setDetailLead}

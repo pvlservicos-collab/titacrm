@@ -139,30 +139,37 @@ const LeadCard = ({ lead, isDragOverlay, stageColor, onClick, onInfoClick, isHig
         <div className="flex-1 min-w-0 flex flex-col pt-0.5">
           {/* Header row */}
           <div className="flex items-start justify-between mb-0.5">
-            <div className="min-w-0 pr-2">
+            <div className="min-w-0 flex-1 pr-2">
               <h4 className="font-semibold text-sm text-ink truncate">
                 {formatPhone(lead.title)}
               </h4>
-              {/* Quem assumiu a conversa. Fica logo embaixo do nome e segue o
-                  lead pelas etapas seguintes: depois da call e da proposta, a
-                  conversa continua sendo de quem começou. */}
-              {atendente && (
-                <span
-                  className="inline-flex items-center gap-1 mt-0.5 px-1.5 py-[1px] rounded-full text-[9px] font-bold uppercase tracking-wide border"
-                  style={{
-                    color: atendente.cor,
-                    backgroundColor: atendente.cor + '1F',
-                    borderColor: atendente.cor + '66',
-                  }}
-                  title={atendente.nome + ' está atendendo'}
-                >
-                  {atendente.nome}
-                </span>
+              {/* Linha de etiquetas embaixo do nome: quem assumiu a conversa à
+                  esquerda, de onde o lead veio (Agenda / Site) à direita. A de
+                  origem ficava no canto de cima e comia a largura do nome — nome
+                  comprido saía cortado. Aqui o nome usa a linha toda. */}
+              {(atendente || etiquetaDeOrigem(lead.custom_attributes)) && (
+                <div className="flex items-center justify-between gap-2 mt-0.5">
+                  {/* Quem assumiu a conversa. Segue o lead pelas etapas seguintes:
+                      depois da call e da proposta, a conversa continua sendo de
+                      quem começou. */}
+                  {atendente ? (
+                    <span
+                      className="inline-flex items-center gap-1 px-1.5 py-[1px] rounded-full text-[9px] font-bold uppercase tracking-wide border truncate"
+                      style={{
+                        color: atendente.cor,
+                        backgroundColor: atendente.cor + '1F',
+                        borderColor: atendente.cor + '66',
+                      }}
+                      title={atendente.nome + ' está atendendo'}
+                    >
+                      {atendente.nome}
+                    </span>
+                  ) : <span />}
+                  <EtiquetaOrigem atributos={lead.custom_attributes} />
+                </div>
               )}
             </div>
             <div className="flex items-center gap-1 flex-shrink-0">
-            {/* De onde veio (Agenda / Site) e até onde foi — canto de cima. */}
-            <EtiquetaOrigem atributos={lead.custom_attributes} />
             {onInfoClick && !isDragOverlay && (
               <button
                 type="button"
