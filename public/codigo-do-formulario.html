@@ -69,9 +69,19 @@
   <div class="caixa">
     <h1>Formulário de aplicação — código pra colar</h1>
     <p class="sub">
-      Só as perguntas. Nome, e-mail e WhatsApp vêm do popup da página anterior, por trás — ninguém digita de novo.
-      <a href="/formulario-aplicacao.html" style="color: var(--ouro)">Ver o formulário funcionando</a>.
+      Duas versões, mesmo visual e mesma entrada no CRM. Escolha qual você vai colar:
     </p>
+
+    <div class="passos" style="border-color: rgba(201,162,39,0.45)">
+      <div class="barra" style="margin:0 0 10px">
+        <button id="v-popup">Popup completo</button>
+        <button class="secundario" id="v-perguntas">Só as perguntas</button>
+      </div>
+      <p class="sub" style="margin:0" id="descricao-versao"></p>
+      <p class="sub" style="margin:8px 0 0">
+        <a id="link-ver" href="/formulario-popup.html" style="color: var(--ouro)">Ver o formulário funcionando</a>
+      </p>
+    </div>
 
     <div class="passos" style="border-color: rgba(201,162,39,0.45)">
       <strong style="display:block;font-size:15px;margin-bottom:8px">Jeito recomendado: iframe (não mexe em nada da página)</strong>
@@ -79,7 +89,7 @@
         O formulário roda isolado dentro de uma moldura — não tem como afetar o popup, o tema nem o resto da página.
         A altura se ajusta sozinha a cada pergunta. Cole este trecho no widget HTML:
       </p>
-      <textarea id="codigo-iframe" readonly spellcheck="false" style="height:150px">&lt;iframe src="https://titacrm.vercel.app/formulario-aplicacao.html" id="form-aplicacao" style="width:100%;border:0;height:560px;display:block" scrolling="no"&gt;&lt;/iframe&gt;
+      <textarea id="codigo-iframe" readonly spellcheck="false" style="height:150px">&lt;iframe src="https://titacrm.vercel.app/formulario-popup.html" id="form-aplicacao" style="width:100%;border:0;height:560px;display:block" scrolling="no"&gt;&lt;/iframe&gt;
 &lt;script&gt;
 window.addEventListener('message', function (e) {
   if (e.data &amp;&amp; e.data.tipo === 'aplicacao-titan-altura') {
@@ -99,13 +109,14 @@ window.addEventListener('message', function (e) {
         <li>Clique em <strong>Copiar código</strong> aqui embaixo.</li>
         <li>No WordPress, abra <code>/preencha-o-formulario/</code> e apague o formulário atual.</li>
         <li>Ponha um bloco <strong>HTML personalizado</strong> (ou widget <strong>HTML</strong>, no Elementor) no lugar e cole.</li>
-        <li>
-          No popup da página anterior, em <em>Ações após enviar → Redirecionar</em>, use:
+        <li id="passo-redirect">
+          <strong>Só na versão "Só as perguntas":</strong> no popup da página anterior, em
+          <em>Ações após enviar → Redirecionar</em>, use:
           <br />
           <code>https://ascensaotita.com/preencha-o-formulario/?nome=[field id="name"]&amp;email=[field id="email"]&amp;whatsapp=[field id="tel"]</code>
           <br />
-          É isso que amarra as respostas ao lead que o popup criou. Sem isso o formulário funciona, mas as respostas
-          chegam sem dono.
+          É isso que amarra as respostas ao lead que o popup criou. Na versão "Popup completo" não existe
+          redirecionamento nenhum: a pessoa digita os dados no próprio formulário.
         </li>
       </ol>
     </div>
@@ -123,10 +134,47 @@ window.addEventListener('message', function (e) {
     var campo = document.getElementById('codigo');
     var estado = document.getElementById('estado');
 
-    fetch('/formulario-aplicacao.html')
-      .then(function (r) { return r.text(); })
-      .then(function (texto) { campo.value = texto; })
-      .catch(function () { campo.value = 'Não consegui carregar o código. Abra /formulario-aplicacao.html e use Ctrl+U.'; });
+    /*
+     * Duas versões do mesmo formulário. A de popup pede os dados na primeira
+     * tela e termina no agradecimento com o botão do suporte; a antiga só faz
+     * as perguntas e depende de o popup ter passado nome/e-mail/WhatsApp no
+     * endereço. O que muda aqui é só qual arquivo é carregado.
+     */
+    var VERSOES = {
+      popup: {
+        arquivo: '/formulario-popup.html',
+        descricao: 'Popup completo: a pessoa digita nome, e-mail, WhatsApp e @ do Instagram na primeira tela, ' +
+          'responde as 6 perguntas e termina numa tela de obrigado com o botão do suporte no WhatsApp. ' +
+          'Não redireciona em momento nenhum — é o que você cola dentro do popup.',
+      },
+      perguntas: {
+        arquivo: '/formulario-aplicacao.html',
+        descricao: 'Só as perguntas: nome, e-mail e WhatsApp vêm do popup anterior, por trás, pelo endereço. ' +
+          'Use na página /preencha-o-formulario/, quando o popup já tiver captado os dados.',
+      },
+    }
+    var atual = 'popup'
+
+    function pintarVersao() {
+      document.getElementById('v-popup').className = atual === 'popup' ? '' : 'secundario'
+      document.getElementById('v-perguntas').className = atual === 'perguntas' ? '' : 'secundario'
+      document.getElementById('descricao-versao').textContent = VERSOES[atual].descricao
+      document.getElementById('link-ver').setAttribute('href', VERSOES[atual].arquivo)
+      document.getElementById('passo-redirect').style.display = atual === 'perguntas' ? '' : 'none'
+
+      var iframe = document.getElementById('codigo-iframe')
+      iframe.value = iframe.value.replace(/formulario-(popup|aplicacao)\.html/g, VERSOES[atual].arquivo.replace('/', ''))
+
+      campo.value = 'Carregando…'
+      fetch(VERSOES[atual].arquivo)
+        .then(function (r) { return r.text(); })
+        .then(function (texto) { campo.value = texto; })
+        .catch(function () { campo.value = 'Não consegui carregar o código. Abra ' + VERSOES[atual].arquivo + ' e use Ctrl+U.'; });
+    }
+
+    document.getElementById('v-popup').addEventListener('click', function () { atual = 'popup'; pintarVersao(); })
+    document.getElementById('v-perguntas').addEventListener('click', function () { atual = 'perguntas'; pintarVersao(); })
+    pintarVersao()
 
     document.getElementById('copiar').addEventListener('click', function () {
       // O jeito moderno só funciona em HTTPS; select+execCommand cobre o resto.
@@ -173,7 +221,7 @@ window.addEventListener('message', function (e) {
       var blob = new Blob([campo.value], { type: 'text/html;charset=utf-8' });
       var link = document.createElement('a');
       link.href = URL.createObjectURL(blob);
-      link.download = 'formulario-aplicacao.html';
+      link.download = VERSOES[atual].arquivo.replace('/', '');
       link.click();
       URL.revokeObjectURL(link.href);
     });
