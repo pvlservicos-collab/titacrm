@@ -47,10 +47,20 @@ export default function ChatEvolutionPage() {
       .catch(() => setIdsEvolution([]))
   }, [organizationId])
 
-  // Só as conversas das instâncias da Evolution (qualquer uma delas).
+  /*
+   * As conversas dos OUTROS números: as instâncias da Evolution e o número
+   * antigo (Z-API), que saiu do ar. O histórico do número velho fica aqui, e
+   * não na aba da API Oficial, pra ninguém tentar responder por uma linha que
+   * não existe mais (ver a lista "Número antigo" na aba Leads).
+   */
   const allLeads = globalLeads.filter(l => {
     if (idsEvolution === undefined) return false // ainda carregando
-    return !!l.integration_id && idsEvolution.includes(l.integration_id)
+    if (l.integration?.type === 'whatsapp_zapi') return true
+    // Sem canal: o histórico dessa gente veio do número antigo (a automação
+    // saía por ele). Fica aqui até alguém falar com ela pelo número novo — aí o
+    // lead ganha o canal da API Oficial e passa pra aba de lá.
+    if (!l.integration_id) return true
+    return idsEvolution.includes(l.integration_id)
   })
 
   const [selectedLead, setSelectedLead] = useState<LeadWithOwner | null>(null)

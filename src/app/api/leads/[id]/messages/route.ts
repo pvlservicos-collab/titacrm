@@ -265,6 +265,27 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
         metadata.send_status = 'sent'
         if (result.externalId) metadata[adapter.metadataIdKey] = result.externalId
 
+        /*
+         * Primeira mensagem pela API Oficial num lead que ainda não tinha canal:
+         * grava a integração no lead. É isso que faz a conversa aparecer na aba
+         * "WhatsApp API Oficial" (e a resposta da pessoa voltar por ela) em vez
+         * de ficar na aba dos outros números.
+         */
+        if (!leadIntegrationId && integrationTyp === 'whatsapp_cloud_official' && actualLeadId) {
+          const [cloud] = await db
+            .select({ id: integrations.id })
+            .from(integrations)
+            .where(and(
+              eq(integrations.organizationId, auth.organizationId),
+              eq(integrations.type, 'whatsapp_cloud_official'),
+              isNull(integrations.deletedAt)
+            ))
+            .limit(1)
+          if (cloud) {
+            await db.update(leads).set({ integrationId: cloud.id }).where(eq(leads.id, actualLeadId))
+          }
+        }
+
         // O canal pode ter descoberto que o número só funciona na outra forma
         // (celular brasileiro com e sem o nono dígito). Grava a que deu certo:
         // sem isso, toda mensagem seguinte pra essa pessoa gastaria de novo uma

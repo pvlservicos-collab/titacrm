@@ -30,20 +30,22 @@ export default function ChatPage() {
   const pedidoDaUrl = leadIdFromUrl ? `${leadIdFromUrl}|${searchParams.get('abrir') ?? ''}` : null
 
   /*
-   * Aba WhatsApp API Oficial.
+   * Aba WhatsApp API Oficial — só o número novo.
    *
-   * Fica fora daqui o que tem aba própria: Instagram (/chat/instagram) e as
-   * instâncias da Evolution (/chat-evolution). Sem essa separação a mesma
-   * conversa aparecia em duas abas, e quem respondia não sabia por qual número
-   * a resposta ia sair.
+   * Só o que é da API Oficial. Ela começa vazia e vai se enchendo conforme o
+   * número novo for usado: quem recebe ou manda mensagem por ele passa a ter
+   * este canal gravado no lead. Tudo o mais tem aba própria:
    *
-   * As conversas do número antigo (Z-API) CONTINUAM aqui: elas fazem parte do
-   * histórico do WhatsApp da empresa — só não dá mais pra responder por elas
-   * (ver a lista "Número antigo" na aba Leads).
+   *   Instagram         → /chat/instagram
+   *   Evolution         → /chat-evolution
+   *   número antigo     → /chat-evolution ("WhatsApp (outros)")
+   *
+   * A aba começa vazia de propósito: o histórico do número velho não é
+   * conversa desta linha, e mostrar aqui daria a impressão de que dá pra
+   * responder — não dá, o número saiu do ar.
    */
   const allLeads = globalLeads.filter(l => {
-    if (getLeadChannel(l) === 'instagram') return false
-    if (l.integration?.type === 'whatsapp_evolution') return false
+    if (l.integration?.type !== 'whatsapp_cloud_official') return false
     if (permissions?.leads?.view_own_only && currentOrganization?.id) {
       if (l.owner_member_id !== currentOrganization.id) return false;
     }

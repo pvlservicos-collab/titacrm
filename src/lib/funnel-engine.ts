@@ -2,8 +2,9 @@ import { db } from '@/lib/db'
 import {
   leads, leadActivities, messageFunnels, funnelBlocks, funnelConnections,
   funnelExecutions, funnelClickEvents, funnelResponseEvents, leadStageHistory,
+  integrations,
 } from '@/lib/schema'
-import { eq, and, lte, asc, sql } from 'drizzle-orm'
+import { eq, and, isNull, lte, asc, sql } from 'drizzle-orm'
 import { publishEvent, channels, events } from '@/lib/realtime'
 import { getAutomationAdapter } from '@/lib/channels/registry'
 import { randomBytes } from 'crypto'
@@ -336,7 +337,30 @@ async function sendMessageBlock(
     activity = { id: eco.id }
   }
 
+  /*
+   * A automação sai pela API Oficial (ver getAutomationAdapter). No primeiro
+   * envio que dá certo, o lead ganha esse canal: é o que põe a conversa na aba
+   * "WhatsApp API Oficial" e faz a resposta da pessoa voltar por ela.
+   */
+  let canalDoLead: string | undefined
+  if (metadata.send_status === 'sent') {
+    const [semCanal] = await db.select({ integrationId: leads.integrationId })
+      .from(leads).where(eq(leads.id, lead.id)).limit(1)
+    if (!semCanal?.integrationId) {
+      const [cloud] = await db.select({ id: integrations.id })
+        .from(integrations)
+        .where(and(
+          eq(integrations.organizationId, execution.organizationId),
+          eq(integrations.type, 'whatsapp_cloud_official'),
+          isNull(integrations.deletedAt)
+        ))
+        .limit(1)
+      if (cloud) canalDoLead = cloud.id
+    }
+  }
+
   await db.update(leads).set({
+    ...(canalDoLead ? { integrationId: canalDoLead } : {}),
     lastMessageContent: conteudoFinal,
     lastMessageSenderType: 'automated',
     lastActivityAt: new Date(),
