@@ -164,6 +164,15 @@ async function sendMessageBlock(
     variantes?: { id: string; texto: string }[]
     /** 'agenda' = escolhe entre as mensagens I–VI pela agenda do lead (mensagensAgenda.ts). */
     personalizar?: string
+    /**
+     * Template aprovado da API Oficial, pra quem está FORA da janela de 24h.
+     *
+     * A Meta recusa texto livre pra quem nunca escreveu pro número — é o caso de
+     * todo lead que chega pela Agenda e pelo site. Com isto configurado, o funil
+     * tenta o texto e, se a Meta recusar por causa da janela, manda o template
+     * (o texto dele é o que fica gravado na conversa).
+     */
+    template?: { name: string; language: string }
   }
 
   /*
@@ -192,6 +201,7 @@ async function sendMessageBlock(
   const variante = !personalizada && variantes.length > 0 ? variantes[Math.floor(Math.random() * variantes.length)] : null
   const textoDaMensagem = personalizada ? personalizada.texto : variante ? variante.texto : config?.text || ''
 
+  let textoEnviado = ''
   const content = await renderMessage(textoDaMensagem, {
     leadTitle: lead.title,
     executionId: execution.id,
@@ -224,7 +234,7 @@ async function sendMessageBlock(
     // existe justamente pra iniciar conversa.
     const adapter = getAutomationAdapter()
     try {
-      const result = await adapter.sendText(execution.organizationId, null, lead.phone, content)
+      let result = await adapter.sendText(execution.organizationId, null, lead.phone, content)
       if (result.externalId) metadata[adapter.metadataIdKey] = result.externalId
       metadata.channel = 'automacao'
       metadata.send_status = 'sent'
@@ -246,13 +256,48 @@ async function sendMessageBlock(
         }
       }
     } catch (err: any) {
-      metadata.send_status = 'failed'
-      metadata.send_error = err.message || 'Erro ao enviar mensagem.'
-      // Falha de disparo automático não tem agente olhando a tela na hora — sem
-      // este log ela só existiria dentro de lead_activities.metadata.
-      console.error(`[funnel] falha ao disparar mensagem para o lead ${lead.id}:`, err)
+      /*
+       * Fora da janela de 24h a Meta recusa texto livre. Se o bloco tem template
+       * configurado, é ele que entrega a mensagem — e o texto gravado na conversa
+       * passa a ser o do template, porque é o que a pessoa vai ler.
+       */
+      const foraDaJanela = /re-engagement|24 hour|131047|outside/i.test(String(err?.message || ''))
+      if (foraDaJanela && config?.template?.name) {
+        try {
+          const { buscarTemplate, enviarTemplate, renderizar } = await import('@/lib/whatsappTemplates')
+          const modelo = await buscarTemplate(execution.organizationId, config.template.name, config.template.language || 'pt_BR')
+          if (modelo) {
+            const valores = Array.from({ length: modelo.bodyParams }, (_, i) =>
+              i === 0 ? primeiroNome(lead.title) || 'tudo bem' : ''
+            )
+            const envio = await enviarTemplate(execution.organizationId, lead.phone, modelo, valores, [])
+            textoEnviado = renderizar(modelo, valores, [])
+            metadata.channel = 'automacao'
+            metadata.send_status = 'sent'
+            metadata.template_name = modelo.name
+            metadata.template_language = modelo.language
+            if (envio.messageId) metadata.whatsapp_message_id = envio.messageId
+            metadata.motivo_template = 'fora da janela de 24h'
+            delete metadata.send_error
+          }
+        } catch (erroTemplate: any) {
+          console.error('[funnel] template também falhou:', erroTemplate?.message)
+        }
+      }
+      // Template deu conta? Segue o fluxo normal, com o texto dele. Senão, falha.
+      if (metadata.send_status !== 'sent') {
+        metadata.send_status = 'failed'
+        metadata.send_error = err.message || 'Erro ao enviar mensagem.'
+        // Falha de disparo automático não tem agente olhando a tela na hora — sem
+        // este log ela só existiria dentro de lead_activities.metadata.
+        console.error(`[funnel] falha ao disparar mensagem para o lead ${lead.id}:`, err)
+      }
     }
   }
+
+  // O que a pessoa vai ler: o texto do bloco ou, quando ele foi recusado pela
+  // janela de 24h, o do template que entregou a mensagem.
+  const conteudoFinal = textoEnviado || content
 
   /*
    * A Z-API devolve um "eco" de toda mensagem que enviamos (notifySentByMe),
@@ -274,7 +319,7 @@ async function sendMessageBlock(
       organizationId: execution.organizationId,
       leadId: lead.id,
       type: 'whatsapp',
-      content,
+      content: conteudoFinal,
       metadata,
     }).returning({ id: leadActivities.id })
   } catch (err) {
@@ -292,7 +337,7 @@ async function sendMessageBlock(
   }
 
   await db.update(leads).set({
-    lastMessageContent: content,
+    lastMessageContent: conteudoFinal,
     lastMessageSenderType: 'automated',
     lastActivityAt: new Date(),
     // Sem isto a conversa não aparecia na lista do Chat: quem manda pelo CRM

@@ -35,7 +35,9 @@ import { usePipelineFilters } from '@/contexts/FilterContext'
 const NAV_ITEMS = [
   { label: 'Início', href: '/', icon: House },
   { label: 'Pipeline', href: '/pipeline', icon: Kanban },
-  { label: 'WhatsApp API', href: '/chat', icon: WhatsappLogo },
+  { label: 'WhatsApp API Oficial', href: '/chat', icon: WhatsappLogo },
+  // As instâncias da Evolution (um ou vários números) ficam numa aba só.
+  { label: 'WhatsApp (outros)', href: '/chat-evolution', icon: WhatsappLogo },
   { label: 'DM Instagram', href: '/chat/instagram', icon: InstagramLogo },
   { label: 'Funil de Mensagens', href: '/funnels', icon: FlowArrow },
   { label: 'Integração', href: '/integracao', icon: PlugsConnected },

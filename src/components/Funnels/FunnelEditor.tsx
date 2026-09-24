@@ -485,6 +485,8 @@ function BlockEditorPanel({ node, stages, onChange, onDelete, onClose }: {
             */}
             <MensagensPelaAgenda config={config} onChange={onChange} />
 
+            <TemplateForaDaJanela config={config} onChange={onChange} />
+
             {config.personalizar !== 'agenda' && <TesteDeMensagens config={config} onChange={onChange} />}
 
             {(!Array.isArray(config.variantes) || config.variantes.length === 0) && (
@@ -810,6 +812,76 @@ export default function FunnelEditor({
         )}
       </div>
     </ReactFlowProvider>
+  )
+}
+
+/**
+ * Template da API Oficial pra quem está fora da janela de 24h.
+ *
+ * A Meta só aceita texto livre por 24h desde a última mensagem da pessoa. Todo
+ * lead que chega pela Agenda ou pelo site nunca escreveu pro número, então o
+ * texto do bloco volta recusado ("Re-engagement message") — e quem entrega a
+ * mensagem é um template aprovado. Sem template escolhido aqui, o envio falha e
+ * o lead fica em "Em aguardo", como quem não foi contatado.
+ */
+function TemplateForaDaJanela({
+  config,
+  onChange,
+}: {
+  config: Record<string, any>
+  onChange: (config: Record<string, any>) => void
+}) {
+  const [templates, setTemplates] = useState<{ name: string; language: string; body: string; bodyParams: number }[]>([])
+  const [erro, setErro] = useState<string | null>(null)
+  const escolhido = config.template as { name?: string; language?: string } | undefined
+
+  useEffect(() => {
+    fetch('/api/integrations/whatsapp-cloud/templates')
+      .then(async (r) => {
+        const j = await r.json().catch(() => ({}))
+        if (!r.ok) throw new Error(j?.error || 'Não deu pra listar os templates.')
+        return j
+      })
+      .then((j) => setTemplates(j.templates || []))
+      .catch((e) => setErro(e.message))
+  }, [])
+
+  const selecionado = templates.find((t) => t.name === escolhido?.name && t.language === escolhido?.language)
+
+  return (
+    <div className="border border-line rounded-lg p-3">
+      <label className="block text-xs font-bold text-ink uppercase tracking-wide mb-1">
+        Template pra fora da janela de 24h
+      </label>
+      <p className="text-[11px] text-muted leading-snug mb-2">
+        A Meta recusa texto livre pra quem nunca escreveu pro número. Escolha o template aprovado que
+        entrega essa mensagem nesse caso. A primeira variável do template recebe o primeiro nome do lead.
+      </p>
+      <select
+        value={escolhido?.name ? `${escolhido.name}|${escolhido.language}` : ''}
+        onChange={(e) => {
+          if (!e.target.value) {
+            const novo = { ...config }
+            delete novo.template
+            return onChange(novo)
+          }
+          const [name, language] = e.target.value.split('|')
+          onChange({ ...config, template: { name, language } })
+        }}
+        className="w-full px-3 py-2 border border-line rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-accent"
+      >
+        <option value="">Sem template (o envio falha fora da janela)</option>
+        {templates.map((t) => (
+          <option key={`${t.name}|${t.language}`} value={`${t.name}|${t.language}`}>
+            {t.name} [{t.language}]{t.bodyParams ? ` · ${t.bodyParams} variável(is)` : ''}
+          </option>
+        ))}
+      </select>
+      {erro && <p className="text-[11px] text-red-400 mt-1.5">{erro}</p>}
+      {selecionado && (
+        <p className="text-[11px] text-muted mt-2 whitespace-pre-wrap leading-snug">{selecionado.body}</p>
+      )}
+    </div>
   )
 }
 

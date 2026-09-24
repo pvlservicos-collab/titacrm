@@ -34,5 +34,17 @@ export function getChannelAdapter(integrationType: string | null | undefined): C
  * linha só, aqui, em vez de caçar chamadas espalhadas.
  */
 export function getAutomationAdapter(): ChannelAdapter {
-  return zapiAdapter
+  /*
+   * Desde 24/09 é a API OFICIAL: o número da Z-API saiu do ar e o da empresa
+   * agora é o +55 11 94266-7132, na Cloud API.
+   *
+   * Atenção ao que isso implica: a Meta só aceita TEXTO LIVRE dentro de 24h
+   * desde a última mensagem da pessoa. Pra quem nunca escreveu — o caso de todo
+   * lead que chega pela Agenda ou pelo site — o texto do funil volta recusado
+   * ("Re-engagement message"), e quem entrega a mensagem é o TEMPLATE aprovado
+   * configurado no bloco (ver `template` em funnel-engine.ts). Sem template
+   * configurado, o envio falha e o lead fica em "Em aguardo", como quem não foi
+   * contatado — que é a verdade.
+   */
+  return whatsappCloudAdapter
 }

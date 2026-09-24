@@ -29,9 +29,21 @@ export default function ChatPage() {
    */
   const pedidoDaUrl = leadIdFromUrl ? `${leadIdFromUrl}|${searchParams.get('abrir') ?? ''}` : null
 
-  // Aba WhatsApp API — Instagram tem aba própria em /chat/instagram
+  /*
+   * Aba WhatsApp API Oficial.
+   *
+   * Fica fora daqui o que tem aba própria: Instagram (/chat/instagram) e as
+   * instâncias da Evolution (/chat-evolution). Sem essa separação a mesma
+   * conversa aparecia em duas abas, e quem respondia não sabia por qual número
+   * a resposta ia sair.
+   *
+   * As conversas do número antigo (Z-API) CONTINUAM aqui: elas fazem parte do
+   * histórico do WhatsApp da empresa — só não dá mais pra responder por elas
+   * (ver a lista "Número antigo" na aba Leads).
+   */
   const allLeads = globalLeads.filter(l => {
     if (getLeadChannel(l) === 'instagram') return false
+    if (l.integration?.type === 'whatsapp_evolution') return false
     if (permissions?.leads?.view_own_only && currentOrganization?.id) {
       if (l.owner_member_id !== currentOrganization.id) return false;
     }

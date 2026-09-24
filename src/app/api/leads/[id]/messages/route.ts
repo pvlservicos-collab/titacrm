@@ -225,12 +225,17 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
           }
         }
       }
-      // Lead sem conversa ligada a um número — o caso de todo lead que chega pela
-      // Agenda, pelo site ou por indicação, até ele responder — sai pela Z-API,
-      // o mesmo número da mensagem automática. Antes caía na API Oficial, que não
-      // está configurada: a primeira mensagem manual pra um lead novo falhava
-      // sempre com "Integração com WhatsApp não configurada" (triângulo vermelho).
-      if (!integrationTyp) integrationTyp = 'whatsapp_zapi'
+      /*
+       * Lead sem conversa ligada a um número — todo lead que chega pela Agenda,
+       * pelo site ou por indicação, até responder — sai pela API OFICIAL, que é
+       * o número da empresa desde 24/09 (a Z-API saiu do ar).
+       *
+       * Uma ressalva que vale saber antes de ver o erro: a Meta só aceita texto
+       * livre dentro de 24h desde a última mensagem da pessoa. Pra quem nunca
+       * escreveu, o envio volta como "Re-engagement message" e a saída é mandar
+       * um TEMPLATE aprovado (botão "Enviar template" no chat).
+       */
+      if (!integrationTyp) integrationTyp = 'whatsapp_cloud_official'
       metadata.channel = integrationTyp
 
       try {

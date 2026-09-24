@@ -9,7 +9,15 @@ import { LeadWithOwner } from '@/lib/types'
 import NotAuthorized from '@/components/Shared/NotAuthorized'
 import LoadingSpinner from '@/components/Shared/LoadingSpinner'
 
-const INTEGRATION_NAME = 'WhatsApp Evolution'
+/**
+ * Esta aba é de TODAS as instâncias da Evolution, não de uma só.
+ *
+ * Antes procurava a integração pelo nome exato ("WhatsApp Evolution"), então
+ * conectar um segundo número — com qualquer outro nome — fazia as conversas
+ * dele sumirem: não apareciam aqui (nome diferente) nem na aba da API Oficial
+ * (que exclui as da Evolution). Agora vale o TIPO.
+ */
+const TIPO_EVOLUTION = 'whatsapp_evolution'
 
 /** Última conversa aberta nesta tela, pra reabrir no próximo acesso. */
 const CHAVE_ULTIMA_CONVERSA = 'crm:ultima-conversa:evolution'
@@ -26,21 +34,23 @@ export default function ChatEvolutionPage() {
    */
   const pedidoDaUrl = leadIdFromUrl ? `${leadIdFromUrl}|${searchParams.get('abrir') ?? ''}` : null
 
-  // Fetch the Evolution integration ID so we can filter leads
-  const [evolutionIntegrationId, setEvolutionIntegrationId] = useState<string | null | undefined>(undefined)
+  // Os ids de todas as instâncias da Evolution — undefined = ainda carregando.
+  const [idsEvolution, setIdsEvolution] = useState<string[] | undefined>(undefined)
 
   useEffect(() => {
     if (!organizationId) return
-    fetch(`/api/integrations?name=${encodeURIComponent(INTEGRATION_NAME)}`)
+    fetch('/api/integrations')
       .then(r => r.ok ? r.json() : { data: [] })
-      .then(({ data }) => setEvolutionIntegrationId(data?.[0]?.id || null))
-      .catch(() => setEvolutionIntegrationId(null))
+      .then(({ data }) => setIdsEvolution(
+        (data || []).filter((i: { type?: string }) => i.type === TIPO_EVOLUTION).map((i: { id: string }) => i.id)
+      ))
+      .catch(() => setIdsEvolution([]))
   }, [organizationId])
 
-  // Filter: only Evolution leads (integration_id matches the Evolution integration)
+  // Só as conversas das instâncias da Evolution (qualquer uma delas).
   const allLeads = globalLeads.filter(l => {
-    if (evolutionIntegrationId === undefined) return false // still loading
-    return l.integration_id === evolutionIntegrationId
+    if (idsEvolution === undefined) return false // ainda carregando
+    return !!l.integration_id && idsEvolution.includes(l.integration_id)
   })
 
   const [selectedLead, setSelectedLead] = useState<LeadWithOwner | null>(null)
@@ -222,7 +232,7 @@ export default function ChatEvolutionPage() {
     return <NotAuthorized />
   }
 
-  if (loading || leadsLoading || evolutionIntegrationId === undefined || (!isAdmin && !permissions)) {
+  if (loading || leadsLoading || idsEvolution === undefined || (!isAdmin && !permissions)) {
     return (
       <div className="flex items-center justify-center h-full" style={{ backgroundColor: 'var(--chat-bg-conversation)' }}>
         <LoadingSpinner text="Carregando Número 2..." size="lg" />
