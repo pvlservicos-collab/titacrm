@@ -4,6 +4,7 @@ import { useState, useEffect, useRef, useCallback, useMemo, forwardRef, useImper
 import dynamic from 'next/dynamic'
 import type { EmojiClickData, Theme } from 'emoji-picker-react'
 import {
+  ChatCenteredText,
   PaperPlaneRight,
   Smiley,
   Paperclip,
@@ -57,6 +58,9 @@ interface ActivityComposerProps {
   fireWebhook?: (key: ChatButtonKey) => Promise<boolean>
   organizationId?: string | null
   lead?: { title?: string | null; phone?: string | null }
+  /** Abre/fecha o painel de templates da API Oficial (ver TemplatePanel). */
+  onToggleTemplate?: () => void
+  templateAberto?: boolean
 }
 
 function formatDuration(ms: number): string {
@@ -81,6 +85,8 @@ const ActivityComposer = forwardRef<ActivityComposerHandle, ActivityComposerProp
   onSendMedia,
   onSendQuickReplyMedia,
   onSendQuickReplySequence,
+  onToggleTemplate,
+  templateAberto,
   replyContext,
   onCancelReply,
   chatButtonSettings,
@@ -472,6 +478,22 @@ const ActivityComposer = forwardRef<ActivityComposerHandle, ActivityComposerProp
             <ChatText size={14} weight="bold" />
             Resumir conversa
             {getButtonStatusIcon('resumir_conversa')}
+          </button>
+        )}
+
+        {/* Template da API Oficial: fora da janela de 24h é o único jeito de
+            escrever primeiro (a Meta recusa texto livre). Ver TemplatePanel. */}
+        {onToggleTemplate && (
+          <button
+            onClick={onToggleTemplate}
+            className={`flex items-center gap-1.5 px-4 py-1.5 border rounded-full text-[11px] font-bold transition-colors ${
+              templateAberto
+                ? 'bg-[var(--chat-accent)] text-[var(--chat-bg-conversation)] border-transparent'
+                : 'border-[var(--chat-border)] text-[var(--chat-icon)] bg-[var(--chat-bg-field)] hover:bg-[var(--chat-bg-hover)]'
+            }`}
+          >
+            <ChatCenteredText size={14} weight="bold" />
+            Enviar template
           </button>
         )}
       </div>

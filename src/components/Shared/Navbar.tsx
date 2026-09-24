@@ -22,6 +22,7 @@ import {
   X,
   House,
   ShieldCheck,
+  PlugsConnected,
 } from '@phosphor-icons/react'
 import { useAuth, usePipeline } from '@/hooks'
 import { useTheme } from '@/contexts/ThemeContext'
@@ -37,6 +38,7 @@ const NAV_ITEMS = [
   { label: 'WhatsApp API', href: '/chat', icon: WhatsappLogo },
   { label: 'DM Instagram', href: '/chat/instagram', icon: InstagramLogo },
   { label: 'Funil de Mensagens', href: '/funnels', icon: FlowArrow },
+  { label: 'Integração', href: '/integracao', icon: PlugsConnected },
   { label: 'Configurações', href: '/settings/organization', icon: Gear },
   { label: 'Admin', href: '/admin', icon: ShieldCheck },
 ]

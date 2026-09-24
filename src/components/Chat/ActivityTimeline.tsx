@@ -372,6 +372,13 @@ const MessageBubble = memo(function MessageBubble({
   if (outgoing) {
     const isAI = senderType === 'ai'
     const isAutomated = senderType === 'automated'
+    /*
+     * Template da API Oficial: a mensagem sai como texto, mas quem atende
+     * precisa saber que aquilo foi um MODELO aprovado pela Meta e não algo
+     * digitado — o texto é fixo, o cliente pode responder citando ele, e só o
+     * template abre conversa fora da janela de 24h. Ver api/leads/[id]/template.
+     */
+    const nomeDoTemplate = activity.metadata?.template_name as string | undefined
     const bubbleColor = isAI ? 'rgba(75, 59, 253, 0.85)' : isAutomated ? 'rgba(34, 197, 94, 0.85)' : 'var(--chat-bubble-out)'
     const labelColor = isAI ? '#4B3BFD' : isAutomated ? '#16A34A' : 'var(--chat-accent)'
     const label = isAI ? 'Atlas AI' : isAutomated ? 'Automático' : 'Você'
@@ -383,6 +390,15 @@ const MessageBubble = memo(function MessageBubble({
             <span className="text-xs font-semibold" style={{ color: labelColor }}>
               {label}
             </span>
+            {nomeDoTemplate && (
+              <span
+                className="text-[9px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded-full"
+                style={{ backgroundColor: 'rgba(47,174,140,0.2)', color: '#2FAE8C' }}
+                title={`Template aprovado da API Oficial: ${nomeDoTemplate}`}
+              >
+                Template · {nomeDoTemplate}
+              </span>
+            )}
             {isAI ? (
               <div
                 className="w-6 h-6 rounded-full flex items-center justify-center"

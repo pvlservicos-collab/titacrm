@@ -8,6 +8,7 @@ import { uploadClientFile } from '@/lib/blobClient'
 import { LeadWithOwner, LeadActivityWithActor } from '@/lib/types'
 import ActivityTimeline from './ActivityTimeline'
 import ActivityComposer, { ActivityComposerHandle } from './ActivityComposer'
+import TemplatePanel from './TemplatePanel'
 import PinnedMessagesBar from './PinnedMessagesBar'
 
 import { ChatButtonKey } from '@/hooks/useChatButtonSettings'
@@ -34,6 +35,14 @@ export default function ChatWindow({ lead, organizationId, onMessageSent }: Chat
   const [sendError, setSendError] = useState<string | null>(null)
   const ehCelular = useIsMobile()
   const composerRef = useRef<ActivityComposerHandle>(null)
+
+  /*
+   * Painel de templates da API Oficial. Fecha ao trocar de conversa: template é
+   * escolhido pra UMA pessoa (as variáveis são preenchidas com os dados dela),
+   * e deixar aberto ao pular de lead convida a mandar o texto de um pro outro.
+   */
+  const [templateAberto, setTemplateAberto] = useState(false)
+  useEffect(() => { setTemplateAberto(false) }, [lead.id])
 
   /**
    * Abriu a conversa? O cursor já vai pro campo de texto.
@@ -296,6 +305,18 @@ export default function ChatWindow({ lead, organizationId, onMessageSent }: Chat
         </div>
       )}
 
+      {templateAberto && (
+        <TemplatePanel
+          leadId={lead.id}
+          leadName={lead.title || ''}
+          onClose={() => setTemplateAberto(false)}
+          onSent={async (content) => {
+            if (onMessageSent) onMessageSent(content)
+            await recarregarMensagens(false)
+          }}
+        />
+      )}
+
       {/* Composer Bottom */}
       <ActivityComposer
         ref={composerRef}
@@ -308,6 +329,8 @@ export default function ChatWindow({ lead, organizationId, onMessageSent }: Chat
         replyContext={replyContext}
         onCancelReply={() => setReplyContext(null)}
         chatButtonSettings={chatButtonSettings}
+        onToggleTemplate={() => setTemplateAberto((v) => !v)}
+        templateAberto={templateAberto}
         fireWebhook={async (key: ChatButtonKey) => {
           return fireWebhook(key, {
             id: lead.id,

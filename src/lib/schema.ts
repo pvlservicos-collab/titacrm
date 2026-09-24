@@ -422,6 +422,22 @@ export const webhookLogs = pgTable('webhook_logs', {
 // ── Funil de Mensagens ────────────────────────────────────────────────────────
 // 'lead_site_evento' / 'lead_agenda_ascensao' disparam quando um lead novo entra
 // por /api/ingest/leads (ver src/lib/funnel-triggers.ts). Aplicados no banco por
+// Todo POST da Meta (WhatsApp Cloud / Instagram) com assinatura válida, cru,
+// gravado ANTES de interpretar. O processamento roda depois da resposta 200
+// (ver src/app/api/webhooks/facebook/route.ts) e anota o resultado aqui.
+export const metaWebhookEvents = pgTable('meta_webhook_events', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  receivedAt: timestamp('received_at', { withTimezone: true }).defaultNow().notNull(),
+  object: text('object'),
+  payload: jsonb('payload').notNull(),
+  // pendente | pausado | processado | erro
+  status: text('status').notNull(),
+  processedAt: timestamp('processed_at', { withTimezone: true }),
+  error: text('error'),
+}, (t) => ({
+  receivedAtIdx: index('meta_webhook_events_received_at_idx').on(t.receivedAt),
+}))
+
 // drizzle/0120_funnel_lead_sources.sql.
 export const funnelTriggerEnum = pgEnum('funnel_trigger', ['novo_pago', 'novo_recuperacao', 'geracaowhatsapp', 'pedido_figurinha', 'abandono_preco', 'lead_site_evento', 'lead_agenda_ascensao'])
 // 'move_stage' move o lead de etapa no pipeline; config = { stageId }.

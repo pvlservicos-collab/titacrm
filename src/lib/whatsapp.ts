@@ -1,3 +1,4 @@
+import { GRAPH_VERSION } from '@/lib/meta'
 import { db } from '@/lib/db'
 import { integrations, integrationSecrets } from '@/lib/schema'
 import { eq, and, isNull } from 'drizzle-orm'
@@ -28,15 +29,31 @@ export async function getWhatsAppCredentials(organizationId: string) {
   }
 
   return {
-    apiVersion: config.graph_api_version || 'v21.0',
+    apiVersion: config.graph_api_version || GRAPH_VERSION,
     phoneNumberId: config.phone_number_id,
     token: secret.system_token,
   }
 }
 
+/**
+ * Número no formato de envio da API Oficial.
+ *
+ * Pra celular brasileiro a Meta devolve o wa_id SEM o nono dígito
+ * (96 99171-2835 vira 559691712835), e é assim que o lead fica gravado, pra as
+ * respostas caírem na conversa certa. Mas enviar nesse formato falha no número
+ * de teste da Meta (a lista de permissão tem o número com o 9), então o envio
+ * recoloca o 9: 55 + DDD + 8 dígitos começando em 6-9 é celular. A Meta aceita
+ * os dois formatos em produção.
+ */
+export function numeroParaEnvio(phone: string): string {
+  const digitos = phone.replace(/\D/g, '')
+  const m = digitos.match(/^55(\d{2})([6-9]\d{7})$/)
+  return m ? `55${m[1]}9${m[2]}` : digitos
+}
+
 export async function sendWhatsAppMessage(organizationId: string, phone: string, content: string) {
   const { apiVersion, phoneNumberId, token } = await getWhatsAppCredentials(organizationId)
-  const to = phone.replace(/\D/g, '')
+  const to = numeroParaEnvio(phone)
 
   const res = await fetch(`https://graph.facebook.com/${apiVersion}/${phoneNumberId}/messages`, {
     method: 'POST',
@@ -74,7 +91,7 @@ export async function sendWhatsAppMedia(
   filename?: string
 ) {
   const { apiVersion, phoneNumberId, token } = await getWhatsAppCredentials(organizationId)
-  const to = phone.replace(/\D/g, '')
+  const to = numeroParaEnvio(phone)
 
   // A Cloud API só aceita áudio em AAC/AMR/MP3/MP4 ou Ogg com codec Opus puro; o
   // navegador grava em webm (ou mp4/aac no Safari) — remuxa pra Ogg/Opus antes de

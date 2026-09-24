@@ -45,3 +45,6 @@ tsconfig.tsbuildinfo
 .tmp-claude/
 .verificar-webhook.cjs
 .verificar-meta.cjs
+
+# Kit da API Oficial (instalado em src/; a pasta fica só na máquina)
+kit-whatsapp-api-oficial/

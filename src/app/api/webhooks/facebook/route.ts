@@ -3,27 +3,28 @@
  * Webhook para receber mensagens da API Oficial do Facebook/WhatsApp Cloud
  *
  * GET  → Verificação do webhook pelo Facebook (hub.challenge)
- * POST → Receber mensagens inbound
+ * POST → Receber mensagens inbound (assinatura conferida, JSON cru gravado em
+ *        meta_webhook_events, 200 na hora, processamento no after())
  *
  * Configure no Facebook Developers:
- *   URL: https://titacrm.vercel.app/api/webhooks/facebook
+ *   URL: https://pedrovictorweb.com.br/crm/api/webhooks/facebook (uma so pra todos os clientes)
  *   Verify Token: valor de FACEBOOK_WEBHOOK_VERIFY_TOKEN
- *   Assinatura: FACEBOOK_APP_SECRET (App Secret; vários separados por vírgula)
  *
- * A organização vem do WABA id do payload (entry.id → integrations.config.waba_id);
- * `?org_id=` ainda funciona (legado) mas não é preciso — a Meta só permite um
- * callback por app, e o parâmetro se perde ao reconfigurar.
+ * Variáveis: FACEBOOK_WEBHOOK_VERIFY_TOKEN, FACEBOOK_APP_SECRET (e
+ * INSTAGRAM_APP_SECRET, se o Instagram for outro app), META_WEBHOOK_ATIVO=sim.
  */
+import { GRAPH_VERSION } from '@/lib/meta'
 import { NextRequest, after } from 'next/server'
+import { conferirAssinatura, segredosDoApp } from '@/lib/meta-signature'
 import { db } from '@/lib/db'
-import { leads, leadActivities, pipelineStages, integrationMessageLogs, integrations } from '@/lib/schema'
+import { leads, leadActivities, pipelineStages, integrationMessageLogs, integrations, metaWebhookEvents } from '@/lib/schema'
 import { eq, and, isNull, ilike, asc, sql } from 'drizzle-orm'
 import { publishEvent, channels, events } from '@/lib/realtime'
 import { dispatchOutboundWebhook } from '@/lib/outbound-webhook'
 import { ORGANIZATION_ID } from '@/lib/automated-message'
 import { isUniqueViolation } from '@/lib/db-helpers'
 import { notifyInboundMessage } from '@/lib/push'
-import { conferirAssinatura } from '@/lib/meta-signature'
+import { CAMPOS_COEXISTENCIA, processarCampoCoexistencia } from '@/lib/coexistencia'
 
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url)
@@ -31,9 +32,8 @@ export async function GET(req: NextRequest) {
   const token = searchParams.get('hub.verify_token')
   const challenge = searchParams.get('hub.challenge')
 
-  // hub.challenge volta como TEXTO PURO — sem JSON, sem aspas.
-  if (mode === 'subscribe' && challenge && token === process.env.FACEBOOK_WEBHOOK_VERIFY_TOKEN) {
-    return new Response(challenge, { status: 200, headers: { 'Content-Type': 'text/plain; charset=utf-8' } })
+  if (mode === 'subscribe' && token === process.env.FACEBOOK_WEBHOOK_VERIFY_TOKEN) {
+    return new Response(challenge, { status: 200 })
   }
   return new Response('Forbidden', { status: 403 })
 }
@@ -60,7 +60,7 @@ async function downloadWhatsappMedia(orgId: string, mediaId: string): Promise<{ 
   const secret = secretRow?.secret as { system_token?: string } | undefined
   if (!secret?.system_token) return null
 
-  const apiVersion = config?.graph_api_version || 'v21.0'
+  const apiVersion = config?.graph_api_version || GRAPH_VERSION
   const token = secret.system_token
 
   const metaRes = await fetch(`https://graph.facebook.com/${apiVersion}/${mediaId}`, {
@@ -263,7 +263,7 @@ async function handleInstagramEntry(entry: any) {
     await publishEvent(channels.leadActivities(leadId), events.ACTIVITY_CREATED, { id: activity.id })
     await publishEvent(channels.orgLeads(orgId), events.LEAD_UPDATED, { id: leadId })
 
-    after(() => notifyInboundMessage(orgId, leadId, { text: content, mediaType }))
+    await notifyInboundMessage(orgId, leadId, { text: content, mediaType }).catch((e) => console.error('[Instagram Webhook] push', e))
 
     await db.insert(integrationMessageLogs).values({
       organizationId: orgId,
@@ -279,219 +279,338 @@ async function handleInstagramEntry(entry: any) {
   return Response.json({ status: 'ok' })
 }
 
+/**
+ * Confere o X-Hub-Signature-256: HMAC-SHA256 do corpo BRUTO com o App Secret.
+ * Tem que ser sobre os bytes originais -- JSON re-serializado nunca bate.
+ * Aceita o segredo do app da Meta e, se houver, o do app do Instagram (o
+ * Instagram Login assina com o segredo do app dele). Sem nenhum segredo
+ * configurado, recusa tudo: falha fechado.
+ */
+function assinaturaValida(bruto: string, cabecalho: string | null): boolean {
+  /*
+   * Confere pela lib do projeto (src/lib/meta-signature.ts), que aceita vários
+   * segredos separados por vírgula — o Instagram com login próprio usa um app
+   * diferente do WhatsApp e cada um assina com o seu.
+   *
+   * SEM segredo configurado, aceita e avisa no log, em vez de recusar: hoje o
+   * Instagram Direct funciona em produção sem FACEBOOK_APP_SECRET, e recusar
+   * tudo derrubaria o recebimento no primeiro deploy. Assim que o segredo
+   * entrar, a conferência passa a valer e assinatura errada é recusada.
+   */
+  const segredos = [...segredosDoApp(), ...segredosDoApp(process.env.INSTAGRAM_APP_SECRET)]
+  const resultado = conferirAssinatura(bruto, cabecalho, segredos)
+  if (resultado === 'sem-segredo') {
+    console.warn('[Facebook Webhook] sem FACEBOOK_APP_SECRET — aceitando sem conferir a assinatura')
+    return true
+  }
+  return resultado === 'valida'
+}
+
+/**
+ * Interruptor de pausa: só para de processar com META_WEBHOOK_ATIVO=nao.
+ *
+ * Invertido em relação ao kit de origem (lá, ausente = pausado) porque aqui o
+ * recebimento já está no ar: se a ausência pausasse, o deploy pararia de
+ * registrar mensagem do Instagram e da API Oficial sem ninguém perceber — os
+ * eventos ficariam empilhados como "pausado". Pausar é uma decisão explícita.
+ */
+function webhookAtivo(): boolean {
+  return process.env.META_WEBHOOK_ATIVO !== 'nao'
+}
+
+/**
+ * POST da Meta. Regra: 200 em menos de 5s, sempre -- se demorar ou der erro a
+ * Meta reenvia e tudo chega duplicado. Entao aqui so confere a assinatura,
+ * grava o JSON cru e responde; a interpretacao roda no after(), fora da
+ * requisicao, e anota o resultado em meta_webhook_events.
+ */
 export async function POST(req: NextRequest) {
+  const bruto = await req.text()
+  if (!assinaturaValida(bruto, req.headers.get('x-hub-signature-256'))) {
+    console.warn('[Facebook Webhook] assinatura invalida ou FACEBOOK_APP_SECRET ausente')
+    return new Response('Forbidden', { status: 403 })
+  }
+
+  let body: any
   try {
-    // Corpo CRU primeiro: a assinatura é calculada sobre os bytes exatos que a
-    // Meta mandou, e req.json() + reserializar mudaria eles.
-    const corpoCru = await req.text()
+    body = JSON.parse(bruto)
+  } catch {
+    return new Response('Bad Request', { status: 400 })
+  }
 
-    const assinatura = conferirAssinatura(corpoCru, req.headers.get('x-hub-signature-256'))
-    if (assinatura === 'invalida') {
-      return Response.json({ status: 'unauthorized: assinatura inválida' }, { status: 401 })
-    }
-    if (assinatura === 'sem-segredo') {
-      // Fail-open de propósito: FACEBOOK_APP_SECRET ainda não existia na Vercel
-      // quando isto entrou, e exigir de cara derrubaria o WhatsApp/Instagram que
-      // já funcionam. Definindo a variável, a conferência passa a valer sozinha.
-      console.warn('[Facebook Webhook] FACEBOOK_APP_SECRET não definido — assinatura NÃO conferida')
-    }
+  const ativo = webhookAtivo()
+  // Se nem gravar der, 500 de proposito: a Meta reenvia e o evento nao se perde.
+  const [evento] = await db.insert(metaWebhookEvents).values({
+    object: typeof body?.object === 'string' ? body.object : null,
+    payload: body,
+    status: ativo ? 'pendente' : 'pausado',
+  }).returning({ id: metaWebhookEvents.id })
 
-    let body: any
+  if (ativo) {
+    const orgIdDaUrl = req.nextUrl.searchParams.get('org_id')
+    after(() => processarEvento(evento.id, body, orgIdDaUrl))
+  }
+
+  return new Response('EVENT_RECEIVED', { status: 200 })
+}
+
+/**
+ * Percorre o lote inteiro: a Meta pode juntar varias entries, changes e
+ * mensagens num POST so (antes so a primeira de cada era lida). Um erro numa
+ * mensagem nao derruba as outras; o resumo fica no proprio evento.
+ */
+async function processarEvento(eventoId: string, body: any, orgIdDaUrl: string | null) {
+  const resultados: string[] = []
+  const erros: string[] = []
+
+  for (const entry of body?.entry || []) {
     try {
-      body = JSON.parse(corpoCru)
-    } catch {
-      return Response.json({ status: 'ignored: corpo não é JSON' })
-    }
-
-    const entry = body.entry?.[0]
-
-    // Instagram Messaging usa `entry.messaging[]`, ausente nos payloads do
-    // WhatsApp Cloud API — discrimina os dois formatos antes de seguir.
-    if (entry?.messaging?.length) {
-      return await handleInstagramEntry(entry)
-    }
-
-    const changes = entry?.changes?.[0]
-    const value = changes?.value
-    const message = value?.messages?.[0]
-
-    if (!message) return Response.json({ status: 'ignored: no message' })
-
-    // Resolve org_id: URL param (legado) ou via WABA ID no payload
-    let orgId = new URL(req.url).searchParams.get('org_id')
-    if (!orgId) {
-      const wabaId = entry?.id as string | undefined
-      if (wabaId) {
-        const { integrations } = await import('@/lib/schema')
-        const { sql } = await import('drizzle-orm')
-        const [found] = await db.select({ organizationId: integrations.organizationId })
-          .from(integrations)
-          .where(sql`${integrations.config}->>'waba_id' = ${wabaId}`)
-          .limit(1)
-        orgId = found?.organizationId ?? null
+      // Instagram Messaging usa `entry.messaging[]`, ausente nos payloads do
+      // WhatsApp Cloud API -- discrimina os dois formatos antes de seguir.
+      if (entry?.messaging?.length) {
+        await handleInstagramEntry(entry)
+        resultados.push('instagram')
+        continue
       }
-    }
-
-    if (!orgId) return Response.json({ status: 'ignored: org not found' })
-
-    // Detecta "echo" de mensagem enviada pelo próprio número (ex: enviada via app oficial do WhatsApp)
-    const ownNumber = (value?.metadata?.display_phone_number || '').replace(/\D/g, '')
-    const fromNumber = (message.from || '').replace(/\D/g, '')
-    const isOutboundEcho = !!ownNumber && ownNumber === fromNumber
-
-    const phone = isOutboundEcho ? (value?.contacts?.[0]?.wa_id || message.from) : message.from
-    const senderName = value?.contacts?.[0]?.profile?.name || phone
-
-    // Mídia (imagem, áudio, vídeo, documento, figurinha)
-    let mediaUrl: string | undefined
-    let mediaType: string | undefined
-    let mediaMimetype: string | undefined
-    let mediaFilename: string | undefined
-    let content = message.text?.body || ''
-
-    if ((MEDIA_TYPES as readonly string[]).includes(message.type)) {
-      mediaType = message.type
-      const mediaObj = message[message.type]
-      mediaMimetype = mediaObj?.mime_type
-      mediaFilename = mediaObj?.filename
-      if (mediaObj?.caption) content = mediaObj.caption
-
-      if (mediaObj?.id) {
-        try {
-          const downloaded = await downloadWhatsappMedia(orgId, mediaObj.id)
-          if (downloaded) {
-            mediaUrl = downloaded.url
-            mediaMimetype = downloaded.mimetype || mediaMimetype
+      for (const change of entry?.changes || []) {
+        const value = change?.value
+        // Coexistência (número também no aplicativo WhatsApp Business): eco das
+        // mensagens mandadas pelo celular, histórico e contatos. Ver lib/coexistencia.
+        if ((CAMPOS_COEXISTENCIA as readonly string[]).includes(change?.field)) {
+          const orgId = await organizacaoDoEvento(value?.metadata?.phone_number_id, entry?.id) ?? orgIdDaUrl
+          if (!orgId) { resultados.push(`${change.field}: organizacao nao encontrada`); continue }
+          try {
+            resultados.push((await processarCampoCoexistencia(orgId, change)) || change.field)
+          } catch (err: any) {
+            console.error('[Facebook Webhook] coexistencia', err)
+            erros.push(`${change.field}: ${err?.message || err}`)
           }
-        } catch (err) {
-          console.error('[Facebook Webhook] media download failed', err)
+          continue
+        }
+        if (change?.field === 'message_template_status_update') {
+          resultados.push(`template ${value?.message_template_name || ''} ${value?.event || ''}`.trim())
+          continue
+        }
+        const mensagens = value?.messages || []
+        // Atualizacao de status (entregue/lida) fica so no JSON cru por enquanto.
+        if (!mensagens.length) resultados.push(value?.statuses?.length ? 'status' : 'ignorado: sem mensagem')
+        for (const message of mensagens) {
+          try {
+            resultados.push(await processarMensagemWhatsapp(body, entry, value, message, orgIdDaUrl))
+          } catch (err: any) {
+            console.error('[Facebook Webhook]', err)
+            erros.push(`${message?.id || '?'}: ${err?.message || err}`)
+          }
         }
       }
-
-      if (!content) content = MEDIA_LABELS[message.type] || '[Mídia recebida]'
-    } else if (message.type === 'button') {
-      content = message.button?.text || message.button?.payload || '[Botão pressionado]'
-    } else if (message.type === 'interactive') {
-      content =
-        message.interactive?.button_reply?.title ||
-        message.interactive?.list_reply?.title ||
-        '[Resposta interativa]'
-    } else if (message.type === 'reaction') {
-      content = `Reagiu: ${message.reaction?.emoji || '👍'}`
-    } else if (message.type === 'location') {
-      const loc = message.location
-      content = `📍 Localização: ${loc?.name || `${loc?.latitude}, ${loc?.longitude}`}`
-    } else if (!content) {
-      content = '[Mensagem recebida]'
+    } catch (err: any) {
+      console.error('[Facebook Webhook]', err)
+      erros.push(err?.message || String(err))
     }
+  }
 
-    // Buscar ou criar lead
-    const [existing] = await db.select({ id: leads.id }).from(leads)
-      .where(and(eq(leads.organizationId, orgId), ilike(leads.phone, `%${phone}%`), isNull(leads.deletedAt)))
+  await db.update(metaWebhookEvents).set({
+    status: erros.length ? 'erro' : 'processado',
+    processedAt: new Date(),
+    error: erros.length ? erros.join(' | ') : resultados.join(', ') || null,
+  }).where(eq(metaWebhookEvents.id, eventoId)).catch((e) => console.error('[Facebook Webhook] anotar evento', e))
+}
+
+/** Organizacao dona do numero/WABA do evento, pela integracao da API Oficial. */
+async function organizacaoDoEvento(phoneNumberId?: string, wabaId?: string): Promise<string | null> {
+  for (const [campo, valor] of [['phone_number_id', phoneNumberId], ['waba_id', wabaId]] as const) {
+    if (!valor) continue
+    const [achou] = await db.select({ organizationId: integrations.organizationId })
+      .from(integrations)
+      .where(and(
+        eq(integrations.type, 'whatsapp_cloud_official'),
+        isNull(integrations.deletedAt),
+        sql`${integrations.config}->>${campo} = ${String(valor)}`,
+      ))
       .limit(1)
+    if (achou) return achou.organizationId
+  }
+  return null
+}
 
-    let leadId = existing?.id
-    if (!leadId) {
-      const [firstStage] = await db.select({ id: pipelineStages.id }).from(pipelineStages)
-        .where(and(eq(pipelineStages.organizationId, orgId), isNull(pipelineStages.deletedAt)))
-        .orderBy(asc(pipelineStages.rank)).limit(1)
+async function processarMensagemWhatsapp(body: any, entry: any, value: any, message: any, orgIdDaUrl: string | null): Promise<string> {
+  // De qual cliente e a mensagem? A Meta tem UMA URL de webhook por app, pra
+  // todos os clientes do Tech Provider, entao quem decide e o payload: primeiro
+  // o numero (phone_number_id), depois a WABA (entry.id). O ?org_id da URL e
+  // legado e so vale se nenhum dos dois bater -- se viesse primeiro, a mensagem
+  // de um cliente cairia na organizacao que estivesse na URL.
+  const orgId = await organizacaoDoEvento(value?.metadata?.phone_number_id, entry?.id) ?? orgIdDaUrl
 
+  if (!orgId) return 'ignorado: organizacao nao encontrada'
+
+  // Detecta "echo" de mensagem enviada pelo próprio número (ex: enviada via app oficial do WhatsApp)
+  const ownNumber = (value?.metadata?.display_phone_number || '').replace(/\D/g, '')
+  const fromNumber = (message.from || '').replace(/\D/g, '')
+  const isOutboundEcho = !!ownNumber && ownNumber === fromNumber
+
+  const phone = isOutboundEcho ? (value?.contacts?.[0]?.wa_id || message.from) : message.from
+  const senderName = value?.contacts?.[0]?.profile?.name || phone
+
+  // Mídia (imagem, áudio, vídeo, documento, figurinha)
+  let mediaUrl: string | undefined
+  let mediaType: string | undefined
+  let mediaMimetype: string | undefined
+  let mediaFilename: string | undefined
+  let content = message.text?.body || ''
+
+  if ((MEDIA_TYPES as readonly string[]).includes(message.type)) {
+    mediaType = message.type
+    const mediaObj = message[message.type]
+    mediaMimetype = mediaObj?.mime_type
+    mediaFilename = mediaObj?.filename
+    if (mediaObj?.caption) content = mediaObj.caption
+
+    if (mediaObj?.id) {
       try {
-        const [newLead] = await db.insert(leads).values({
-          organizationId: orgId,
-          title: senderName,
-          phone,
-          stageId: firstStage?.id || null,
-          lastActivityAt: new Date(),
-        }).returning({ id: leads.id })
-        leadId = newLead.id
+        const downloaded = await downloadWhatsappMedia(orgId, mediaObj.id)
+        if (downloaded) {
+          mediaUrl = downloaded.url
+          mediaMimetype = downloaded.mimetype || mediaMimetype
+        }
       } catch (err) {
-        // Mesma race condition já vista no Evolution: duas mensagens quase simultâneas
-        // pro mesmo telefone, cada uma cria seu próprio lead sem constraint. Agora a
-        // constraint leads_org_phone_unique garante que só uma vence.
-        if (!isUniqueViolation(err)) throw err
-        const [raceLead] = await db.select({ id: leads.id }).from(leads)
-          .where(and(eq(leads.organizationId, orgId), eq(leads.phone, phone), isNull(leads.deletedAt)))
-          .limit(1)
-        if (!raceLead) throw err
-        leadId = raceLead.id
+        console.error('[Facebook Webhook] media download failed', err)
       }
     }
 
-    let activity: { id: string }
-    try {
-      ;[activity] = await db.insert(leadActivities).values({
-        organizationId: orgId,
-        leadId,
-        type: 'whatsapp',
-        content,
-        metadata: {
-          direction: isOutboundEcho ? 'outbound' : 'inbound',
-          source: isOutboundEcho ? 'whatsapp_app' : 'facebook_cloud',
-          sender_name: senderName,
-          ...(message.id ? { whatsapp_message_id: message.id } : {}),
-          ...(mediaUrl ? { media_url: mediaUrl, media_type: mediaType, media_mimetype: mediaMimetype, ...(mediaFilename ? { media_filename: mediaFilename } : {}) } : {}),
-        },
-      }).returning({ id: leadActivities.id })
-    } catch (err) {
-      // Replay do webhook da Meta (oficialmente pode reenviar o mesmo evento) — antes
-      // duplicava incondicionalmente, sem checagem nenhuma. A constraint
-      // lead_activities_whatsapp_msgid_unique agora rejeita a segunda tentativa.
-      if (!isUniqueViolation(err)) throw err
-      return Response.json({ ok: true, skipped: 'duplicate' })
-    }
-
-    await db.update(leads).set({
-      lastMessageContent: content,
-      lastMessageSenderType: isOutboundEcho ? 'agent' : 'lead',
-      lastActivityAt: new Date(),
-      isUnread: !isOutboundEcho,
-      // Mensagem nova do cliente desarquiva sozinha (igual WhatsApp) — eco de mensagem
-      // que a própria empresa mandou não deve tirar do arquivo.
-      ...(!isOutboundEcho ? { isArchived: false } : {}),
-    }).where(eq(leads.id, leadId))
-
-    await publishEvent(channels.leadActivities(leadId), events.ACTIVITY_CREATED, { id: activity.id })
-    await publishEvent(channels.orgLeads(orgId), events.LEAD_UPDATED, { id: leadId })
-
-    if (!isOutboundEcho) {
-      after(() => notifyInboundMessage(orgId, leadId, { text: content, mediaType }))
-    }
-
-    await db.insert(integrationMessageLogs).values({
-      organizationId: orgId,
-      source: isOutboundEcho ? 'whatsapp_app' : 'facebook_cloud',
-      direction: isOutboundEcho ? 'outbound' : 'inbound',
-      phone,
-      content,
-      leadId,
-      status: 'success',
-      payload: body,
-    })
-
-    const momment = message.timestamp ? Number(message.timestamp) * 1000 : Date.now()
-
-    await dispatchOutboundWebhook(orgId, {
-      leadId,
-      phone,
-      fromMe: isOutboundEcho,
-      isGroup: false,
-      senderName: isOutboundEcho ? null : senderName,
-      content,
-      messageId: message.id || null,
-      timestamp: momment,
-      instanceId: value?.metadata?.phone_number_id || entry?.id || null,
-      connectedPhone: ownNumber || null,
-      mediaType: mediaType as any,
-      mediaUrl,
-      mediaMimetype,
-      mediaFilename,
-      audioPtt: message.type === 'audio' ? !!message.audio?.voice : undefined,
-    })
-
-    return Response.json({ status: 'ok' })
-  } catch (err: any) {
-    console.error('[Facebook Webhook]', err)
-    return Response.json({ status: 'error', message: err.message }, { status: 500 })
+    if (!content) content = MEDIA_LABELS[message.type] || '[Mídia recebida]'
+  } else if (message.type === 'button') {
+    content = message.button?.text || message.button?.payload || '[Botão pressionado]'
+  } else if (message.type === 'interactive') {
+    content =
+      message.interactive?.button_reply?.title ||
+      message.interactive?.list_reply?.title ||
+      '[Resposta interativa]'
+  } else if (message.type === 'reaction') {
+    content = `Reagiu: ${message.reaction?.emoji || '👍'}`
+  } else if (message.type === 'location') {
+    const loc = message.location
+    content = `📍 Localização: ${loc?.name || `${loc?.latitude}, ${loc?.longitude}`}`
+  } else if (!content) {
+    content = '[Mensagem recebida]'
   }
+
+  // O lead fica ligado a esta integração: é por ela que a resposta do chat sai.
+  // Sem isso o lead ficava sem canal, e lead sem canal responde pela Z-API
+  // (ver api/leads/[id]/messages) -- a conversa chegava pela API Oficial e a
+  // resposta saía por outro número, ou falhava.
+  const [cloud] = await db.select({ id: integrations.id }).from(integrations)
+    .where(and(eq(integrations.organizationId, orgId), eq(integrations.type, 'whatsapp_cloud_official'), isNull(integrations.deletedAt)))
+    .limit(1)
+
+  // Buscar ou criar lead
+  const [existing] = await db.select({ id: leads.id, integrationId: leads.integrationId }).from(leads)
+    .where(and(eq(leads.organizationId, orgId), ilike(leads.phone, `%${phone}%`), isNull(leads.deletedAt)))
+    .limit(1)
+
+  if (existing && !existing.integrationId && cloud) {
+    await db.update(leads).set({ integrationId: cloud.id }).where(eq(leads.id, existing.id))
+  }
+
+  let leadId = existing?.id
+  if (!leadId) {
+    const [firstStage] = await db.select({ id: pipelineStages.id }).from(pipelineStages)
+      .where(and(eq(pipelineStages.organizationId, orgId), isNull(pipelineStages.deletedAt)))
+      .orderBy(asc(pipelineStages.rank)).limit(1)
+
+    try {
+      const [newLead] = await db.insert(leads).values({
+        organizationId: orgId,
+        title: senderName,
+        phone,
+        stageId: firstStage?.id || null,
+        integrationId: cloud?.id ?? null,
+        lastActivityAt: new Date(),
+      }).returning({ id: leads.id })
+      leadId = newLead.id
+    } catch (err) {
+      // Mesma race condition já vista no Evolution: duas mensagens quase simultâneas
+      // pro mesmo telefone, cada uma cria seu próprio lead sem constraint. Agora a
+      // constraint leads_org_phone_unique garante que só uma vence.
+      if (!isUniqueViolation(err)) throw err
+      const [raceLead] = await db.select({ id: leads.id }).from(leads)
+        .where(and(eq(leads.organizationId, orgId), eq(leads.phone, phone), isNull(leads.deletedAt)))
+        .limit(1)
+      if (!raceLead) throw err
+      leadId = raceLead.id
+    }
+  }
+
+  let activity: { id: string }
+  try {
+    ;[activity] = await db.insert(leadActivities).values({
+      organizationId: orgId,
+      leadId,
+      type: 'whatsapp',
+      content,
+      metadata: {
+        direction: isOutboundEcho ? 'outbound' : 'inbound',
+        source: isOutboundEcho ? 'whatsapp_app' : 'facebook_cloud',
+        sender_name: senderName,
+        ...(message.id ? { whatsapp_message_id: message.id } : {}),
+        ...(mediaUrl ? { media_url: mediaUrl, media_type: mediaType, media_mimetype: mediaMimetype, ...(mediaFilename ? { media_filename: mediaFilename } : {}) } : {}),
+      },
+    }).returning({ id: leadActivities.id })
+  } catch (err) {
+    // Replay do webhook da Meta (oficialmente pode reenviar o mesmo evento) — antes
+    // duplicava incondicionalmente, sem checagem nenhuma. A constraint
+    // lead_activities_whatsapp_msgid_unique agora rejeita a segunda tentativa.
+    if (!isUniqueViolation(err)) throw err
+    return 'duplicada'
+  }
+
+  await db.update(leads).set({
+    lastMessageContent: content,
+    lastMessageSenderType: isOutboundEcho ? 'agent' : 'lead',
+    lastActivityAt: new Date(),
+    isUnread: !isOutboundEcho,
+    // Mensagem nova do cliente desarquiva sozinha (igual WhatsApp) — eco de mensagem
+    // que a própria empresa mandou não deve tirar do arquivo.
+    ...(!isOutboundEcho ? { isArchived: false } : {}),
+  }).where(eq(leads.id, leadId))
+
+  await publishEvent(channels.leadActivities(leadId), events.ACTIVITY_CREATED, { id: activity.id })
+  await publishEvent(channels.orgLeads(orgId), events.LEAD_UPDATED, { id: leadId })
+
+  if (!isOutboundEcho) {
+    // Ja estamos dentro do after() do POST: aguarda aqui mesmo.
+    await notifyInboundMessage(orgId, leadId, { text: content, mediaType }).catch((e) => console.error('[Facebook Webhook] push', e))
+  }
+
+  await db.insert(integrationMessageLogs).values({
+    organizationId: orgId,
+    source: isOutboundEcho ? 'whatsapp_app' : 'facebook_cloud',
+    direction: isOutboundEcho ? 'outbound' : 'inbound',
+    phone,
+    content,
+    leadId,
+    status: 'success',
+    payload: body,
+  })
+
+  const momment = message.timestamp ? Number(message.timestamp) * 1000 : Date.now()
+
+  await dispatchOutboundWebhook(orgId, {
+    leadId,
+    phone,
+    fromMe: isOutboundEcho,
+    isGroup: false,
+    senderName: isOutboundEcho ? null : senderName,
+    content,
+    messageId: message.id || null,
+    timestamp: momment,
+    instanceId: value?.metadata?.phone_number_id || entry?.id || null,
+    connectedPhone: ownNumber || null,
+    mediaType: mediaType as any,
+    mediaUrl,
+    mediaMimetype,
+    mediaFilename,
+    audioPtt: message.type === 'audio' ? !!message.audio?.voice : undefined,
+  })
+
+  return 'ok'
 }
