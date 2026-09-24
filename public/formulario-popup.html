@@ -48,8 +48,11 @@
     --ouro: #c9a227;
     --ouro-claro: #e8c85a;
     --linha: rgba(255, 255, 255, 0.10);
-    --texto: #f2f2f0;
-    --texto-fraco: #a7a7a2;
+    --texto: #ffffff;
+    /* Claro de propósito: no popup o cinza escuro do rótulo quase desaparecia.
+       Fica um branco levemente puxado pro cinza, só pra não competir com o
+       título da pergunta. */
+    --texto-fraco: #e4e4e0;
     --erro: #e5675c;
     --zap: #25d366;
 
@@ -86,7 +89,7 @@
 
   #aplicacao-titan .aplic__barra {
     height: 4px;
-    margin-top: 18px;
+    margin-top: 12px;
     border-radius: 99px;
     overflow: hidden;
     background: rgba(255, 255, 255, 0.08);
@@ -104,37 +107,42 @@
     display: flex;
     align-items: center;
     justify-content: flex-end;
-    padding: 10px 0 0;
+    padding: 2px 0 0;
   }
-  #aplicacao-titan .aplic__contador { font-size: 11px; color: var(--texto-fraco); letter-spacing: 0.08em; }
+  #aplicacao-titan .aplic__contador { font-size: 11px; color: rgba(255, 255, 255, 0.72); letter-spacing: 0.08em; }
 
   #aplicacao-titan .aplic__palco {
-    padding: 14px 0 6px;
-    /* Altura mínima: sem isso o bloco encolhe e cresce a cada pergunta, e a
-       página inteira dá um pulo embaixo dele a cada resposta. */
-    min-height: 320px;
+    padding: 8px 0 4px;
+    /*
+     * Altura mínima só pra o bloco não pular de tamanho entre uma pergunta de
+     * 2 opções e uma de 6. Enxuta de propósito: dentro de um popup, cada pixel
+     * a mais aqui empurra o popup inteiro pra baixo.
+     */
+    min-height: 210px;
   }
 
   #aplicacao-titan .aplic__pergunta {
     font-family: Georgia, "Times New Roman", serif;
-    font-size: clamp(20px, 3.4vw, 26px);
-    line-height: 1.32;
+    font-size: clamp(18px, 2.9vw, 22px);
+    line-height: 1.28;
     font-weight: 400;
-    margin: 6px 0 18px;
+    margin: 2px 0 12px;
     /* Branco explícito: sem isto o tema do WordPress pinta o h2 com a cor dele
        e o título some no fundo escuro. */
     color: #ffffff;
   }
   #aplicacao-titan .aplic__ajuda {
-    margin: -10px 0 18px;
-    font-size: 13.5px;
+    margin: -6px 0 12px;
+    font-size: 13px;
     line-height: 1.5;
     color: var(--texto-fraco);
   }
 
   /* ── Campos da primeira tela (nome, e-mail, WhatsApp, @) ───────────────── */
-  #aplicacao-titan .aplic__campos { display: grid; gap: 14px; }
-  @media (min-width: 620px) {
+  #aplicacao-titan .aplic__campos { display: grid; gap: 10px; }
+  /* No PC, dois campos por linha (nome | e-mail, WhatsApp | @): a coluna única
+     deixava a primeira tela alta demais e empurrava o popup pra baixo. */
+  @media (min-width: 560px) {
     #aplicacao-titan .aplic__campos { grid-template-columns: 1fr 1fr; }
     #aplicacao-titan .aplic__campo--inteiro { grid-column: 1 / -1; }
   }
@@ -144,13 +152,13 @@
     letter-spacing: 0.06em;
     text-transform: uppercase;
     font-weight: 700;
-    color: var(--texto-fraco);
-    margin-bottom: 6px;
+    color: #ffffff;
+    margin-bottom: 5px;
   }
   #aplicacao-titan .aplic__entrada {
     width: 100%;
-    min-height: 52px; /* alvo de toque confortável no celular */
-    padding: 14px 16px;
+    min-height: 44px; /* ainda confortável no toque, sem esticar o popup */
+    padding: 10px 14px;
     background: rgba(255, 255, 255, 0.03);
     border: 1px solid var(--linha);
     border-radius: 12px;
@@ -160,7 +168,7 @@
     line-height: 1.4;
     transition: border-color 0.15s ease, background 0.15s ease;
   }
-  #aplicacao-titan .aplic__entrada::placeholder { color: rgba(167, 167, 162, 0.7); }
+  #aplicacao-titan .aplic__entrada::placeholder { color: rgba(255, 255, 255, 0.45); }
   #aplicacao-titan .aplic__entrada:focus {
     outline: none;
     border-color: var(--ouro);
@@ -170,7 +178,7 @@
   #aplicacao-titan .aplic__erro { display: block; margin-top: 6px; font-size: 12.5px; color: var(--erro); }
 
   /* ── Opções das perguntas ──────────────────────────────────────────────── */
-  #aplicacao-titan .aplic__opcoes { display: grid; gap: 10px; }
+  #aplicacao-titan .aplic__opcoes { display: grid; gap: 8px; }
   @media (min-width: 620px) {
     #aplicacao-titan .aplic__opcoes--duas { grid-template-columns: 1fr 1fr; }
   }
@@ -178,11 +186,11 @@
   #aplicacao-titan .aplic__opcao {
     display: flex;
     align-items: flex-start;
-    gap: 12px;
-    min-height: 52px;
+    gap: 10px;
+    min-height: 44px;
     width: 100%;
     text-align: left;
-    padding: 14px 16px;
+    padding: 11px 14px;
     background: rgba(255, 255, 255, 0.03);
     border: 1px solid var(--linha);
     border-radius: 12px;
@@ -231,7 +239,7 @@
     display: flex;
     align-items: center;
     gap: 12px;
-    padding: 14px 0 0;
+    padding: 10px 0 0;
   }
   /* Celular: um botão embaixo do outro, cada um na largura toda. Lado a lado
      eles ficavam espremidos, e "Continuar" é o alvo do dedo — vem primeiro. */
@@ -245,7 +253,7 @@
       order: 1;
       margin-left: 0;
       width: 100%;
-      padding: 15px 20px;
+      padding: 14px 20px;
       font-size: 15px;
     }
     #aplicacao-titan .aplic__voltar {
@@ -279,25 +287,25 @@
     color: #17140a;
     font-weight: 700;
     letter-spacing: 0.04em;
-    padding: 12px 24px;
+    padding: 11px 22px;
   }
   #aplicacao-titan .aplic__avancar:hover { filter: brightness(1.06); }
   #aplicacao-titan .aplic__avancar[disabled] { opacity: 0.45; cursor: default; filter: none; }
   #aplicacao-titan .aplic__aviso { font-size: 12.5px; color: var(--erro); }
 
   /* ── Tela de agradecimento ─────────────────────────────────────────────── */
-  #aplicacao-titan .aplic__fim { text-align: center; padding: 26px 0 18px; }
+  #aplicacao-titan .aplic__fim { text-align: center; padding: 14px 0 10px; }
   #aplicacao-titan .aplic__selo {
-    width: 54px;
-    height: 54px;
+    width: 46px;
+    height: 46px;
     border-radius: 50%;
     border: 1px solid var(--ouro);
     color: var(--ouro);
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    font-size: 24px;
-    margin-bottom: 14px;
+    font-size: 22px;
+    margin-bottom: 10px;
   }
   #aplicacao-titan .aplic__fim h2 {
     font-family: Georgia, "Times New Roman", serif;
@@ -318,8 +326,8 @@
     align-items: center;
     justify-content: center;
     gap: 10px;
-    margin-top: 22px;
-    padding: 15px 26px;
+    margin-top: 16px;
+    padding: 13px 24px;
     border-radius: 12px;
     background: var(--zap);
     color: #07331b;
@@ -480,7 +488,6 @@
       rotulo: 'Nome completo',
       tipo: 'text',
       placeholder: 'Seu nome',
-      inteiro: true,
       autocomplete: 'name',
       valida: function (v) { return v.trim().length >= 2 ? '' : 'Digite seu nome.'; },
     },
@@ -489,7 +496,6 @@
       rotulo: 'E-mail',
       tipo: 'email',
       placeholder: 'seu@email.com',
-      inteiro: true,
       autocomplete: 'email',
       // Simples de propósito: quem valida e-mail de verdade é o envio dele.
       valida: function (v) { return /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(v.trim()) ? '' : 'Digite um e-mail válido.'; },
