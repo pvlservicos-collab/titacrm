@@ -20,6 +20,7 @@ const CHANNEL_COLORS: Record<LeadSourceKey, string> = {
   site_evento: '#5fd39b',
   indicacao: '#7aa2f7',
   agenda_antigos: '#7b7b76',
+  numero_antigo: '#6b6b66',
 }
 
 export const CHANNEL_META: Record<AcquisitionChannel, { label: string; color: string }> =

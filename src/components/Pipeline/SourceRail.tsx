@@ -40,6 +40,7 @@ const SOURCE_COLORS: Record<LeadSourceKey, string> = {
   site_evento: '#3987e5',
   indicacao: '#3aa76d',
   agenda_antigos: '#7b7b76',
+  numero_antigo: '#6b6b66',
 }
 
 interface SourceRailProps {

@@ -31,6 +31,10 @@ const TRIGGER_BY_SOURCE: Record<LeadSourceKey, string | null> = {
   // planilha. Se ela disparasse o funil, importar o arquivo mandaria a mensagem
   // de boas-vindas pra centenas de pessoas cadastradas meses atrás — de uma vez.
   agenda_antigos: null,
+  // null de propósito: `numero_antigo` é o registro das conversas do número que
+  // saiu do ar. Ninguém "chega" por essa lista, e disparar mensagem pra ela
+  // seria escrever por um número que não existe mais.
+  numero_antigo: null,
 }
 
 export function triggerForSource(source: LeadSourceKey): string | null {

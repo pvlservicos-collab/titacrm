@@ -37,6 +37,19 @@ export default function SubmissionDetail({
   const blocks = (Array.isArray(payload.real) ? payload.real : []) as AgendaBlock[]
   // As duas fontes da Agenda trazem perfil e quiz; muda so por onde o lead entrou.
   const isAgenda = sourceKey === 'agenda_ascensao' || sourceKey === 'agenda_antigos'
+  /*
+   * "Número antigo": a conversa inteira guardada junto do cadastro.
+   *
+   * O número que falou com essas pessoas saiu do ar (virou API Oficial), então
+   * não dá pra responder. Guardar o texto aqui é o que faz o histórico
+   * sobreviver à troca do número — e dá pra ler sem sair da lista.
+   */
+  const conversa = (Array.isArray(payload.conversa) ? payload.conversa : []) as {
+    em: string
+    quem: string
+    texto: string
+    nao_entregue?: boolean
+  }[]
   const phase = (payload.phase ?? payload.fase ?? null) as string | null
   // Quiz inteiro no valor de fábrica do site = a pessoa não respondeu nada.
   const semResposta = payload.quiz_padrao === true || quizNaoRespondido(quiz, phase)
@@ -84,6 +97,39 @@ export default function SubmissionDetail({
               </Link>
             )}
           </section>
+
+          {/* Conversa do número antigo */}
+          {conversa.length > 0 && (
+            <section>
+              <h3 className="text-[11px] font-bold uppercase tracking-wider text-muted mb-2.5">
+                Conversa no número antigo · {conversa.length} mensagem(ns)
+              </h3>
+              <p className="text-xs text-muted mb-2.5">
+                O número que trocou essas mensagens saiu do ar. A conversa continua no chat, mas não
+                dá mais pra responder por ela.
+              </p>
+              <div className="panel rounded-xl divide-y divide-white/5 max-h-[420px] overflow-y-auto">
+                {conversa.map((m, i) => (
+                  <div key={i} className="px-3 py-2">
+                    <div className="flex items-center gap-2 mb-0.5">
+                      <span className={`text-[10px] font-bold uppercase tracking-wide ${m.quem === 'lead' ? 'text-emerald-400' : 'text-[var(--blue)]'}`}>
+                        {m.quem === 'lead' ? (submission.name || 'Lead') : m.quem === 'automacao' ? 'Automação' : 'Equipe'}
+                      </span>
+                      <span className="text-[10px] text-muted">
+                        {new Date(m.em).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}
+                      </span>
+                      {m.nao_entregue && (
+                        <span className="text-[9px] font-bold uppercase tracking-wide px-1.5 rounded-full bg-red-500/15 text-red-400">
+                          não entregue
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-[13px] text-ink whitespace-pre-wrap break-words">{m.texto}</p>
+                  </div>
+                ))}
+              </div>
+            </section>
+          )}
 
           {/* Perfil profissional — só a Agenda tem esses campos */}
           {isAgenda && (

@@ -19,7 +19,7 @@
  */
 import { quizNaoRespondido, resumoAgenda, type AgendaBlock } from '@/lib/agenda'
 
-export type LeadSourceKey = 'agenda_ascensao' | 'site_evento' | 'agenda_antigos' | 'indicacao'
+export type LeadSourceKey = 'agenda_ascensao' | 'site_evento' | 'agenda_antigos' | 'indicacao' | 'numero_antigo'
 
 /** Como a célula é renderizada na planilha. */
 export type ColumnFormat =
@@ -566,17 +566,61 @@ function camposExtras(body: Record<string, any>): Record<string, unknown> {
   return extras
 }
 
+/**
+ * Conversas do número velho do WhatsApp (o que estava na Z-API).
+ *
+ * Trocar o número pela API Oficial deixa essas conversas órfãs: elas continuam
+ * no chat, mas não dá mais pra responder por elas — o número que falou com
+ * aquelas pessoas não existe mais. Esta lista é o registro de quem eram e do
+ * que foi dito, com o telefone, pra o histórico não depender de uma conversa
+ * que ninguém pode mais continuar.
+ *
+ * Lista histórica: fica fora do dashboard e da coluna "Fonte:" do Kanban.
+ * Preenchida por scripts/salvar-conversas-numero-antigo.mjs, não por webhook.
+ */
+const numeroAntigo: LeadSourceDef = {
+  key: 'numero_antigo',
+  label: 'Número antigo',
+  description: 'Conversas do número que estava na Z-API, antes da troca pela API Oficial. Não é possível responder por elas.',
+  isAcquisitionChannel: false,
+  required: [],
+  columns: [
+    { key: 'name', label: 'Nome', width: 190 },
+    { key: 'phone', label: 'WhatsApp', format: 'phone', width: 150 },
+    { key: 'instagram', label: 'Instagram', format: 'instagram', width: 150 },
+    { key: 'mensagens', label: 'Mensagens', format: 'number', width: 110 },
+    { key: 'deles', label: 'Dela/dele', format: 'number', width: 100 },
+    { key: 'nossas', label: 'Nossas', format: 'number', width: 90 },
+    { key: 'nao_entregues', label: 'Não entregues', format: 'number', width: 120 },
+    { key: 'primeira_em', label: 'Primeira mensagem', format: 'datetime', width: 170 },
+    { key: 'ultima_em', label: 'Última mensagem', format: 'datetime', width: 170 },
+    { key: 'ultima_mensagem', label: 'O que foi dito por último', width: 320 },
+    { key: 'ultimo_quem', label: 'Quem falou por último', width: 150 },
+  ],
+  // Entra por script, com os campos já prontos: normalizar aqui seria reescrever
+  // o que já veio no formato certo.
+  normalize: (body) => ({
+    externalId: trimmed(body.id) ?? normalizePhone(body.whatsapp),
+    name: trimmed(body.nome) || 'Sem nome',
+    email: trimmed(body.email),
+    phone: normalizePhone(body.whatsapp),
+    instagram: normalizeInstagram(body.instagram),
+    fields: camposExtras(body),
+  }),
+}
+
 /* ── Registro ─────────────────────────────────────────────────────────────── */
 
 export const LEAD_SOURCES: Record<LeadSourceKey, LeadSourceDef> = {
   agenda_ascensao: agendaAscensao,
+  numero_antigo: numeroAntigo,
   site_evento: siteEvento,
   indicacao,
   agenda_antigos: agendaAntigos,
 }
 
 /** Ordem das abas na tela. */
-export const LEAD_SOURCE_ORDER: LeadSourceKey[] = ['agenda_ascensao', 'site_evento', 'indicacao', 'agenda_antigos']
+export const LEAD_SOURCE_ORDER: LeadSourceKey[] = ['agenda_ascensao', 'site_evento', 'indicacao', 'agenda_antigos', 'numero_antigo']
 
 /**
  * Só os canais de aquisição ao vivo. É o que o dashboard e a coluna "Fonte:" do
