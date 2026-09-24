@@ -153,7 +153,7 @@ async function renderMessage(text: string, opts: { leadTitle: string; executionI
 async function sendMessageBlock(
   execution: { id: string; funnelId: string; organizationId: string; leadId: string; context?: any },
   block: { id: string; config: any }
-): Promise<{ variante: string | null } | undefined> {
+): Promise<{ variante: string | null; falhou: boolean } | undefined> {
   const [lead] = await db.select({ id: leads.id, title: leads.title, phone: leads.phone, customAttributes: leads.customAttributes })
     .from(leads).where(eq(leads.id, execution.leadId)).limit(1)
   if (!lead) return
@@ -305,7 +305,7 @@ async function sendMessageBlock(
   await publishEvent(channels.leadActivities(lead.id), events.ACTIVITY_CREATED, { id: activity.id })
   await publishEvent(channels.orgLeads(execution.organizationId), events.LEAD_UPDATED, { id: lead.id })
 
-  return { variante: variante ? variante.id : null }
+  return { variante: variante ? variante.id : null, falhou: metadata.send_status === 'failed' }
 }
 
 /**
@@ -386,6 +386,23 @@ export async function advanceExecution(executionId: string) {
       }
 
       const enviada = await sendMessageBlock(execution as any, block as any)
+
+      /*
+       * A mensagem não saiu (WhatsApp fora do ar): o funil PARA aqui.
+       *
+       * Sem isto ele seguia pro bloco seguinte e movia o lead pra "Contactado
+       * por IA" — três pessoas ficaram nessa coluna em 23/09 sem ter recebido
+       * nada, e quem olhasse o Kanban acharia que já tinham sido chamadas. O
+       * lead fica onde está (em "Em aguardo", como quem nunca foi contatado) e
+       * a mensagem fica registrada como falha, pra dar pra reenviar na mão.
+       */
+      if (enviada?.falhou) {
+        await db.update(funnelExecutions)
+          .set({ status: 'stopped', updatedAt: new Date() })
+          .where(eq(funnelExecutions.id, executionId))
+        return
+      }
+
       await db.update(funnelExecutions).set({
         context: {
           ...(execution.context as object),
