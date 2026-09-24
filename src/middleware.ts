@@ -19,6 +19,10 @@ export function middleware(req: NextRequest) {
     // public/formulario-aplicacao.html, que também precisa abrir sem sessão.
     '/api/public/',
     '/formulario-aplicacao.html',
+    // Mesma coisa pra versão que vive dentro do popup e pede os dados na
+    // primeira tela (public/formulario-popup.html): sem esta linha ela abre
+    // como redirect pro login, e o iframe do WordPress mostra a tela de login.
+    '/formulario-popup.html',
     '/codigo-do-formulario.html',
     // Páginas legais que a Meta exige (política de privacidade, termos de uso,
     // exclusão de dados): o crawler da Meta e qualquer pessoa no rodapé do login
