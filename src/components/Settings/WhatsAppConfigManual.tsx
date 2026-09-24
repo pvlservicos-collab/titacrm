@@ -84,7 +84,8 @@ export default function WhatsAppConfigManual({ onSalvo }: { onSalvo?: () => void
     setSalvando(true)
     setRecado(null)
     try {
-      const corpo: Record<string, string> = { waba_id: waba.trim(), phone_number_id: numero.trim() }
+      const corpo: Record<string, string> = { phone_number_id: numero.trim() }
+      if (waba.trim()) corpo.waba_id = waba.trim()
       // Token em branco = manter o que já está salvo (a tela nunca mostra o atual).
       if (token.trim()) corpo.system_token = token.trim()
       if (!corpo.system_token && !diag?.credenciais?.temToken) {
@@ -137,7 +138,7 @@ export default function WhatsAppConfigManual({ onSalvo }: { onSalvo?: () => void
       <div className="grid gap-3 sm:grid-cols-2">
         <div>
           <label className="block text-xs font-semibold text-muted uppercase tracking-wide mb-1.5">
-            ID da conta do WhatsApp Business (WABA)
+            ID da conta do WhatsApp Business (WABA) — só para templates
           </label>
           <input
             value={waba}
@@ -173,7 +174,7 @@ export default function WhatsAppConfigManual({ onSalvo }: { onSalvo?: () => void
       </div>
 
       <div className="flex items-center gap-3">
-        <button onClick={salvar} disabled={salvando || !waba.trim() || !numero.trim()} className="btn btn-primary btn-sm disabled:opacity-40">
+        <button onClick={salvar} disabled={salvando || !numero.trim()} className="btn btn-primary btn-sm disabled:opacity-40">
           {salvando ? 'Salvando…' : 'Salvar e testar'}
         </button>
         {recado && (

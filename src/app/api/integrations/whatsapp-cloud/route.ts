@@ -20,11 +20,18 @@ export async function POST(req: NextRequest) {
     const auth = await authenticateRequest(req)
     await assertManageIntegrations(auth)
     const body = await req.json().catch(() => ({}))
-    const missing = validateRequired(body ?? {}, ['waba_id', 'phone_number_id', 'system_token'])
+    // WABA opcional: enviar e receber depende só do número e do token (o
+    // webhook acha a organização pelo phone_number_id). O WABA é a conta, e é
+    // ele que os TEMPLATES precisam — sem ele, o resto funciona.
+    const missing = validateRequired(body ?? {}, ['phone_number_id', 'system_token'])
     if (missing) return apiError(400, missing)
 
     const { waba_id, phone_number_id, system_token, graph_api_version } = body
-    const config = { waba_id, phone_number_id, graph_api_version: graph_api_version ?? 'v21.0' }
+    const config: Record<string, unknown> = {
+      phone_number_id,
+      graph_api_version: graph_api_version ?? 'v21.0',
+      ...(waba_id ? { waba_id } : {}),
+    }
 
     const existing = await db.select({ id: integrations.id }).from(integrations)
       .where(and(eq(integrations.organizationId, auth.organizationId), eq(integrations.type, 'whatsapp_cloud_official')))
