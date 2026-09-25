@@ -35,6 +35,8 @@ export function getChannelAdapter(integrationType: string | null | undefined): C
  * linha só, aqui, em vez de caçar chamadas espalhadas.
  */
 export function getAutomationAdapter(): ChannelAdapter {
+  // NUNCA devolver o evolutionAdapter (nem zapi): as linhas da Evolution não
+  // recebem automação — ver CLAUDE.md.
   /*
    * Desde 24/09 é a API OFICIAL: o número da Z-API saiu do ar e o da empresa
    * agora é o +55 11 94266-7132, na Cloud API.

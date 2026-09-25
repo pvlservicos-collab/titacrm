@@ -518,7 +518,9 @@ async function processarMensagemWhatsapp(body: any, entry: any, value: any, mess
     if (existing.integrationId) {
       const [atual] = await db.select({ type: integrations.type }).from(integrations)
         .where(eq(integrations.id, existing.integrationId)).limit(1)
-      trocaDeCanal = atual?.type === 'whatsapp_zapi'
+      // Também de uma linha da Evolution: a resposta tem que sair pelo número
+      // em que a pessoa escreveu por último (a API Oficial, aqui).
+      trocaDeCanal = atual?.type === 'whatsapp_zapi' || atual?.type === 'whatsapp_evolution'
     }
     if (trocaDeCanal) {
       await db.update(leads).set({ integrationId: cloud.id }).where(eq(leads.id, existing.id))

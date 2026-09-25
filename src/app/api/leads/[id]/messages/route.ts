@@ -236,6 +236,16 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
        * um TEMPLATE aprovado (botão "Enviar template" no chat).
        */
       if (!integrationTyp) integrationTyp = 'whatsapp_cloud_official'
+
+      /*
+       * REGRA: as linhas da Evolution (Michele, Augusto, Cau) só respondem à
+       * mão. Nada automático sai por elas — token de API, n8n, IA ou qualquer
+       * integração externa. Só passa quem está logado no CRM (tem membro): o
+       * token de API não tem. Ver CLAUDE.md.
+       */
+      if (integrationTyp === 'whatsapp_evolution' && !auth.memberId) {
+        return apiError(403, 'Os números da Evolution só enviam mensagem digitada por uma pessoa no CRM — envio automático é bloqueado.')
+      }
       metadata.channel = integrationTyp
 
       try {

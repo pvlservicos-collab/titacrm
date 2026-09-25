@@ -2,7 +2,12 @@ import { db } from './db'
 import { integrations, integrationSecrets } from './schema'
 import { eq, and, isNull } from 'drizzle-orm'
 
-async function getEvolutionCredentials(organizationId: string) {
+/**
+ * Credenciais de UMA instância. Com `integrationId`, a daquela linha (Michele,
+ * Augusto, Cau...); sem ele, a primeira da organização — o comportamento de
+ * quando só existia um número.
+ */
+export async function getEvolutionCredentials(organizationId: string, integrationId?: string | null) {
   const [integration] = await db
     .select({ id: integrations.id, config: integrations.config })
     .from(integrations)
@@ -10,7 +15,8 @@ async function getEvolutionCredentials(organizationId: string) {
       and(
         eq(integrations.organizationId, organizationId),
         eq(integrations.type, 'whatsapp_evolution'),
-        isNull(integrations.deletedAt)
+        isNull(integrations.deletedAt),
+        ...(integrationId ? [eq(integrations.id, integrationId)] : [])
       )
     )
     .limit(1)
@@ -43,10 +49,11 @@ async function getEvolutionCredentials(organizationId: string) {
  */
 export async function downloadEvolutionMedia(
   organizationId: string,
-  key: { id: string; remoteJid: string; fromMe?: boolean }
+  key: { id: string; remoteJid: string; fromMe?: boolean },
+  integrationId?: string | null
 ): Promise<{ url: string; mimetype?: string } | null> {
   try {
-    const { instanceName, apiKey, server } = await getEvolutionCredentials(organizationId)
+    const { instanceName, apiKey, server } = await getEvolutionCredentials(organizationId, integrationId)
 
     // A Evolution/Baileys indexa mensagens no armazenamento dela pela chave completa
     // (remoteJid + fromMe + id), não só pelo id — mandar só o id fazia a busca falhar
@@ -89,10 +96,11 @@ export async function downloadEvolutionMedia(
  */
 export async function fetchEvolutionProfilePicture(
   organizationId: string,
-  phone: string
+  phone: string,
+  integrationId?: string | null
 ): Promise<string | null> {
   try {
-    const { instanceName, apiKey, server } = await getEvolutionCredentials(organizationId)
+    const { instanceName, apiKey, server } = await getEvolutionCredentials(organizationId, integrationId)
 
     const res = await fetch(`${server}/chat/fetchProfilePictureUrl/${instanceName}`, {
       method: 'POST',
@@ -149,9 +157,10 @@ export async function sendEvolutionMessage(
   organizationId: string,
   phone: string,
   text: string,
-  isGroup?: boolean
+  isGroup?: boolean,
+  integrationId?: string | null
 ) {
-  const { instanceName, apiKey, server } = await getEvolutionCredentials(organizationId)
+  const { instanceName, apiKey, server } = await getEvolutionCredentials(organizationId, integrationId)
   const formattedPhone = formatRecipient(phone, isGroup)
 
   const res = await fetch(`${server}/message/sendText/${instanceName}`, {
@@ -172,9 +181,10 @@ export async function sendEvolutionMedia(
   mediaUrl: string,
   caption?: string,
   fileName?: string,
-  isGroup?: boolean
+  isGroup?: boolean,
+  integrationId?: string | null
 ) {
-  const { instanceName, apiKey, server } = await getEvolutionCredentials(organizationId)
+  const { instanceName, apiKey, server } = await getEvolutionCredentials(organizationId, integrationId)
   const formattedPhone = formatRecipient(phone, isGroup)
 
   // Áudio (nota de voz) precisa do endpoint dedicado: é ele quem converte o arquivo de
@@ -224,9 +234,10 @@ export async function deleteEvolutionMessage(
   organizationId: string,
   phone: string,
   messageId: string,
-  isGroup?: boolean
+  isGroup?: boolean,
+  integrationId?: string | null
 ) {
-  const { instanceName, apiKey, server } = await getEvolutionCredentials(organizationId)
+  const { instanceName, apiKey, server } = await getEvolutionCredentials(organizationId, integrationId)
   const formattedPhone = formatRecipient(phone, isGroup)
 
   const res = await fetch(`${server}/chat/deleteMessageForEveryone/${instanceName}`, {

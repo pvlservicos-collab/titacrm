@@ -63,3 +63,24 @@ npm run verificar:chat
 
 Ele roda os cenários que quebraram na prática (com e sem link, endereço
 acompanhando ou não, link repetido). Nada disso aparece em `tsc` nem no build.
+
+## Números da Evolution (Michele, Augusto, Cau): NUNCA disparar
+
+As linhas da Evolution (integrações `whatsapp_evolution`, uma por pessoa) existem
+**só para observar e responder à mão pelo CRM**. Nada automático sai por elas:
+funil, disparo, IA, n8n, token de API, nada. Isso vale até o dono do projeto
+liberar explicitamente.
+
+O que sustenta a regra (não desfazer sem pedido explícito):
+
+- `getAutomationAdapter()` (src/lib/channels/registry.ts) nunca devolve o adapter da
+  Evolution;
+- `POST /api/leads/[id]/messages` recusa envio por Evolution sem pessoa logada
+  (`auth.memberId`) — token de API não passa;
+- a mensagem que ENTRA por uma linha (src/lib/evolutionInbound.ts) não vai pro webhook
+  de saída, não entra em funil e não cria lead no Kanban;
+- quem responde por elas é sempre uma pessoa digitando no chat.
+
+Risco a lembrar: a Evolution é API não oficial (Baileys) e vai contra os termos do
+WhatsApp — banimento é possível mesmo sem automação. Por isso: nada de primeiro
+contato em massa, só resposta humana.

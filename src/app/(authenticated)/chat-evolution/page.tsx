@@ -5,20 +5,17 @@ import { useSearchParams } from 'next/navigation'
 import { useAuth, useStageHistory, useLeadPipelineStages, usePipeline } from '@/hooks'
 import { useLeadsContext } from '@/contexts/LeadsContext'
 import { LeadList, ChatWindow, LeadDetailsSidebar } from '@/components/Chat'
+import LinhasEvolution, { ABA_ANTIGO, type LinhaEvolution } from '@/components/Chat/LinhasEvolution'
 import { WarningCircle } from '@phosphor-icons/react'
 import { LeadWithOwner } from '@/lib/types'
 import NotAuthorized from '@/components/Shared/NotAuthorized'
 import LoadingSpinner from '@/components/Shared/LoadingSpinner'
 
 /**
- * Esta aba é de TODAS as instâncias da Evolution, não de uma só.
- *
- * Antes procurava a integração pelo nome exato ("WhatsApp Evolution"), então
- * conectar um segundo número — com qualquer outro nome — fazia as conversas
- * dele sumirem: não apareciam aqui (nome diferente) nem na aba da API Oficial
- * (que exclui as da Evolution). Agora vale o TIPO.
+ * "Outros números": uma aba por linha da Evolution (Michele, Augusto, Cau) e a
+ * do número antigo. As linhas só observam e respondem à mão — nunca recebem
+ * automação (ver CLAUDE.md).
  */
-const TIPO_EVOLUTION = 'whatsapp_evolution'
 
 /** Última conversa aberta nesta tela, pra reabrir no próximo acesso. */
 const CHAVE_ULTIMA_CONVERSA = 'crm:ultima-conversa:evolution'
@@ -35,10 +32,30 @@ export default function ChatEvolutionPage() {
    */
   const pedidoDaUrl = leadIdFromUrl ? `${leadIdFromUrl}|${searchParams.get('abrir') ?? ''}` : null
 
-  // Os ids de todas as instâncias da Evolution — undefined = ainda carregando.
-  const [idsEvolution, setIdsEvolution] = useState<string[] | undefined>(undefined)
+  // As linhas (Michele, Augusto, Cau) e se estão conectadas — undefined = ainda carregando.
+  const [linhas, setLinhas] = useState<LinhaEvolution[] | undefined>(undefined)
+  const [abaEscolhida, setAbaEscolhida] = useState<string | null>(null)
+  const abaAtiva = abaEscolhida ?? linhas?.[0]?.id ?? ABA_ANTIGO
 
   const [comConversa, setComConversa] = useState<Set<string> | undefined>(undefined)
+
+  const carregarLinhas = useCallback(async () => {
+    try {
+      const r = await fetch('/api/evolution/linhas')
+      const j = r.ok ? await r.json() : { data: [] }
+      setLinhas(j.data || [])
+    } catch {
+      setLinhas((prev) => prev ?? [])
+    }
+  }, [])
+
+  useEffect(() => {
+    if (!organizationId) return
+    void carregarLinhas()
+    // Mantém os pontinhos de conectado/desconectado em dia sem recarregar a tela.
+    const t = setInterval(() => { void carregarLinhas() }, 30000)
+    return () => clearInterval(t)
+  }, [organizationId, carregarLinhas])
 
   useEffect(() => {
     if (!organizationId) return
@@ -48,37 +65,40 @@ export default function ChatEvolutionPage() {
       .catch(() => setComConversa(new Set()))
   }, [organizationId])
 
-  useEffect(() => {
-    if (!organizationId) return
-    fetch('/api/integrations')
-      .then(r => r.ok ? r.json() : { data: [] })
-      .then(({ data }) => setIdsEvolution(
-        (data || []).filter((i: { type?: string }) => i.type === TIPO_EVOLUTION).map((i: { id: string }) => i.id)
-      ))
-      .catch(() => setIdsEvolution([]))
-  }, [organizationId])
-
   /*
-   * As conversas dos OUTROS números: as instâncias da Evolution e o número
-   * antigo (Z-API), que saiu do ar. O histórico do número velho fica aqui, e
-   * não na aba da API Oficial, pra ninguém tentar responder por uma linha que
-   * não existe mais (ver a lista "Número antigo" na aba Leads).
+   * Esta tela tem uma aba por linha da Evolution (Michele, Augusto, Cau) e a
+   * do número antigo (Z-API, desligado).
+   *
+   * Linha: só as conversas daquela linha, sem filtro extra — são vivas.
+   * Antigo: só o que teve conversa de verdade (mensagem que a pessoa mandou ou
+   * que chegou nela). Tentativa que falhou com o número fora do ar e contato
+   * importado do aparelho ficam de fora, sem apagar nada. Sem canal também é
+   * daqui: o histórico dessa gente veio do número antigo, até alguém falar com
+   * ela por um número novo.
    */
   const allLeads = globalLeads.filter(l => {
-    if (idsEvolution === undefined || comConversa === undefined) return false // ainda carregando
-    // Só o que teve conversa de verdade: mensagem que a pessoa mandou ou que
-    // chegou nela. Tentativa que falhou com o número fora do ar e contato
-    // importado do aparelho não são conversa — ficam fora daqui (nada é apagado).
-    if (!comConversa.has(l.id)) return false
-    if (l.integration?.type === 'whatsapp_zapi') return true
-    // Sem canal: o histórico dessa gente veio do número antigo (a automação
-    // saía por ele). Fica aqui até alguém falar com ela pelo número novo — aí o
-    // lead ganha o canal da API Oficial e passa pra aba de lá.
-    if (!l.integration_id) return true
-    return idsEvolution.includes(l.integration_id)
+    if (linhas === undefined || comConversa === undefined) return false // ainda carregando
+    if (abaAtiva === ABA_ANTIGO) {
+      if (!comConversa.has(l.id)) return false
+      return l.integration?.type === 'whatsapp_zapi' || !l.integration_id
+    }
+    return l.integration_id === abaAtiva
   })
+  const linhaAtiva = linhas?.find((l) => l.id === abaAtiva) ?? null
+
+  const abaDoLead = useCallback((l: LeadWithOwner) => {
+    return linhas?.some((x) => x.id === l.integration_id) ? (l.integration_id as string) : ABA_ANTIGO
+  }, [linhas])
 
   const [selectedLead, setSelectedLead] = useState<LeadWithOwner | null>(null)
+
+  // Trocar de aba: some a conversa aberta da aba anterior e a da nova abre do topo.
+  const conversaInicial = useRef<string | null>(null)
+  const mudarAba = useCallback((aba: string) => {
+    setAbaEscolhida(aba)
+    setSelectedLead(null)
+    conversaInicial.current = null
+  }, [])
 
   /*
    * UMA fonte de verdade para a conversa aberta: o que a pessoa escolheu.
@@ -104,19 +124,21 @@ export default function ChatEvolutionPage() {
     ultimaUrlVista.current = pedidoDaUrl
     if (selectedLead?.id === leadIdFromUrl) return
     const fromMemory = globalLeads.find(l => l.id === leadIdFromUrl)
-    if (fromMemory) { setSelectedLead(fromMemory); return }
+    // Link direto pra uma conversa: abre na aba da linha a que ela pertence.
+    if (fromMemory) { setAbaEscolhida(abaDoLead(fromMemory)); setSelectedLead(fromMemory); return }
     let cancelled = false
     ;(async () => {
       const res = await fetch(`/api/leads/${leadIdFromUrl}`)
       if (res.ok) {
         const { data } = await res.json()
         if (!cancelled && data) {
+          setAbaEscolhida(abaDoLead(data as LeadWithOwner))
           setSelectedLead(data as LeadWithOwner)
         }
       }
     })()
     return () => { cancelled = true }
-  }, [leadIdFromUrl, pedidoDaUrl, globalLeads, selectedLead?.id])
+  }, [leadIdFromUrl, pedidoDaUrl, globalLeads, selectedLead?.id, abaDoLead])
 
   const handleSelectLead = useCallback((lead: LeadWithOwner) => {
     setSelectedLead(lead)
@@ -130,7 +152,6 @@ export default function ChatEvolutionPage() {
   // Sem clique ainda, abre a conversa do topo — mas a que estava no topo na
   // hora de abrir a tela, e fica nela. Antes era "a do topo agora": com a lista
   // se reordenando sozinha, a conversa na tela trocava sem ninguém clicar.
-  const conversaInicial = useRef<string | null>(null)
   if (!conversaInicial.current && allLeads.length > 0) {
     // A última que esta pessoa abriu, se ainda estiver na lista; senão a do topo.
     let guardada: string | null = null
@@ -257,10 +278,10 @@ export default function ChatEvolutionPage() {
     return <NotAuthorized />
   }
 
-  if (loading || leadsLoading || idsEvolution === undefined || (!isAdmin && !permissions)) {
+  if (loading || leadsLoading || linhas === undefined || (!isAdmin && !permissions)) {
     return (
       <div className="flex items-center justify-center h-full" style={{ backgroundColor: 'var(--chat-bg-conversation)' }}>
-        <LoadingSpinner text="Carregando Número 2..." size="lg" />
+        <LoadingSpinner text="Carregando os outros números..." size="lg" />
       </div>
     )
   }
@@ -273,69 +294,86 @@ export default function ChatEvolutionPage() {
     )
   }
 
-  return (
-    <div className="chat-theme flex h-full gap-0">
-      <div className="w-[340px] border-r border-[var(--chat-border)] flex-shrink-0">
-        <LeadList
-          leads={allLeads}
-          selectedLeadId={displayedLead?.id}
-          onSelectLead={handleSelectLead}
-          onUpdateLead={handleUpdateLead}
-          loading={false}
-          organizationId={organizationId}
-          // Número antigo (Z-API) ou sem canal: conversa parada, em cinza. Quem
-          // escreve por um número novo vira lead da API Oficial e sai desta aba.
-          esmaecer={(l) => l.integration?.type === 'whatsapp_zapi' || !l.integration_id}
-        />
-      </div>
+  const naAbaAntiga = abaAtiva === ABA_ANTIGO
+  // Linha desconectada: dá pra ler o histórico, mas o campo de envio some (mesma
+  // regra do número antigo) — mensagem digitada sem número por trás não chegaria.
+  const semNumeroConectado = naAbaAntiga || linhaAtiva?.estado !== 'conectado'
 
-      <div className="flex-1 min-w-0 flex flex-col min-h-0">
-        {displayedLead ? (
-          <>
-            {/* Toda conversa desta aba é de um número que não está mais conectado
-                (Z-API antigo ou automação de antes da API Oficial) — ver o
-                comentário no topo do arquivo. Sem este aviso, mandar mensagem
-                aqui parecia funcionar (o campo aceita e "envia") mas não chega a
-                lugar nenhum, porque o número por trás já saiu do ar. */}
-            <div className="flex items-center gap-2 px-4 py-2 text-xs flex-shrink-0" style={{ backgroundColor: 'var(--chat-bg-hover)', borderBottom: '1px solid var(--chat-border)', color: 'var(--chat-text-secondary)' }}>
-              <WarningCircle size={15} weight="fill" className="flex-shrink-0" style={{ color: 'var(--chat-accent)' }} />
-              <span>Esta conversa era de outro número, hoje desconectado. Pra falar com esse contato de novo, conecte outro número em Configurações → Integrações.</span>
+  return (
+    <div className="chat-theme flex flex-col h-full">
+      <LinhasEvolution
+        linhas={linhas}
+        abaAtiva={abaAtiva}
+        onMudarAba={mudarAba}
+        onAtualizar={carregarLinhas}
+      />
+
+      <div className="flex flex-1 min-h-0 gap-0">
+        <div className="w-[340px] border-r border-[var(--chat-border)] flex-shrink-0">
+          <LeadList
+            leads={allLeads}
+            selectedLeadId={displayedLead?.id}
+            onSelectLead={handleSelectLead}
+            onUpdateLead={handleUpdateLead}
+            loading={false}
+            organizationId={organizationId}
+            // Só o número antigo fica em cinza: conversa parada. Quem escreve por
+            // um número novo vira lead da API Oficial e sai daqui.
+            esmaecer={naAbaAntiga ? () => true : undefined}
+          />
+        </div>
+
+        <div className="flex-1 min-w-0 flex flex-col min-h-0">
+          {displayedLead ? (
+            <>
+              {naAbaAntiga && (
+                <div className="flex items-center gap-2 px-4 py-2 text-xs flex-shrink-0" style={{ backgroundColor: 'var(--chat-bg-hover)', borderBottom: '1px solid var(--chat-border)', color: 'var(--chat-text-secondary)' }}>
+                  <WarningCircle size={15} weight="fill" className="flex-shrink-0" style={{ color: 'var(--chat-accent)' }} />
+                  <span>Esta conversa era de outro número, hoje desconectado. Pra falar com esse contato de novo, use um número conectado.</span>
+                </div>
+              )}
+              <div className="flex-1 min-h-0">
+                <ChatWindow
+                  // Uma conversa = uma área de tela: trocar de lead remonta tudo, e
+                  // nada da conversa anterior (mensagens, rascunho, fixadas) sobra.
+                  key={displayedLead.id}
+                  lead={displayedLead}
+                  organizationId={organizationId}
+                  onMessageSent={handleChatMessageSent}
+                  somenteLeitura={semNumeroConectado
+                    ? { motivo: naAbaAntiga ? 'não é possível enviar mensagens por aqui.' : 'esta linha está desconectada — conecte pelo cartão no topo pra responder.' }
+                    : undefined}
+                />
+              </div>
+            </>
+          ) : (
+            <div className="flex flex-col items-center justify-center h-full gap-3" style={{ backgroundColor: 'var(--chat-bg-conversation)' }}>
+              <p className="text-[var(--chat-text-muted)]">
+                {naAbaAntiga ? 'Nenhuma conversa antiga.' : 'Nenhuma conversa nesta linha ainda.'}
+              </p>
+              {!naAbaAntiga && linhaAtiva?.estado !== 'conectado' && (
+                <p className="text-[var(--chat-text-tertiary)] text-sm">Conecte o número pelo cartão no topo pra as conversas aparecerem aqui.</p>
+              )}
             </div>
-            <div className="flex-1 min-h-0">
-              <ChatWindow
-                // Uma conversa = uma área de tela: trocar de lead remonta tudo, e
-                // nada da conversa anterior (mensagens, rascunho, fixadas) sobra.
-                key={displayedLead.id}
-                lead={displayedLead}
-                organizationId={organizationId}
-                onMessageSent={handleChatMessageSent}
-                somenteLeitura={{ motivo: 'não é possível enviar mensagens por aqui.' }}
-              />
-            </div>
-          </>
-        ) : (
-          <div className="flex flex-col items-center justify-center h-full gap-3" style={{ backgroundColor: 'var(--chat-bg-conversation)' }}>
-            <p className="text-[var(--chat-text-muted)]">Nenhuma conversa no Número 2 ainda.</p>
-            <p className="text-[var(--chat-text-tertiary)] text-sm">Configure a Evolution API em Configurações → Integrações → Número 2.</p>
-          </div>
+          )}
+        </div>
+
+        {displayedLead && (
+          <LeadDetailsSidebar
+            key={displayedLead.id}
+            lead={displayedLead}
+            stages={leadStages}
+            stageHistory={stageHistory}
+            stageHistoryLoading={historyLoading || stagesLoading}
+            onStageChange={handleStageChange}
+            onTagsChange={handleTagsChange}
+            onUpdateLead={handleUpdateLead}
+            pipelines={pipelines}
+            currentPipelineId={currentPipelineId}
+            onPipelineChange={handlePipelineChange}
+          />
         )}
       </div>
-
-      {displayedLead && (
-        <LeadDetailsSidebar
-          key={displayedLead.id}
-          lead={displayedLead}
-          stages={leadStages}
-          stageHistory={stageHistory}
-          stageHistoryLoading={historyLoading || stagesLoading}
-          onStageChange={handleStageChange}
-          onTagsChange={handleTagsChange}
-          onUpdateLead={handleUpdateLead}
-          pipelines={pipelines}
-          currentPipelineId={currentPipelineId}
-          onPipelineChange={handlePipelineChange}
-        />
-      )}
     </div>
   )
 }

@@ -2,9 +2,8 @@ import { after } from 'next/server'
 import { db } from '@/lib/db'
 import { ETAPA_LEAD_RESPONDEU } from '@/lib/etapas'
 import { leads, leadActivities, integrations, pipelineStages, webhookLogs } from '@/lib/schema'
-import { eq, and, isNull, asc, ilike, inArray } from 'drizzle-orm'
+import { eq, and, isNull, isNotNull, ilike, inArray } from 'drizzle-orm'
 import { publishEvent, channels, events } from '@/lib/realtime'
-import { dispatchOutboundWebhook } from '@/lib/outbound-webhook'
 import { downloadEvolutionMedia, fetchEvolutionProfilePicture } from '@/lib/evolution'
 import { isUniqueViolation } from '@/lib/db-helpers'
 import { notifyInboundMessage } from '@/lib/push'
@@ -131,9 +130,11 @@ export async function processEvolutionMessage(
 
   const senderName = data?.pushName || phone
 
-  // Find the Evolution integration for this org
-  const [integration] = await db
-    .select({ id: integrations.id })
+  // A linha (Michele, Augusto, Cau...) de onde a mensagem veio: a integração cujo
+  // instanceName é o da Evolution. Sem instância no payload, cai na primeira da org
+  // (o comportamento de quando só existia um número).
+  const linhas = await db
+    .select({ id: integrations.id, config: integrations.config })
     .from(integrations)
     .where(
       and(
@@ -142,7 +143,9 @@ export async function processEvolutionMessage(
         isNull(integrations.deletedAt)
       )
     )
-    .limit(1)
+  const integration = (meta.instance
+    ? linhas.find((l) => (l.config as { instanceName?: string } | null)?.instanceName === meta.instance)
+    : undefined) ?? linhas[0]
 
   // Find or create lead by phone
   let leadCriadoAgora = false
@@ -195,7 +198,7 @@ export async function processEvolutionMessage(
       // mensagem em si.
       // Grupo não: a foto viria pelo telefone de um participante (mesma
       // pegadinha que trocou a foto do grupo na Z-API).
-      const avatarUrl = isGroup ? null : await fetchEvolutionProfilePicture(orgId, phone)
+      const avatarUrl = isGroup ? null : await fetchEvolutionProfilePicture(orgId, phone, integration?.id)
       if (avatarUrl) {
         await db.update(leads).set({ avatarUrl }).where(eq(leads.id, lead.id))
       }
@@ -244,7 +247,7 @@ export async function processEvolutionMessage(
   let hostedMediaUrl: string | undefined
   let hostedMimetype: string | undefined
   if (extracted.mediaUrl && messageId) {
-    const hosted = await downloadEvolutionMedia(orgId, { id: messageId, remoteJid, fromMe: isFromMe })
+    const hosted = await downloadEvolutionMedia(orgId, { id: messageId, remoteJid, fromMe: isFromMe }, integration?.id)
     if (hosted) {
       hostedMediaUrl = hosted.url
       hostedMimetype = hosted.mimetype || extracted.mediaMimetype
@@ -305,6 +308,7 @@ export async function processEvolutionMessage(
     ...(!isFromMe ? { isArchived: false } : {}),
     integrationId: integration?.id || null,
   }
+  let etapaDeResposta: string | null = null
   if (!isFromMe) {
     leadUpdates.title = lead.title === lead.phone ? senderName : lead.title
   } else {
@@ -319,10 +323,16 @@ export async function processEvolutionMessage(
         )
       )
       .limit(1)
-    if (stage) leadUpdates.stageId = stage.id
+    // Só move quem JÁ está no Kanban: conversa do WhatsApp não entra no funil
+    // por resposta nossa (o histórico importado de uma linha traria centenas).
+    if (stage) etapaDeResposta = stage.id
   }
 
   await db.update(leads).set(leadUpdates).where(eq(leads.id, lead.id))
+  if (etapaDeResposta) {
+    await db.update(leads).set({ stageId: etapaDeResposta })
+      .where(and(eq(leads.id, lead.id), isNotNull(leads.stageId)))
+  }
 
   await publishEvent(channels.leadActivities(lead.id), events.ACTIVITY_CREATED, { id: activity.id })
   // Contato desconhecido que mandou mensagem é lead novo — e as telas abertas
@@ -350,30 +360,11 @@ export async function processEvolutionMessage(
     after(() => notifyInboundMessage(orgId, lead.id, { text: extracted.text, mediaType: extracted.mediaType }))
   }
 
-  const chatLid = (!isGroup && key.addressingMode === 'lid' && remoteJid.endsWith('@lid')) ? remoteJid : null
-  const connectedPhone = typeof meta.sender === 'string' ? meta.sender.split('@')[0] : null
-  const momment = messageTimestampMs ?? Date.now()
-
-  await dispatchOutboundWebhook(orgId, {
-    leadId: lead.id,
-    phone,
-    fromMe: isFromMe,
-    isGroup,
-    chatLid,
-    senderName: isFromMe ? null : senderName,
-    chatName: lead.title,
-    content: extracted.text,
-    messageId,
-    timestamp: momment,
-    instanceId: meta.instance || integration?.id || null,
-    connectedPhone,
-    mediaType: extracted.mediaType as any,
-    mediaUrl: hostedMediaUrl,
-    mediaMimetype: hostedMimetype || extracted.mediaMimetype,
-    mediaFilename: extracted.mediaFilename,
-    audioSeconds: extracted.audioSeconds,
-    audioPtt: extracted.audioPtt,
-  })
-
+  /*
+   * REGRA: as linhas da Evolution (Michele, Augusto, Cau) são só pra observar e
+   * responder à mão. Por isso a mensagem que entra por elas NÃO é repassada ao
+   * webhook de saída (agente de IA, n8n...), não entra em funil e não cria lead
+   * no Kanban (stageId nulo acima). Ver CLAUDE.md.
+   */
   return { status: 'created', activityId: activity.id }
 }
