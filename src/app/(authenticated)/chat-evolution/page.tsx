@@ -5,6 +5,7 @@ import { useSearchParams } from 'next/navigation'
 import { useAuth, useStageHistory, useLeadPipelineStages, usePipeline } from '@/hooks'
 import { useLeadsContext } from '@/contexts/LeadsContext'
 import { LeadList, ChatWindow, LeadDetailsSidebar } from '@/components/Chat'
+import { WarningCircle } from '@phosphor-icons/react'
 import { LeadWithOwner } from '@/lib/types'
 import NotAuthorized from '@/components/Shared/NotAuthorized'
 import LoadingSpinner from '@/components/Shared/LoadingSpinner'
@@ -271,16 +272,29 @@ export default function ChatEvolutionPage() {
         />
       </div>
 
-      <div className="flex-1 min-w-0">
+      <div className="flex-1 min-w-0 flex flex-col min-h-0">
         {displayedLead ? (
-          <ChatWindow
-            // Uma conversa = uma área de tela: trocar de lead remonta tudo, e
-            // nada da conversa anterior (mensagens, rascunho, fixadas) sobra.
-            key={displayedLead.id}
-            lead={displayedLead}
-            organizationId={organizationId}
-            onMessageSent={handleChatMessageSent}
-          />
+          <>
+            {/* Toda conversa desta aba é de um número que não está mais conectado
+                (Z-API antigo ou automação de antes da API Oficial) — ver o
+                comentário no topo do arquivo. Sem este aviso, mandar mensagem
+                aqui parecia funcionar (o campo aceita e "envia") mas não chega a
+                lugar nenhum, porque o número por trás já saiu do ar. */}
+            <div className="flex items-center gap-2 px-4 py-2 text-xs flex-shrink-0" style={{ backgroundColor: 'var(--chat-bg-hover)', borderBottom: '1px solid var(--chat-border)', color: 'var(--chat-text-secondary)' }}>
+              <WarningCircle size={15} weight="fill" className="flex-shrink-0" style={{ color: 'var(--chat-accent)' }} />
+              <span>Esta conversa era de outro número, hoje desconectado. Pra falar com esse contato de novo, conecte outro número em Configurações → Integrações.</span>
+            </div>
+            <div className="flex-1 min-h-0">
+              <ChatWindow
+                // Uma conversa = uma área de tela: trocar de lead remonta tudo, e
+                // nada da conversa anterior (mensagens, rascunho, fixadas) sobra.
+                key={displayedLead.id}
+                lead={displayedLead}
+                organizationId={organizationId}
+                onMessageSent={handleChatMessageSent}
+              />
+            </div>
+          </>
         ) : (
           <div className="flex flex-col items-center justify-center h-full gap-3" style={{ backgroundColor: 'var(--chat-bg-conversation)' }}>
             <p className="text-[var(--chat-text-muted)]">Nenhuma conversa no Número 2 ainda.</p>
