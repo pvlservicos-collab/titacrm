@@ -23,17 +23,35 @@ export interface TemplateResumo {
   body: string
   footer: string | null
   buttons: string[]
-  /** Quantas variáveis {{n}} o corpo tem. */
+  /** Quantas variáveis ({{1}} ou {{nome}}) o corpo tem. */
   bodyParams: number
-  /** Quantas variáveis {{n}} o cabeçalho de texto tem (0 ou 1 na Meta). */
+  /** Quantas variáveis o cabeçalho de texto tem (0 ou 1 na Meta). */
   headerParams: number
+  /**
+   * Nomes das variáveis, na ordem em que aparecem — só quando o template usa
+   * variável NOMEADA ({{nome}}); vazio quando é posicional ({{1}}). A Meta exige
+   * o `parameter_name` no envio dos nomeados.
+   */
+  bodyParamNames: string[]
+  headerParamNames: string[]
 }
 
-const contarVariaveis = (texto: string) => new Set(texto.match(/\{\{\s*\d+\s*\}\}/g) || []).size
+const TOKEN = /\{\{\s*(\w+)\s*\}\}/g
+const nomesDasVariaveis = (texto: string): string[] => [...new Set([...texto.matchAll(TOKEN)].map((m) => m[1]))]
+const contarVariaveis = (texto: string) => nomesDasVariaveis(texto).length
+const soNomeadas = (nomes: string[]) => (nomes.some((n) => !/^\d+$/.test(n)) ? nomes : [])
 
-/** Troca {{1}}, {{2}}... pelos valores, na ordem. */
+/**
+ * Troca as variáveis pelos valores, na ordem em que aparecem. Serve pra
+ * {{1}}, {{2}}... (o número é a posição) e pra {{nome}} (a posição é a ordem da
+ * primeira aparição).
+ */
 export function preencher(texto: string, valores: string[]): string {
-  return texto.replace(/\{\{\s*(\d+)\s*\}\}/g, (marca, n) => valores[Number(n) - 1] ?? marca)
+  const nomes = nomesDasVariaveis(texto)
+  return texto.replace(TOKEN, (marca, tok: string) => {
+    const i = /^\d+$/.test(tok) ? Number(tok) - 1 : nomes.indexOf(tok)
+    return valores[i] ?? marca
+  })
 }
 
 /**
@@ -75,6 +93,8 @@ function resumir(t: any): TemplateResumo | null {
     buttons: botoes.map((b) => b.text).filter(Boolean),
     bodyParams: contarVariaveis(body.text),
     headerParams: header?.text ? contarVariaveis(header.text) : 0,
+    bodyParamNames: soNomeadas(nomesDasVariaveis(body.text)),
+    headerParamNames: header?.text ? soNomeadas(nomesDasVariaveis(header.text)) : [],
   }
 }
 
@@ -125,12 +145,15 @@ export async function enviarTemplate(
   headerValores: string[],
 ): Promise<{ messageId: string | null; waId: string | null }> {
   const { apiVersion, phoneNumberId, token } = await getWhatsAppCredentials(organizationId)
+  const parametros = (valores: string[], quantos: number, nomes: string[]) =>
+    valores.slice(0, quantos).map((text, i) => (nomes.length ? { type: 'text', parameter_name: nomes[i], text } : { type: 'text', text }))
+
   const components: any[] = []
   if (t.headerParams > 0) {
-    components.push({ type: 'header', parameters: headerValores.slice(0, t.headerParams).map((text) => ({ type: 'text', text })) })
+    components.push({ type: 'header', parameters: parametros(headerValores, t.headerParams, t.headerParamNames) })
   }
   if (t.bodyParams > 0) {
-    components.push({ type: 'body', parameters: bodyValores.slice(0, t.bodyParams).map((text) => ({ type: 'text', text })) })
+    components.push({ type: 'body', parameters: parametros(bodyValores, t.bodyParams, t.bodyParamNames) })
   }
 
   const res = await fetch(`https://graph.facebook.com/${apiVersion}/${phoneNumberId}/messages`, {

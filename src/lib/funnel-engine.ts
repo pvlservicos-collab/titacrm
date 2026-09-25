@@ -175,6 +175,12 @@ async function sendMessageBlock(
      * (o texto dele é o que fica gravado na conversa).
      */
     template?: { name: string; language: string }
+    /**
+     * Um template por mensagem: a chave é o id da mensagem da Agenda ('I'..'VI')
+     * ou da variante do teste A/B/C. Sem entrada pra mensagem que saiu, vale o
+     * `template` acima.
+     */
+    templates?: Record<string, { name: string; language: string }>
   }
 
   /*
@@ -202,6 +208,8 @@ async function sendMessageBlock(
     : null
   const variante = !personalizada && variantes.length > 0 ? variantes[Math.floor(Math.random() * variantes.length)] : null
   const textoDaMensagem = personalizada ? personalizada.texto : variante ? variante.texto : config?.text || ''
+  const chaveDaMensagem = personalizada?.id ?? variante?.id
+  const templateDaMensagem = (chaveDaMensagem && config?.templates?.[chaveDaMensagem]) || config?.template
 
   let textoEnviado = ''
   const content = await renderMessage(textoDaMensagem, {
@@ -246,14 +254,14 @@ async function sendMessageBlock(
 
     if (primeiroContatoNaOficial) {
       const textoDoTemplate = await enviarTemplateDoBloco(
-        execution, lead, config, metadata, 'primeiro contato na API Oficial exige template aprovado'
+        execution, lead, templateDaMensagem, metadata, 'primeiro contato na API Oficial exige template aprovado'
       )
       if (textoDoTemplate) {
         textoEnviado = textoDoTemplate
       } else {
         metadata.send_status = 'failed'
-        metadata.send_error = config?.template?.name
-          ? 'Template configurado no bloco não pôde ser enviado.'
+        metadata.send_error = templateDaMensagem?.name
+          ? `Template "${templateDaMensagem.name}" não pôde ser enviado: ${metadata.template_erro || 'motivo desconhecido'}`
           : 'Primeiro contato pela API Oficial exige um template aprovado configurado no bloco — nenhum foi definido.'
       }
     } else {
@@ -287,7 +295,7 @@ async function sendMessageBlock(
          */
         const foraDaJanela = /re-engagement|24 hour|131047|outside/i.test(String(err?.message || ''))
         if (foraDaJanela) {
-          const textoDoTemplate = await enviarTemplateDoBloco(execution, lead, config, metadata, 'fora da janela de 24h')
+          const textoDoTemplate = await enviarTemplateDoBloco(execution, lead, templateDaMensagem, metadata, 'fora da janela de 24h')
           if (textoDoTemplate) textoEnviado = textoDoTemplate
         }
         // Template deu conta? Segue o fluxo normal, com o texto dele. Senão, falha.
@@ -766,19 +774,30 @@ async function jaTeveContatoAlgumaVez(leadId: string): Promise<boolean> {
  */
 async function enviarTemplateDoBloco(
   execution: { organizationId: string },
-  lead: { phone: string | null; title: string | null },
-  config: { template?: { name: string; language: string } },
+  lead: { phone: string | null; title: string | null; customAttributes?: unknown },
+  template: { name: string; language: string } | undefined,
   metadata: Record<string, any>,
   motivo: string,
 ): Promise<string | null> {
-  if (!config?.template?.name || !lead.phone) return null
+  if (!template?.name || !lead.phone) return null
   try {
     const { buscarTemplate, enviarTemplate, renderizar } = await import('@/lib/whatsappTemplates')
-    const modelo = await buscarTemplate(execution.organizationId, config.template.name, config.template.language || 'pt_BR')
-    if (!modelo) return null
-    const valores = Array.from({ length: modelo.bodyParams }, (_, i) =>
-      i === 0 ? primeiroNome(lead.title) || 'tudo bem' : ''
-    )
+    const modelo = await buscarTemplate(execution.organizationId, template.name, template.language || 'pt_BR')
+    if (!modelo) {
+      metadata.template_erro = `Template "${template.name}" (${template.language || 'pt_BR'}) não está aprovado nesta conta do WhatsApp.`
+      return null
+    }
+    const atributos = (lead.customAttributes ?? {}) as Record<string, unknown>
+    const valores = Array.from({ length: modelo.bodyParams }, (_, i) => {
+      const nomeDaVariavel = modelo.bodyParamNames[i]
+      if (nomeDaVariavel === 'nome_completo') return (lead.title || '').trim()
+      if (nomeDaVariavel && nomeDaVariavel !== 'nome') {
+        const v = atributos[nomeDaVariavel]
+        return typeof v === 'string' || typeof v === 'number' ? String(v).trim() : ''
+      }
+      // {{nome}}, ou a primeira variável posicional: o primeiro nome do lead.
+      return i === 0 || nomeDaVariavel === 'nome' ? primeiroNome(lead.title) || 'tudo bem' : ''
+    })
     const envio = await enviarTemplate(execution.organizationId, lead.phone, modelo, valores, [])
     metadata.channel = 'automacao'
     metadata.send_status = 'sent'
@@ -789,6 +808,7 @@ async function enviarTemplateDoBloco(
     delete metadata.send_error
     return renderizar(modelo, valores, [])
   } catch (erroTemplate: any) {
+    metadata.template_erro = String(erroTemplate?.message || 'A Meta recusou o template.')
     console.error('[funnel] template também falhou:', erroTemplate?.message)
     return null
   }
