@@ -194,7 +194,22 @@ export default function LeadList({
   const DISPLAY_INCREMENT = 15
   const [displayLimit, setDisplayLimit] = useState(INITIAL_DISPLAY)
 
-  const { results: searchResults, loading: searching } = useLeadSearch(search)
+  const { results: searchResultsBrutos, loading: searching } = useLeadSearch(search)
+
+  /*
+   * useLeadSearch busca DIRETO do contexto global (útil pra Busca Global, que
+   * precisa achar qualquer lead da organização) — não do `leads` que esta tela
+   * recebeu por prop. Sem este corte, toda tela que monta LeadList com uma
+   * lista já filtrada (a aba oficial só com a API Oficial, o Instagram só com
+   * Instagram, o "outros" só com o resto) voltava a mostrar TODAS as
+   * conversas da organização, de qualquer canal — o filtro da página nunca
+   * chegava a valer.
+   */
+  const idsPermitidos = useMemo(() => new Set(leads.map((l) => l.id)), [leads])
+  const searchResults = useMemo(
+    () => searchResultsBrutos.filter((hit) => idsPermitidos.has(hit.lead.id)),
+    [searchResultsBrutos, idsPermitidos]
+  )
 
   // Infinite scroll
   useEffect(() => {
