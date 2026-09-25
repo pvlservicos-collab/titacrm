@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, useMemo } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import {
@@ -50,6 +50,27 @@ const NAV_ITEMS = [
 // que abre a mesma gaveta lateral — só um sistema de navegação por vez no celular.
 const MOBILE_TAB_LABELS = ['WhatsApp API', 'DM Instagram', 'Pipeline']
 
+function itemBate(pathname: string, href: string): boolean {
+  return pathname === href || (href !== '/' && pathname.startsWith(href + '/'))
+}
+
+/**
+ * Entre os itens do menu cujo href "bate" com o pathname atual, só o MAIS
+ * ESPECÍFICO (o href mais longo) fica ativo.
+ *
+ * Sem isso, "WhatsApp API Oficial" (/chat) e "DM Instagram" (/chat/instagram)
+ * acendiam os dois em /chat/instagram — um é prefixo do outro — e o usuário
+ * via a aba errada destacada ao navegar.
+ */
+function hrefAtivo(pathname: string, items: { href: string }[]): string | null {
+  let melhor: string | null = null
+  for (const item of items) {
+    if (!itemBate(pathname, item.href)) continue
+    if (!melhor || item.href.length > melhor.length) melhor = item.href
+  }
+  return melhor
+}
+
 export default function Navbar() {
   const pathname = usePathname()
   const router = useRouter()
@@ -66,6 +87,8 @@ export default function Navbar() {
   const [showMobileMenu, setShowMobileMenu] = useState(false)
 
   useEffect(() => { setShowMobileMenu(false) }, [pathname])
+
+  const activeHref = useMemo(() => hrefAtivo(pathname, NAV_ITEMS), [pathname])
 
   const userDropdownRef = useRef<HTMLDivElement>(null) // Added
 
@@ -153,8 +176,7 @@ export default function Navbar() {
         {/* Nav Tabs (desktop) */}
         <div className="hidden md:flex items-center gap-1">
           {NAV_ITEMS.filter(item => isItemVisible(item.label)).map((item) => {
-            const isActive = pathname === item.href ||
-              (item.href !== '/' && pathname.startsWith(item.href))
+            const isActive = item.href === activeHref
             const Icon = item.icon
 
             // Special handling for Pipeline with multiple pipelines
@@ -323,7 +345,7 @@ export default function Navbar() {
           </div>
           <div className="flex-1 overflow-y-auto p-2">
             {NAV_ITEMS.filter(item => isItemVisible(item.label)).map(item => {
-              const isActive = pathname === item.href || (item.href !== '/' && pathname.startsWith(item.href))
+              const isActive = item.href === activeHref
               const Icon = item.icon
               return (
                 <Link
@@ -350,7 +372,7 @@ export default function Navbar() {
     <div className="app-safe-bottom md:hidden fixed bottom-0 left-0 right-0 z-50 glass-raised rounded-none border-x-0 border-b-0">
       <div className="h-16 flex items-stretch">
         {NAV_ITEMS.filter(item => MOBILE_TAB_LABELS.includes(item.label) && isItemVisible(item.label)).map(item => {
-          const isActive = pathname === item.href || (item.href !== '/' && pathname.startsWith(item.href))
+          const isActive = item.href === activeHref
           const Icon = item.icon
           return (
             <Link

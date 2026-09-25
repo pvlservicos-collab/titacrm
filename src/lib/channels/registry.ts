@@ -18,7 +18,8 @@ export function getChannelAdapter(integrationType: string | null | undefined): C
 }
 
 /**
- * O canal de DISPARO e AUTOMAÇÃO — sempre a Z-API.
+ * O canal de DISPARO e AUTOMAÇÃO — decidido aqui, não caso a caso (ver o motivo
+ * do "sempre" logo abaixo: hoje é a API Oficial).
  *
  * Resposta manual segue o canal por onde o lead falou (getChannelAdapter acima):
  * quem escreveu no número da Evolution recebe resposta pela Evolution, senão a
@@ -38,13 +39,18 @@ export function getAutomationAdapter(): ChannelAdapter {
    * Desde 24/09 é a API OFICIAL: o número da Z-API saiu do ar e o da empresa
    * agora é o +55 11 94266-7132, na Cloud API.
    *
-   * Atenção ao que isso implica: a Meta só aceita TEXTO LIVRE dentro de 24h
-   * desde a última mensagem da pessoa. Pra quem nunca escreveu — o caso de todo
-   * lead que chega pela Agenda ou pelo site — o texto do funil volta recusado
-   * ("Re-engagement message"), e quem entrega a mensagem é o TEMPLATE aprovado
-   * configurado no bloco (ver `template` em funnel-engine.ts). Sem template
-   * configurado, o envio falha e o lead fica em "Em aguardo", como quem não foi
-   * contatado — que é a verdade.
+   * Atenção ao que isso implica: a Meta SÓ DEVERIA aceitar texto livre dentro
+   * de 24h desde a última mensagem da pessoa — pra quem nunca escreveu (todo
+   * lead que chega pela Agenda ou pelo site), quem tem que entregar a mensagem
+   * é o TEMPLATE aprovado configurado no bloco (`template` em funnel-engine.ts).
+   *
+   * Na prática, em 25/09 a Meta ACEITOU texto livre de primeiro contato sem
+   * template (Michael, Mateus Zanzarini, Allan Medeiros, Andrew — mensagem
+   * "recusada pela janela de 24h" nunca aconteceu, saiu com wamid real). Por
+   * isso o funil não confia só na Meta recusar: `sendMessageBlock` em
+   * funnel-engine.ts checa ANTES de mandar se é primeiro contato e, se for, vai
+   * direto pro template — sem template configurado, falha e o lead fica em
+   * "Em aguardo", como quem não foi contatado, que é a verdade.
    */
   return whatsappCloudAdapter
 }

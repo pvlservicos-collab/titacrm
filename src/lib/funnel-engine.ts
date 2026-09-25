@@ -7,6 +7,7 @@ import {
 import { eq, and, isNull, lte, asc, sql } from 'drizzle-orm'
 import { publishEvent, channels, events } from '@/lib/realtime'
 import { getAutomationAdapter } from '@/lib/channels/registry'
+import { whatsappCloudAdapter } from '@/lib/channels/whatsappCloud'
 import { randomBytes } from 'crypto'
 import { isUniqueViolation } from '@/lib/db-helpers'
 import { escolherMensagemDaAgenda } from '@/lib/mensagensAgenda'
@@ -228,70 +229,75 @@ async function sendMessageBlock(
     metadata.send_status = 'failed'
     metadata.send_error = 'Lead sem telefone cadastrado.'
   } else {
-    // Disparo de funil sai SEMPRE pelo canal de automação (Z-API), nunca pelo
-    // canal por onde o lead falou. Antes isto chamava a Cloud API direto: além de
-    // amarrar a automação a um provedor, era o motivo de o primeiro contato não
-    // sair — a API oficial exige template aprovado pra iniciar conversa, e o funil
-    // existe justamente pra iniciar conversa.
+    // Disparo de funil sai SEMPRE pelo canal de automação, nunca pelo canal por
+    // onde o lead falou.
     const adapter = getAutomationAdapter()
-    try {
-      let result = await adapter.sendText(execution.organizationId, null, lead.phone, content)
-      if (result.externalId) metadata[adapter.metadataIdKey] = result.externalId
-      metadata.channel = 'automacao'
-      metadata.send_status = 'sent'
 
-      // Mesma correção do envio manual: se o canal só conseguiu entregar na
-      // outra forma do número (com/sem nono dígito), o lead passa a guardar a
-      // que funciona.
-      // Só telefone de verdade (ver a mesma trava no envio manual).
-      if (
-        result.recipienteCorrigido &&
-        /^\d{10,15}$/.test(result.recipienteCorrigido) &&
-        result.recipienteCorrigido !== lead.phone
-      ) {
-        metadata.telefone_corrigido = result.recipienteCorrigido
-        try {
-          await db.update(leads).set({ phone: result.recipienteCorrigido }).where(eq(leads.id, lead.id))
-        } catch (err) {
-          console.error('[funnel] falha ao gravar o telefone corrigido:', err)
-        }
-      }
-    } catch (err: any) {
-      /*
-       * Fora da janela de 24h a Meta recusa texto livre. Se o bloco tem template
-       * configurado, é ele que entrega a mensagem — e o texto gravado na conversa
-       * passa a ser o do template, porque é o que a pessoa vai ler.
-       */
-      const foraDaJanela = /re-engagement|24 hour|131047|outside/i.test(String(err?.message || ''))
-      if (foraDaJanela && config?.template?.name) {
-        try {
-          const { buscarTemplate, enviarTemplate, renderizar } = await import('@/lib/whatsappTemplates')
-          const modelo = await buscarTemplate(execution.organizationId, config.template.name, config.template.language || 'pt_BR')
-          if (modelo) {
-            const valores = Array.from({ length: modelo.bodyParams }, (_, i) =>
-              i === 0 ? primeiroNome(lead.title) || 'tudo bem' : ''
-            )
-            const envio = await enviarTemplate(execution.organizationId, lead.phone, modelo, valores, [])
-            textoEnviado = renderizar(modelo, valores, [])
-            metadata.channel = 'automacao'
-            metadata.send_status = 'sent'
-            metadata.template_name = modelo.name
-            metadata.template_language = modelo.language
-            if (envio.messageId) metadata.whatsapp_message_id = envio.messageId
-            metadata.motivo_template = 'fora da janela de 24h'
-            delete metadata.send_error
-          }
-        } catch (erroTemplate: any) {
-          console.error('[funnel] template também falhou:', erroTemplate?.message)
-        }
-      }
-      // Template deu conta? Segue o fluxo normal, com o texto dele. Senão, falha.
-      if (metadata.send_status !== 'sent') {
+    /*
+     * INCIDENTE 25/09: a Meta deveria recusar texto livre pra quem nunca
+     * escreveu pro número (fora da janela de 24h) — só que aceitou mesmo assim
+     * algumas vezes, e o funil mandou "Oi Michael! Aqui é a Michele..." pra
+     * gente que nunca tinha mandado nada, sem nenhum template aprovado por
+     * trás. O catch lá embaixo (foraDaJanela) só ajuda quando a Meta RECUSA —
+     * não dá pra confiar nisso. Pra primeiro contato na API Oficial, o funil
+     * vai direto pro template, sem tentar texto livre.
+     */
+    const primeiroContatoNaOficial = adapter === whatsappCloudAdapter && !(await jaTeveContatoAlgumaVez(lead.id))
+
+    if (primeiroContatoNaOficial) {
+      const textoDoTemplate = await enviarTemplateDoBloco(
+        execution, lead, config, metadata, 'primeiro contato na API Oficial exige template aprovado'
+      )
+      if (textoDoTemplate) {
+        textoEnviado = textoDoTemplate
+      } else {
         metadata.send_status = 'failed'
-        metadata.send_error = err.message || 'Erro ao enviar mensagem.'
-        // Falha de disparo automático não tem agente olhando a tela na hora — sem
-        // este log ela só existiria dentro de lead_activities.metadata.
-        console.error(`[funnel] falha ao disparar mensagem para o lead ${lead.id}:`, err)
+        metadata.send_error = config?.template?.name
+          ? 'Template configurado no bloco não pôde ser enviado.'
+          : 'Primeiro contato pela API Oficial exige um template aprovado configurado no bloco — nenhum foi definido.'
+      }
+    } else {
+      try {
+        let result = await adapter.sendText(execution.organizationId, null, lead.phone, content)
+        if (result.externalId) metadata[adapter.metadataIdKey] = result.externalId
+        metadata.channel = 'automacao'
+        metadata.send_status = 'sent'
+
+        // Mesma correção do envio manual: se o canal só conseguiu entregar na
+        // outra forma do número (com/sem nono dígito), o lead passa a guardar a
+        // que funciona.
+        // Só telefone de verdade (ver a mesma trava no envio manual).
+        if (
+          result.recipienteCorrigido &&
+          /^\d{10,15}$/.test(result.recipienteCorrigido) &&
+          result.recipienteCorrigido !== lead.phone
+        ) {
+          metadata.telefone_corrigido = result.recipienteCorrigido
+          try {
+            await db.update(leads).set({ phone: result.recipienteCorrigido }).where(eq(leads.id, lead.id))
+          } catch (err) {
+            console.error('[funnel] falha ao gravar o telefone corrigido:', err)
+          }
+        }
+      } catch (err: any) {
+        /*
+         * Fora da janela de 24h a Meta recusa texto livre. Se o bloco tem template
+         * configurado, é ele que entrega a mensagem — e o texto gravado na conversa
+         * passa a ser o do template, porque é o que a pessoa vai ler.
+         */
+        const foraDaJanela = /re-engagement|24 hour|131047|outside/i.test(String(err?.message || ''))
+        if (foraDaJanela) {
+          const textoDoTemplate = await enviarTemplateDoBloco(execution, lead, config, metadata, 'fora da janela de 24h')
+          if (textoDoTemplate) textoEnviado = textoDoTemplate
+        }
+        // Template deu conta? Segue o fluxo normal, com o texto dele. Senão, falha.
+        if (metadata.send_status !== 'sent') {
+          metadata.send_status = 'failed'
+          metadata.send_error = err.message || 'Erro ao enviar mensagem.'
+          // Falha de disparo automático não tem agente olhando a tela na hora — sem
+          // este log ela só existiria dentro de lead_activities.metadata.
+          console.error(`[funnel] falha ao disparar mensagem para o lead ${lead.id}:`, err)
+        }
       }
     }
   }
@@ -739,6 +745,53 @@ async function hasRespondedSince(leadId: string, since: Date) {
     ))
     .limit(1)
   return !!row
+}
+
+/** O lead já mandou alguma mensagem pra gente, alguma vez? (primeiro contato = nunca) */
+async function jaTeveContatoAlgumaVez(leadId: string): Promise<boolean> {
+  const [row] = await db.select({ id: leadActivities.id }).from(leadActivities)
+    .where(and(
+      eq(leadActivities.leadId, leadId),
+      sql`${leadActivities.metadata}->>'direction' = 'inbound'`,
+    ))
+    .limit(1)
+  return !!row
+}
+
+/**
+ * Manda o template aprovado configurado no bloco, se houver. Devolve o texto
+ * que a pessoa vai ler (pra gravar na conversa) ou `null` se não deu — sem
+ * template configurado, sem o template cadastrado na organização, ou o envio
+ * falhou.
+ */
+async function enviarTemplateDoBloco(
+  execution: { organizationId: string },
+  lead: { phone: string | null; title: string | null },
+  config: { template?: { name: string; language: string } },
+  metadata: Record<string, any>,
+  motivo: string,
+): Promise<string | null> {
+  if (!config?.template?.name || !lead.phone) return null
+  try {
+    const { buscarTemplate, enviarTemplate, renderizar } = await import('@/lib/whatsappTemplates')
+    const modelo = await buscarTemplate(execution.organizationId, config.template.name, config.template.language || 'pt_BR')
+    if (!modelo) return null
+    const valores = Array.from({ length: modelo.bodyParams }, (_, i) =>
+      i === 0 ? primeiroNome(lead.title) || 'tudo bem' : ''
+    )
+    const envio = await enviarTemplate(execution.organizationId, lead.phone, modelo, valores, [])
+    metadata.channel = 'automacao'
+    metadata.send_status = 'sent'
+    metadata.template_name = modelo.name
+    metadata.template_language = modelo.language
+    if (envio.messageId) metadata.whatsapp_message_id = envio.messageId
+    metadata.motivo_template = motivo
+    delete metadata.send_error
+    return renderizar(modelo, valores, [])
+  } catch (erroTemplate: any) {
+    console.error('[funnel] template também falhou:', erroTemplate?.message)
+    return null
+  }
 }
 
 /** O lead respondeu, ou um humano da equipe já falou com ele, desde `since`? */
