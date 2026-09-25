@@ -51,7 +51,8 @@ Regras que sustentam isso:
 
 - o efeito do endereço só age quando chega um **pedido novo** (`leadId` + a marca
   `abrir=` de `src/lib/links.ts`), nunca com valor repetido;
-- todo link interno pro chat sai de `linkDaConversa()` / `comMarcaDeAbertura()`,
+- todo link interno pro chat sai de `linkDaConversa()` / `linkDaConversaNaLinha()`
+  (abre já na aba de uma linha da Evolution ou do número antigo) / `comMarcaDeAbertura()`,
   senão abrir duas vezes o mesmo link não reabre a conversa;
 - a última conversa aberta fica no `localStorage`, não no endereço.
 

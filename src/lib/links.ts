@@ -23,6 +23,16 @@ export function linkDaConversa(leadId: string): string {
 }
 
 /**
+ * Abre a conversa já numa aba de "outros números": o id de uma linha da
+ * Evolution (Michele, Augusto, Cau) ou `'antigo'` pro número antigo. A aba vem
+ * no endereço porque o lead pode ter acabado de mudar de linha e a tela ainda
+ * não saber.
+ */
+export function linkDaConversaNaLinha(leadId: string, linha: string): string {
+  return `/chat-evolution?leadId=${leadId}&linha=${encodeURIComponent(linha)}&abrir=${marcaDeAbertura()}`
+}
+
+/**
  * Acrescenta a marca a um link que já existe (o das notificações, montado no
  * servidor). Mantém o que o link já tinha e nunca lança: link torto continua
  * navegando como veio.

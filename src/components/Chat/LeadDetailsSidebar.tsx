@@ -47,6 +47,7 @@ import IntegrationBadge from '@/components/Shared/IntegrationBadge'
 import LeadBadges from '@/components/Shared/LeadBadges'
 import CustomFieldSelect from '@/components/Shared/CustomFieldSelect'
 import CustomFieldMultiSelect from '@/components/Shared/CustomFieldMultiSelect'
+import BotoesDeConversa from './BotoesDeConversa'
 import OrderModal from './OrderModal'
 import LeadOrderCard from './LeadOrderCard'
 import LeadAgendaCard, { temAgenda } from './LeadAgendaCard'
@@ -655,13 +656,7 @@ export default function LeadDetailsSidebar({
           </div>
 
           {onGoToConversation && (
-            <button
-              onClick={onGoToConversation}
-              className="w-full mt-3 flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold bg-[var(--chat-accent)] text-[var(--chat-bg-conversation)] hover:opacity-90 transition-opacity"
-            >
-              <ChatText size={16} weight="bold" />
-              Ver conversa
-            </button>
+            <BotoesDeConversa lead={lead} onClose={onClose} onGoToConversation={onGoToConversation} />
           )}
         </div>
 

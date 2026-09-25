@@ -122,23 +122,28 @@ export default function ChatEvolutionPage() {
     if (!leadIdFromUrl) return
     if (pedidoDaUrl === ultimaUrlVista.current) return
     ultimaUrlVista.current = pedidoDaUrl
+    // "Conversar por Michele" / "Ver conversa do número antigo": o link diz a
+    // aba (a linha do lead pode ter acabado de mudar e a tela ainda não saber).
+    // Vale mesmo com a conversa já aberta.
+    const linhaDaUrl = searchParams.get('linha')
+    if (linhaDaUrl) setAbaEscolhida(linhaDaUrl)
     if (selectedLead?.id === leadIdFromUrl) return
     const fromMemory = globalLeads.find(l => l.id === leadIdFromUrl)
-    // Link direto pra uma conversa: abre na aba da linha a que ela pertence.
-    if (fromMemory) { setAbaEscolhida(abaDoLead(fromMemory)); setSelectedLead(fromMemory); return }
+    // Link sem aba: abre na aba da linha a que a conversa pertence.
+    if (fromMemory) { if (!linhaDaUrl) setAbaEscolhida(abaDoLead(fromMemory)); setSelectedLead(fromMemory); return }
     let cancelled = false
     ;(async () => {
       const res = await fetch(`/api/leads/${leadIdFromUrl}`)
       if (res.ok) {
         const { data } = await res.json()
         if (!cancelled && data) {
-          setAbaEscolhida(abaDoLead(data as LeadWithOwner))
+          if (!linhaDaUrl) setAbaEscolhida(abaDoLead(data as LeadWithOwner))
           setSelectedLead(data as LeadWithOwner)
         }
       }
     })()
     return () => { cancelled = true }
-  }, [leadIdFromUrl, pedidoDaUrl, globalLeads, selectedLead?.id, abaDoLead])
+  }, [leadIdFromUrl, pedidoDaUrl, globalLeads, selectedLead?.id, abaDoLead, searchParams])
 
   const handleSelectLead = useCallback((lead: LeadWithOwner) => {
     setSelectedLead(lead)

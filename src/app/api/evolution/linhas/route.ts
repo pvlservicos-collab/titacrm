@@ -19,12 +19,15 @@ export async function GET(req: NextRequest) {
       ))
       .orderBy(asc(integrations.createdAt))
 
+    // `?leve=1`: só quem são as linhas, sem perguntar à Evolution se estão
+    // conectadas (o card do lead só precisa dos nomes).
+    const leve = req.nextUrl.searchParams.get('leve') === '1'
     const data = await Promise.all(linhas.map(async (l) => ({
       id: l.id,
       nome: l.name,
       instanceName: (l.config as { instanceName?: string } | null)?.instanceName ?? null,
       numeroEsperado: (l.config as { numeroEsperado?: string } | null)?.numeroEsperado ?? null,
-      ...(await situacaoDaLinha(auth.organizationId, l.id)),
+      ...(leve ? {} : await situacaoDaLinha(auth.organizationId, l.id)),
     })))
     return Response.json({ data })
   } catch (err: any) { return apiError(err.status || 500, err.message || 'Erro interno.') }
