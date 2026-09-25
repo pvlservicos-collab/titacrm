@@ -283,6 +283,9 @@ export default function ChatEvolutionPage() {
           onUpdateLead={handleUpdateLead}
           loading={false}
           organizationId={organizationId}
+          // Número antigo (Z-API) ou sem canal: conversa parada, em cinza. Quem
+          // escreve por um número novo vira lead da API Oficial e sai desta aba.
+          esmaecer={(l) => l.integration?.type === 'whatsapp_zapi' || !l.integration_id}
         />
       </div>
 

@@ -37,6 +37,8 @@ interface LeadListProps {
   onUpdateLead?: (leadId: string, updates: Partial<LeadWithOwner>) => void
   loading: boolean
   organizationId?: string | null
+  /** Conversas que ficam esmaecidas em cinza (ex: as do número antigo, desligado). */
+  esmaecer?: (lead: LeadWithOwner) => boolean
 }
 
 const WEEKDAYS_PT = [
@@ -111,6 +113,7 @@ export default function LeadList({
   onUpdateLead,
   loading,
   organizationId,
+  esmaecer,
 }: LeadListProps) {
   const [search, setSearch] = useState('')
   const [activeTab, setActiveTab] = useState<ChatTab>('all')
@@ -559,7 +562,7 @@ export default function LeadList({
               const timeStr = formatRelativeTime(lead.last_activity_at || lead.created_at)
               const hideReplyHighlight = !!lead.last_activity_at && seenReplies[lead.id] === lead.last_activity_at
 
-              return (
+              const item = (
                 <LeadListItem
                   key={lead.id}
                   lead={lead}
@@ -572,6 +575,15 @@ export default function LeadList({
                   hideReplyHighlight={hideReplyHighlight}
                   atendente={atendenteDoLead[lead.id] ?? atendenteDaConversa(lead.autores_manuais, atendentePorId)}
                 />
+              )
+              if (!esmaecer?.(lead)) return item
+              return (
+                <div
+                  key={lead.id}
+                  className={`grayscale transition-opacity hover:opacity-90 ${isSelected ? 'opacity-90' : 'opacity-50'}`}
+                >
+                  {item}
+                </div>
               )
             })}
           </div>
