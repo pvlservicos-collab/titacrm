@@ -292,6 +292,7 @@ export default function ChatEvolutionPage() {
                 lead={displayedLead}
                 organizationId={organizationId}
                 onMessageSent={handleChatMessageSent}
+                somenteLeitura={{ motivo: 'não é possível enviar mensagens por aqui.' }}
               />
             </div>
           </>

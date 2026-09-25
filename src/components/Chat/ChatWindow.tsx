@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useRef, useEffect } from 'react'
-import { Image as ImageIcon } from '@phosphor-icons/react'
+import { Image as ImageIcon, ProhibitInset } from '@phosphor-icons/react'
 import { useLeadActivities, useAuth, useChatButtonSettings, useIsMobile } from '@/hooks'
 import { usePinnedMessages } from '@/hooks/usePinnedMessages'
 import { uploadClientFile } from '@/lib/blobClient'
@@ -17,6 +17,13 @@ interface ChatWindowProps {
   lead: LeadWithOwner
   organizationId: string
   onMessageSent?: (content: string) => void
+  /**
+   * Sem número conectado atrás desta conversa (aba "WhatsApp (outros)": Z-API
+   * antigo, desligado). O campo de mensagem some — ele aceitava texto e
+   * "enviava" normalmente, mas não tinha canal nenhum pra sair de verdade, e
+   * nada avisava disso. Vira um aviso fixo no lugar, com o motivo.
+   */
+  somenteLeitura?: { motivo: string }
 }
 
 export interface ReplyContext {
@@ -25,7 +32,7 @@ export interface ReplyContext {
   sender: string
 }
 
-export default function ChatWindow({ lead, organizationId, onMessageSent }: ChatWindowProps) {
+export default function ChatWindow({ lead, organizationId, onMessageSent, somenteLeitura }: ChatWindowProps) {
   const { activities, loading, error: erroDasMensagens, refresh: recarregarMensagens, sendHumanMessage, sendMediaMessage, deleteMessage } =
     useLeadActivities(organizationId, lead.id)
   const { pinned, pinnedActivityIds, togglePin } = usePinnedMessages(lead.id)
@@ -317,30 +324,40 @@ export default function ChatWindow({ lead, organizationId, onMessageSent }: Chat
         />
       )}
 
-      {/* Composer Bottom */}
-      <ActivityComposer
-        ref={composerRef}
-        onSend={handleSendActivity}
-        onSendMedia={handleSendMedia}
-        onSendQuickReplyMedia={handleSendQuickReplyMedia}
-        onSendQuickReplySequence={handleSendQuickReplySequence}
-        organizationId={organizationId}
-        lead={{ title: lead.title, phone: lead.phone }}
-        replyContext={replyContext}
-        onCancelReply={() => setReplyContext(null)}
-        chatButtonSettings={chatButtonSettings}
-        onToggleTemplate={() => setTemplateAberto((v) => !v)}
-        templateAberto={templateAberto}
-        fireWebhook={async (key: ChatButtonKey) => {
-          return fireWebhook(key, {
-            id: lead.id,
-            title: lead.title,
-            phone: lead.phone,
-            email: lead.email,
-            stageName: lead.stage?.name,
-          })
-        }}
-      />
+      {/* Composer Bottom — some quando não tem número conectado atrás desta
+          conversa, pra não parecer que dá pra mandar mensagem quando não dá. */}
+      {somenteLeitura ? (
+        <div className="flex items-center gap-2.5 px-4 py-3.5 flex-shrink-0" style={{ backgroundColor: 'var(--chat-bg-field)', borderTop: '1px solid var(--chat-border)' }}>
+          <ProhibitInset size={18} weight="fill" className="flex-shrink-0" style={{ color: 'var(--chat-text-tertiary)' }} />
+          <span className="text-sm" style={{ color: 'var(--chat-text-secondary)' }}>
+            <strong>Sem número conectado</strong> — {somenteLeitura.motivo}
+          </span>
+        </div>
+      ) : (
+        <ActivityComposer
+          ref={composerRef}
+          onSend={handleSendActivity}
+          onSendMedia={handleSendMedia}
+          onSendQuickReplyMedia={handleSendQuickReplyMedia}
+          onSendQuickReplySequence={handleSendQuickReplySequence}
+          organizationId={organizationId}
+          lead={{ title: lead.title, phone: lead.phone }}
+          replyContext={replyContext}
+          onCancelReply={() => setReplyContext(null)}
+          chatButtonSettings={chatButtonSettings}
+          onToggleTemplate={() => setTemplateAberto((v) => !v)}
+          templateAberto={templateAberto}
+          fireWebhook={async (key: ChatButtonKey) => {
+            return fireWebhook(key, {
+              id: lead.id,
+              title: lead.title,
+              phone: lead.phone,
+              email: lead.email,
+              stageName: lead.stage?.name,
+            })
+          }}
+        />
+      )}
     </div>
   )
 }
