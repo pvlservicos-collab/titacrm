@@ -33,7 +33,7 @@ export async function POST(req: NextRequest) {
     const { name, instagram_business_account_id, connected_page_id, system_token, graph_api_version } = body
     const config = { instagram_business_account_id, connected_page_id, graph_api_version: graph_api_version ?? 'v21.0' }
 
-    const [existing] = await db.select({ id: integrations.id }).from(integrations)
+    const [existing] = await db.select({ id: integrations.id, config: integrations.config }).from(integrations)
       .where(and(
         eq(integrations.organizationId, auth.organizationId),
         eq(integrations.type, 'instagram_direct'),
@@ -45,7 +45,9 @@ export async function POST(req: NextRequest) {
     let integrationId: string
     if (existing) {
       integrationId = existing.id
-      await db.update(integrations).set({ name, config, status: 'active', updatedAt: new Date() })
+      // Mantém o que a tela não edita (ex: auth_mode 'facebook_page', username):
+      // sobrescrever tudo trocaria o jeito de conectar sem ninguém perceber.
+      await db.update(integrations).set({ name, config: { ...(existing.config as object), ...config }, status: 'active', updatedAt: new Date() })
         .where(and(eq(integrations.id, integrationId), eq(integrations.organizationId, auth.organizationId)))
     } else {
       const [created] = await db.insert(integrations).values({
@@ -110,6 +112,7 @@ export async function GET(req: NextRequest) {
       status: r.status,
       config: r.config,
       token_obtained_at: (r.secret as { token_obtained_at?: string } | null)?.token_obtained_at ?? null,
+      token_permanente: !!(r.secret as { token_permanente?: boolean } | null)?.token_permanente,
       has_token: !!(r.secret as { system_token?: string } | null)?.system_token,
     }))
 

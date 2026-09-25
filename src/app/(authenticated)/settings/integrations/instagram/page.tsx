@@ -57,10 +57,12 @@ interface InstagramAccount {
     status: 'active' | 'disabled'
     config: { instagram_business_account_id?: string; connected_page_id?: string; graph_api_version?: string }
     token_obtained_at: string | null
+    token_permanente?: boolean
     has_token: boolean
 }
 
-function tokenAgeLabel(tokenObtainedAt: string | null): { label: string; warn: boolean } {
+function tokenAgeLabel(tokenObtainedAt: string | null, permanente?: boolean): { label: string; warn: boolean } {
+    if (permanente) return { label: 'Token permanente (login do Facebook)', warn: false }
     if (!tokenObtainedAt) return { label: 'Token não gerado', warn: true }
     const days = Math.floor((Date.now() - new Date(tokenObtainedAt).getTime()) / (1000 * 60 * 60 * 24))
     const daysLeft = 60 - days
@@ -217,7 +219,7 @@ export default function InstagramDirectPage() {
                         ) : (
                             <div className="space-y-3">
                                 {accounts.map((account) => {
-                                    const age = tokenAgeLabel(account.token_obtained_at)
+                                    const age = tokenAgeLabel(account.token_obtained_at, account.token_permanente)
                                     return (
                                         <div key={account.id} className="flex items-center gap-4 border rounded-lg p-4">
                                             <div className="w-10 h-10 rounded-full bg-fuchsia-100 flex items-center justify-center flex-shrink-0">

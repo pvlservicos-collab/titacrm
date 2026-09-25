@@ -29,7 +29,9 @@ async function checkTokens() {
     let alertsSent = 0
 
     for (const row of rows) {
-      const secret = row.secret as { token_obtained_at?: string } | undefined
+      const secret = row.secret as { token_obtained_at?: string; token_permanente?: boolean } | undefined
+      // Token de Página (login do Facebook) não expira — nada a renovar.
+      if (secret?.token_permanente) continue
       if (!secret?.token_obtained_at) continue
 
       const obtainedAt = new Date(secret.token_obtained_at)

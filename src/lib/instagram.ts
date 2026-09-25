@@ -26,17 +26,36 @@ async function getInstagramCredentials(organizationId: string, integrationId: st
     .where(eq(integrationSecrets.integrationId, integration.id))
     .limit(1)
 
-  const config = integration.config as { instagram_business_account_id?: string; graph_api_version?: string }
+  const config = integration.config as {
+    instagram_business_account_id?: string
+    connected_page_id?: string
+    graph_api_version?: string
+    auth_mode?: string
+  }
   const secret = secretRow?.secret as { system_token?: string } | undefined
 
   if (!config?.instagram_business_account_id || !secret?.system_token) {
     throw { status: 400, message: 'Integração com Instagram incompleta (faltando instagram_business_account_id ou token).' }
   }
 
+  /*
+   * Dois jeitos de conectar uma conta, e o token de um não serve no outro:
+   *  - login do Instagram (padrão): token em graph.instagram.com, envia por
+   *    /{conta-instagram}/messages;
+   *  - login do Facebook (auth_mode 'facebook_page'): token DA PÁGINA ligada à
+   *    conta, em graph.facebook.com, envia por /{página}/messages.
+   */
+  const viaPagina = config.auth_mode === 'facebook_page'
+  if (viaPagina && !config.connected_page_id) {
+    throw { status: 400, message: 'Integração com Instagram incompleta (faltando connected_page_id).' }
+  }
+
   return {
     apiVersion: config.graph_api_version || 'v21.0',
     igUserId: config.instagram_business_account_id,
     token: secret.system_token,
+    host: viaPagina ? 'https://graph.facebook.com' : 'https://graph.instagram.com',
+    remetenteId: viaPagina ? (config.connected_page_id as string) : config.instagram_business_account_id,
   }
 }
 
@@ -45,12 +64,12 @@ async function getInstagramCredentials(organizationId: string, integrationId: st
  * Instagram Direct não tem conceito de telefone.
  */
 export async function sendInstagramMessage(organizationId: string, integrationId: string, recipientId: string, content: string) {
-  const { apiVersion, igUserId, token } = await getInstagramCredentials(organizationId, integrationId)
+  const { apiVersion, host, remetenteId, token } = await getInstagramCredentials(organizationId, integrationId)
 
   // Tokens gerados via "API do Instagram com login do Instagram" (não Facebook Login)
   // só são reconhecidos em graph.instagram.com — graph.facebook.com responde
-  // "Cannot parse access token" para esse tipo de token.
-  const res = await fetch(`https://graph.instagram.com/${apiVersion}/${igUserId}/messages`, {
+  // "Cannot parse access token" para esse tipo de token (e o contrário também).
+  const res = await fetch(`${host}/${apiVersion}/${remetenteId}/messages`, {
     method: 'POST',
     headers: {
       Authorization: `Bearer ${token}`,
@@ -81,9 +100,9 @@ export async function sendInstagramMessage(organizationId: string, integrationId
  */
 export async function getInstagramUserProfile(organizationId: string, integrationId: string, igsid: string) {
   try {
-    const { apiVersion, token } = await getInstagramCredentials(organizationId, integrationId)
+    const { apiVersion, host, token } = await getInstagramCredentials(organizationId, integrationId)
 
-    const res = await fetch(`https://graph.instagram.com/${apiVersion}/${igsid}?fields=name,username,profile_pic&access_token=${encodeURIComponent(token)}`)
+    const res = await fetch(`${host}/${apiVersion}/${igsid}?fields=name,username,profile_pic&access_token=${encodeURIComponent(token)}`)
     if (!res.ok) return null
 
     const data = await res.json()
@@ -109,7 +128,7 @@ export async function sendInstagramMedia(
   mediaType: 'image' | 'video' | 'audio' | 'document' | 'sticker',
   mediaUrl: string
 ) {
-  const { apiVersion, igUserId, token } = await getInstagramCredentials(organizationId, integrationId)
+  const { apiVersion, host, remetenteId, token } = await getInstagramCredentials(organizationId, integrationId)
 
   const attachmentType = mediaType === 'document' ? 'file' : mediaType === 'sticker' ? 'image' : mediaType
 
@@ -117,7 +136,7 @@ export async function sendInstagramMedia(
   // grava em webm, que não é aceito; remuxa pra Ogg/Opus antes de enviar.
   const effectiveMediaUrl = mediaType === 'audio' ? await convertAudioToVoiceNote(mediaUrl) : mediaUrl
 
-  const res = await fetch(`https://graph.instagram.com/${apiVersion}/${igUserId}/messages`, {
+  const res = await fetch(`${host}/${apiVersion}/${remetenteId}/messages`, {
     method: 'POST',
     headers: {
       Authorization: `Bearer ${token}`,
