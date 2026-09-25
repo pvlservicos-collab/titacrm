@@ -507,8 +507,22 @@ async function processarMensagemWhatsapp(body: any, entry: any, value: any, mess
     .where(and(eq(leads.organizationId, orgId), ilike(leads.phone, `%${phone}%`), isNull(leads.deletedAt)))
     .limit(1)
 
-  if (existing && !existing.integrationId && cloud) {
-    await db.update(leads).set({ integrationId: cloud.id }).where(eq(leads.id, existing.id))
+  /*
+   * Quem escreve pela API Oficial passa a ser um lead da API Oficial — também o
+   * que estava preso ao número antigo (Z-API, desligado). Sem isso a conversa
+   * chegava, mas ficava com a tag "Z-API" fora da aba oficial, e a resposta do
+   * chat tentava sair por um número que não existe mais.
+   */
+  if (existing && cloud && existing.integrationId !== cloud.id) {
+    let trocaDeCanal = !existing.integrationId
+    if (existing.integrationId) {
+      const [atual] = await db.select({ type: integrations.type }).from(integrations)
+        .where(eq(integrations.id, existing.integrationId)).limit(1)
+      trocaDeCanal = atual?.type === 'whatsapp_zapi'
+    }
+    if (trocaDeCanal) {
+      await db.update(leads).set({ integrationId: cloud.id }).where(eq(leads.id, existing.id))
+    }
   }
 
   let leadId = existing?.id

@@ -38,6 +38,16 @@ export default function ChatEvolutionPage() {
   // Os ids de todas as instâncias da Evolution — undefined = ainda carregando.
   const [idsEvolution, setIdsEvolution] = useState<string[] | undefined>(undefined)
 
+  const [comConversa, setComConversa] = useState<Set<string> | undefined>(undefined)
+
+  useEffect(() => {
+    if (!organizationId) return
+    fetch('/api/leads/conversas-reais')
+      .then(r => r.ok ? r.json() : { data: [] })
+      .then(({ data }) => setComConversa(new Set<string>(data || [])))
+      .catch(() => setComConversa(new Set()))
+  }, [organizationId])
+
   useEffect(() => {
     if (!organizationId) return
     fetch('/api/integrations')
@@ -55,7 +65,11 @@ export default function ChatEvolutionPage() {
    * não existe mais (ver a lista "Número antigo" na aba Leads).
    */
   const allLeads = globalLeads.filter(l => {
-    if (idsEvolution === undefined) return false // ainda carregando
+    if (idsEvolution === undefined || comConversa === undefined) return false // ainda carregando
+    // Só o que teve conversa de verdade: mensagem que a pessoa mandou ou que
+    // chegou nela. Tentativa que falhou com o número fora do ar e contato
+    // importado do aparelho não são conversa — ficam fora daqui (nada é apagado).
+    if (!comConversa.has(l.id)) return false
     if (l.integration?.type === 'whatsapp_zapi') return true
     // Sem canal: o histórico dessa gente veio do número antigo (a automação
     // saía por ele). Fica aqui até alguém falar com ela pelo número novo — aí o
