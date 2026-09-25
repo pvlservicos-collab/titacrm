@@ -23,6 +23,7 @@ export async function GET(req: NextRequest) {
       id: l.id,
       nome: l.name,
       instanceName: (l.config as { instanceName?: string } | null)?.instanceName ?? null,
+      numeroEsperado: (l.config as { numeroEsperado?: string } | null)?.numeroEsperado ?? null,
       ...(await situacaoDaLinha(auth.organizationId, l.id)),
     })))
     return Response.json({ data })

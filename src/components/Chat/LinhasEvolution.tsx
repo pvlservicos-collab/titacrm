@@ -7,6 +7,8 @@ export interface LinhaEvolution {
   id: string
   nome: string
   instanceName: string | null
+  /** O número que essa linha deve ter (só dígitos). */
+  numeroEsperado?: string | null
   estado: 'conectado' | 'conectando' | 'desconectado' | 'nao_criada' | 'erro'
   numero?: string
   nomeNoWhatsapp?: string
@@ -20,6 +22,13 @@ function formatarNumero(n?: string) {
   if (!n) return null
   const m = n.match(/^55(\d{2})(\d{4,5})(\d{4})$/)
   return m ? `+55 (${m[1]}) ${m[2]}-${m[3]}` : `+${n}`
+}
+
+/** Mesmo número, com ou sem o 9 do celular (o WhatsApp antigo não o traz). */
+function mesmoNumero(a?: string | null, b?: string | null) {
+  if (!a || !b) return true
+  const semNove = (n: string) => n.replace(/^(55\d{2})9(\d{8})$/, '$1$2')
+  return semNove(a) === semNove(b)
 }
 
 interface Props {
@@ -138,8 +147,13 @@ export default function LinhasEvolution({ linhas, abaAtiva, onMudarAba, onAtuali
                       ? [formatarNumero(linha.numero), 'só observar e responder à mão — sem automação'].filter(Boolean).join(' · ')
                       : linha.estado === 'erro'
                         ? (linha.erro || 'Não consegui falar com a Evolution.')
-                        : 'Conecte pra ver e responder as conversas deste número aqui.'}
+                        : `Escaneie com o WhatsApp de ${formatarNumero(linha.numeroEsperado ?? undefined) ?? linha.nome}.`}
                   </p>
+                  {linha.estado === 'conectado' && !mesmoNumero(linha.numero, linha.numeroEsperado) && (
+                    <p className="text-xs font-semibold mt-0.5" style={{ color: '#ef4444' }}>
+                      Atenção: este é o número {formatarNumero(linha.numero)}, e o esperado para {linha.nome} é {formatarNumero(linha.numeroEsperado ?? undefined)}.
+                    </p>
+                  )}
                 </div>
               </div>
 
