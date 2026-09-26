@@ -39,6 +39,7 @@ const NAV_ITEMS = [
   // As instâncias da Evolution (um ou vários números) ficam numa aba só.
   { label: 'WhatsApp (outros)', href: '/chat-evolution', icon: WhatsappLogo },
   { label: 'DM Instagram', href: '/chat/instagram', icon: InstagramLogo },
+  { label: 'Pipeline Instagram', href: '/pipeline/instagram', icon: Kanban },
   { label: 'Funil de Mensagens', href: '/funnels', icon: FlowArrow },
   { label: 'Integração', href: '/integracao', icon: PlugsConnected },
   { label: 'Configurações', href: '/settings/organization', icon: Gear },
@@ -152,6 +153,7 @@ export default function Navbar() {
       case 'Dashboard': return !!permissions.settings?.view_dashboard
       case 'Leads': return !!permissions.settings?.view_leads
       case 'Pipeline': return !!permissions.settings?.view_pipeline
+      case 'Pipeline Instagram': return !!permissions.settings?.view_pipeline
       case 'WhatsApp API': return !!permissions.settings?.view_chat
       case 'DM Instagram': return !!permissions.settings?.view_chat
       case 'Funil de Mensagens': return !!permissions.settings?.view_funnels
@@ -180,7 +182,9 @@ export default function Navbar() {
             const Icon = item.icon
 
             // Special handling for Pipeline with multiple pipelines
-            if (item.label === 'Pipeline' && pipelines.length > 1) {
+            // O Pipeline Instagram tem aba própria: não repete na lista deste menu.
+            const pipelinesDoMenu = pipelines.filter((p) => (p.settings as { origem?: string } | undefined)?.origem !== 'instagram')
+            if (item.label === 'Pipeline' && pipelinesDoMenu.length > 1) {
               return (
                 <div
                   key={item.href}
@@ -204,7 +208,7 @@ export default function Navbar() {
                   {showPipelineDropdown && (
                     <div className="absolute top-full left-0 pt-2 w-48 z-50">
                       <div className="glass-raised rounded-xl py-1">
-                        {pipelines.map((pipeline) => (
+                        {pipelinesDoMenu.map((pipeline) => (
                           <button
                             key={pipeline.id}
                             onClick={() => {

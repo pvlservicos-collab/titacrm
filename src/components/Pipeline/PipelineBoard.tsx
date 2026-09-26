@@ -40,12 +40,14 @@ const SOURCE_TAB_ID = '__source_rail__'
 interface PipelineBoardProps {
   organizationId: string
   filters?: FilterState
+  /** Pipeline fixo (ex: a aba "Pipeline Instagram"); sem ele vale o `?pipelineId=` do endereço. */
+  pipelineId?: string
 }
 
-export default function PipelineBoard({ organizationId, filters }: PipelineBoardProps) {
+export default function PipelineBoard({ organizationId, filters, pipelineId }: PipelineBoardProps) {
   const searchParams = useSearchParams()
   const router = useRouter()
-  const pipelineIdFromUrl = searchParams.get('pipelineId')
+  const pipelineIdFromUrl = pipelineId ?? searchParams.get('pipelineId')
 
   const { pipelines, stages, selectedPipelineId, selectPipeline, loading } =
     usePipeline(organizationId)

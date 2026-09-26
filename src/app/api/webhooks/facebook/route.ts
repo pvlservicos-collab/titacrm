@@ -17,7 +17,7 @@ import { GRAPH_VERSION } from '@/lib/meta'
 import { NextRequest, after } from 'next/server'
 import { conferirAssinatura, segredosDoApp } from '@/lib/meta-signature'
 import { db } from '@/lib/db'
-import { leads, leadActivities, pipelineStages, integrationMessageLogs, integrations, metaWebhookEvents } from '@/lib/schema'
+import { leads, leadActivities, pipelineStages, pipelines, integrationMessageLogs, integrations, metaWebhookEvents } from '@/lib/schema'
 import { eq, and, isNull, ilike, asc, sql } from 'drizzle-orm'
 import { publishEvent, channels, events } from '@/lib/realtime'
 import { dispatchOutboundWebhook } from '@/lib/outbound-webhook'
@@ -200,9 +200,21 @@ async function handleInstagramEntry(entry: any) {
 
     let leadId = existing?.id
     if (!leadId) {
-      const [firstStage] = await db.select({ id: pipelineStages.id }).from(pipelineStages)
+      // DM nova entra na 1ª etapa do "Pipeline Instagram" (pipelines.settings.origem
+      // = 'instagram'); sem ele, cai na 1ª etapa da organização como antes.
+      const [etapaInstagram] = await db.select({ id: pipelineStages.id }).from(pipelineStages)
+        .innerJoin(pipelines, eq(pipelines.id, pipelineStages.pipelineId))
+        .where(and(
+          eq(pipelineStages.organizationId, orgId),
+          isNull(pipelineStages.deletedAt),
+          isNull(pipelines.deletedAt),
+          sql`${pipelines.settings}->>'origem' = 'instagram'`
+        ))
+        .orderBy(asc(pipelineStages.rank)).limit(1)
+      const [firstStageOrg] = etapaInstagram ? [] : await db.select({ id: pipelineStages.id }).from(pipelineStages)
         .where(and(eq(pipelineStages.organizationId, orgId), isNull(pipelineStages.deletedAt)))
         .orderBy(asc(pipelineStages.rank)).limit(1)
+      const firstStage = etapaInstagram ?? firstStageOrg
 
       const { getInstagramUserProfile } = await import('@/lib/instagram')
       const profile = await getInstagramUserProfile(orgId, integration.id, senderId)

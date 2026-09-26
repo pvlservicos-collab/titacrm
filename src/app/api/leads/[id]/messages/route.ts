@@ -3,7 +3,7 @@ import { authenticateRequest, apiError, validateRequired, validateSource } from 
 import { db } from '@/lib/db'
 import { publishEvent, channels, events } from '@/lib/realtime'
 import {
-  leads, leadActivities, pipelineStages, organizationMembers, profiles, notifications,
+  leads, leadActivities, pipelineStages, pipelines, organizationMembers, profiles, notifications,
 } from '@/lib/schema'
 import { eq, and, isNull, desc, asc, ilike, sql } from 'drizzle-orm'
 import { getChannelAdapter } from '@/lib/channels/registry'
@@ -394,8 +394,32 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
      * não pode se passar por atendimento humano.
      */
     if (direction === 'outbound' && body.type === 'whatsapp' && body.source === 'human' && metadata.send_status !== 'failed') {
-      const etapa = await acharEtapaPorNome(auth.organizationId, ETAPA_ATENDIMENTO_HUMANO)
-      if (etapa) updates.stageId = etapa.id
+      // Lead do "Pipeline Instagram" tem as etapas dele: a resposta humana faz
+      // "Novo contato" virar "Em conversa" ali mesmo, e nunca joga o lead pro
+      // pipeline de Atendimento (a etapa "Atendimento por humano" é de lá).
+      const [noInstagram] = await db
+        .select({ pipelineId: pipelineStages.pipelineId, rank: pipelineStages.rank })
+        .from(leads)
+        .innerJoin(pipelineStages, eq(pipelineStages.id, leads.stageId))
+        .innerJoin(pipelines, eq(pipelines.id, pipelineStages.pipelineId))
+        .where(and(eq(leads.id, actualLeadId), sql`${pipelines.settings}->>'origem' = 'instagram'`))
+        .limit(1)
+      if (noInstagram) {
+        const [emConversa] = await db
+          .select({ id: pipelineStages.id, rank: pipelineStages.rank })
+          .from(pipelineStages)
+          .where(and(
+            eq(pipelineStages.pipelineId, noInstagram.pipelineId),
+            isNull(pipelineStages.deletedAt),
+            ilike(pipelineStages.name, 'Em conversa')
+          ))
+          .limit(1)
+        // Só avança: quem já passou dessa etapa não volta.
+        if (emConversa && Number(noInstagram.rank) < Number(emConversa.rank)) updates.stageId = emConversa.id
+      } else {
+        const etapa = await acharEtapaPorNome(auth.organizationId, ETAPA_ATENDIMENTO_HUMANO)
+        if (etapa) updates.stageId = etapa.id
+      }
     }
 
     await db.update(leads).set(updates).where(eq(leads.id, actualLeadId))
